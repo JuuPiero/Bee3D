@@ -1,0 +1,96 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "4ddec6c8-ea04-409a-84a8-757cb06a75d3",
+  "files": [],
+  "subMetas": {
+    "e85fe": {
+      "importer": "gltf-mesh",
+      "uuid": "4ddec6c8-ea04-409a-84a8-757cb06a75d3@e85fe",
+      "displayName": "",
+      "id": "e85fe",
+      "name": "WaterFlow.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 72
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "4581e": {
+      "importer": "gltf-material",
+      "uuid": "4ddec6c8-ea04-409a-84a8-757cb06a75d3@4581e",
+      "displayName": "",
+      "id": "4581e",
+      "name": "WaterFlow.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f1985": {
+      "importer": "gltf-scene",
+      "uuid": "4ddec6c8-ea04-409a-84a8-757cb06a75d3@f1985",
+      "displayName": "",
+      "id": "f1985",
+      "name": "WaterFlow.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "4ddec6c8-ea04-409a-84a8-757cb06a75d3@e85fe"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [
+        "4ddec6c8-ea04-409a-84a8-757cb06a75d3@4581e"
+      ],
+      "scenes": [
+        "4ddec6c8-ea04-409a-84a8-757cb06a75d3@f1985"
+      ]
+    }
+  }
+}
