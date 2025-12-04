@@ -1,0 +1,28 @@
+{
+    
+    "compilerOptions": {
+        "target": "ES2017",
+        "module": "CommonJS",
+        "moduleResolution": "node",
+        "inlineSourceMap": true,
+        "inlineSources": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        
+        "experimentalDecorators": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "strict": false,
+        "types": [
+            "node",
+            "@cocos/creator-types/editor",
+            "../@types/declarations/cc",
+            "../@types/declarations/cc.custom-macro",
+            "../@types/declarations/jsb",
+            "../@types/declarations/cc.env",
+            "../@types/declarations/editor-extends.d.ts"
+
+        ],
+        
+    }
+}

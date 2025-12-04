@@ -1,0 +1,1 @@
+"use strict";module.exports={description:"ScriptableAsset,脚本化数据容器资产"};
