@@ -10,5 +10,6 @@ export interface IPixelBlock {
     getLeftLinkedBlock(): IPixelBlock;
     getRightLinkedBlock(): IPixelBlock;
     getWorldPosition(): Vec3;
+    getColorID(): number;
 }
 

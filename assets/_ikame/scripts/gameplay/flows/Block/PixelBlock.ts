@@ -93,6 +93,11 @@ export class PixelBlock extends Component implements IPixelBlock
         }
     }
 
+    getColorID(): number
+    {
+        return this.colorID;
+    }
+
     protected lateUpdate(dt: number): void
     {
         if(EDITOR && this.debugDraw)

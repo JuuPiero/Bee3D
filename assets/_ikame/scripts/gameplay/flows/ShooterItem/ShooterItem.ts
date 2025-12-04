@@ -3,12 +3,11 @@ const { ccclass, property } = _decorator;
 
 @ccclass('ShooterItem')
 export class ShooterItem extends Component {
-    start() {
-
-    }
-
-    update(deltaTime: number) {
+    
+    protected start(): void
+    {
         
     }
 }
-
+
+
