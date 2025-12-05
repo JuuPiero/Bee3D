@@ -619,9 +619,9 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -3.315,
+      "x": -2.299,
       "y": 0,
-      "z": 0.39
+      "z": 1.909
     },
     "_lrot": {
       "__type__": "cc.Quat",
@@ -756,6 +756,14 @@
     },
     "_enabled": true,
     "__prefab": null,
+    "spline": {
+      "__id__": 11
+    },
+    "progress": 0,
+    "updateRotation": true,
+    "speed": 1,
+    "isLooping": false,
+    "colorID": -1,
     "levelController": {
       "__id__": 14
     },

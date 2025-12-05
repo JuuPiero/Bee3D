@@ -9,7 +9,7 @@ export class SplineFollower extends Component {
     @property(SplineSmooth)
     spline: SplineSmooth | null = null;
 
-    @property({type:CCFloat, range:[0,1,0.01]})
+    @property({type:CCFloat, range:[0,1,0.01], slide:true})
     progress: number = 0;
 
     @property(CCBoolean) protected updateRotation: boolean = true;
@@ -32,7 +32,7 @@ export class SplineFollower extends Component {
         }
     }
 
-    public setPrgogress(progress: number): void
+    public setProgress(progress: number): void
     {
         this.progress = progress;
         this.spline.getPercentageTransform(this.progress, this._position, this._rotation);

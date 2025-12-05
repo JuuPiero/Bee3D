@@ -156,10 +156,17 @@ export class LevelController extends Component implements ILevelController
 
     public getShooterEdge(x: number, z: number): EDirection
     {
-        if (x <= this.minX) return EDirection.LEFT;
-        if (x >= this.maxX) return EDirection.RIGHT;
-        if (z <= this.minZ) return EDirection.TOP;
-        return EDirection.BOTTOM;
+        if (x <= this.maxX && x >= this.minX)
+        {
+            if (z <= this.minZ ) return EDirection.TOP;
+            if (z >= this.maxZ ) return EDirection.BOTTOM;
+        }
+        if (z <= this.maxZ && z >= this.minZ)
+        {
+            if (x <= this.minX ) return EDirection.LEFT;
+            if (x >= this.maxX ) return EDirection.RIGHT;
+        }
+        return EDirection.NONE;
     }
 
     public getTileAtCoord(x: number, z: number): IGridTile | null

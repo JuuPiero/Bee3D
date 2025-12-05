@@ -30,6 +30,8 @@ export class PixelBlock extends Component implements IPixelBlock
 
     private _gridTile: IGridTile = null;
 
+    private _isMarkedForDestroy: boolean = false;
+
     init(colorID: number): void 
     {
         const color = this.colorData.getColorById(colorID);
@@ -98,6 +100,13 @@ export class PixelBlock extends Component implements IPixelBlock
     getUid(): string
     {
         return this.node.uuid;
+    }
+
+    public markForDestroy(): void
+    {
+        if (this._isMarkedForDestroy) return;
+        this._isMarkedForDestroy = true;
+        this.node.active = false;
     }
 }
 

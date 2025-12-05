@@ -1,12 +1,15 @@
-import { _decorator, Component, EventKeyboard, Input, input, KeyCode, Node } from 'cc';
+import { _decorator, CCInteger, Component, EventKeyboard, Input, input, KeyCode, Node } from 'cc';
 import { Utils } from '../../../utils/Utils';
 import { LevelController } from '../../controllers/LevelController';
 import { EDirection } from '../../../enums/EDirection';
+import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
 const { ccclass, property } = _decorator;
 
 @ccclass('ShooterItem')
-export class ShooterItem extends Component {
+export class ShooterItem extends SplineFollowerSpeed {
     
+    @property(CCInteger) public colorID: number = -1;
+
     @property(LevelController)
     public levelController: LevelController = null;
 
@@ -73,6 +76,11 @@ export class ShooterItem extends Component {
         let x = this.levelController.levelData.widthMap - 1;
         while (x >= 0)
         {
+            if (this.hasPassedBlock(x, z))
+            {
+                x--;
+                continue;
+            }
             let protentialTileTarget = this.levelController.getTileAtCoord(x, z);
             if (!protentialTileTarget)
             {  
@@ -85,7 +93,7 @@ export class ShooterItem extends Component {
                 x--;
                 continue;
             }
-
+            this.markBlockAsPassed(x, z);
             if (!protentialTileTarget.isOccupied())
             {
                 // Dig Upwards
@@ -103,6 +111,7 @@ export class ShooterItem extends Component {
 
             const targetBlock = protentialTileTarget.getPixelBlock();
             console.log("Shooting Block 2 at: ", targetBlock.getUid());
+            targetBlock.markForDestroy();
             x--;
         }
         console.log("----");
@@ -115,6 +124,11 @@ export class ShooterItem extends Component {
         let x = 0;
         while (x < this.levelController.levelData.widthMap )
         {
+            if (this.hasPassedBlock(x, z))
+            {
+                x++;
+                continue;
+            }
             let protentialTileTarget = this.levelController.getTileAtCoord(x, z);
             if (!protentialTileTarget)
             {
@@ -127,7 +141,7 @@ export class ShooterItem extends Component {
                 x++;
                 continue;
             }
-
+            this.markBlockAsPassed(x, z);
             if (!protentialTileTarget.isOccupied())
             {
                 // Dig Downwards from top
@@ -145,6 +159,7 @@ export class ShooterItem extends Component {
 
             const targetBlock = protentialTileTarget.getPixelBlock();
             console.log("Shooting Block TOP at:", targetBlock.getUid());
+            targetBlock.markForDestroy();
             x++;
         }
         console.log("----");
@@ -157,6 +172,11 @@ export class ShooterItem extends Component {
         let z = this.levelController.levelData.heightMap - 1;
         while (z >= 0)
         {
+            if (this.hasPassedBlock(x, z))
+            {
+                z--;
+                continue;
+            }
             let protentialTileTarget = this.levelController.getTileAtCoord(x, z);
             if (!protentialTileTarget)
             {
@@ -169,7 +189,7 @@ export class ShooterItem extends Component {
                 z--;
                 continue;
             }
-
+            this.markBlockAsPassed(x, z);
             if (!protentialTileTarget.isOccupied())
             {
                 // Dig Rightwards from left edge
@@ -187,6 +207,7 @@ export class ShooterItem extends Component {
 
             const targetBlock = protentialTileTarget.getPixelBlock();
             console.log("Shooting Block LEFT at:", targetBlock.getUid());
+            targetBlock.markForDestroy();
             z--;
         }
         console.log("----");
@@ -199,6 +220,11 @@ export class ShooterItem extends Component {
         let z = 0;
         while (z >= 0 && z < this.levelController.levelData.heightMap)
         {
+            if (this.hasPassedBlock(x, z))
+            {
+                z++;
+                continue;
+            }
             let protentialTileTarget = this.levelController.getTileAtCoord(x, z);
             if (!protentialTileTarget)
             {
@@ -211,7 +237,7 @@ export class ShooterItem extends Component {
                 z++;
                 continue;
             }
-
+            this.markBlockAsPassed(x, z);
             if (!protentialTileTarget.isOccupied())
             {
                 // Dig Leftwards from right edge
@@ -229,12 +255,17 @@ export class ShooterItem extends Component {
 
             const targetBlock = protentialTileTarget.getPixelBlock();
             console.log("Shooting Block RIGHT at:", targetBlock.getUid());
+            targetBlock.markForDestroy();
             z++;
         }
         console.log("----");
     }
 
-    
+    protected update(deltaTime: number): void
+    {
+        super.update(deltaTime);
+        this.tryShootTargets();
+    }
 }
 
 

@@ -6,5 +6,6 @@ export interface IPixelBlock {
     getColorID(): number;
     setTile(tile: IGridTile): void;
     getUid(): string;
+    markForDestroy(): void;
 }
 
