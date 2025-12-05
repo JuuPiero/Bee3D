@@ -3,12 +3,14 @@ import { LevelData } from '../../configData/LevelData';
 import { EDITOR } from 'cc/env';
 import { PixelBlock } from '../flows/Block/PixelBlock';
 import { Utils } from '../../utils/Utils';
-import { ShooterItem } from '../flows/ShooterItem/ShooterItem';
 import { EDirection } from '../../enums/EDirection';
+import { GridTile } from '../flows/MapTiles/GridTile';
+import { ILevelController } from './ILevelController';
+import { IGridTile } from '../flows/MapTiles/IGridTile';
 const { ccclass, property } = _decorator;
 
 @ccclass('LevelController')
-export class LevelController extends Component 
+export class LevelController extends Component implements ILevelController
 {    
     @property({ type: Prefab, group: 'Pixel Map' })
     public pixelBlockPrefab: Prefab = null;
@@ -44,9 +46,8 @@ export class LevelController extends Component
         return this.maxZ - this.minZ;
     }
 
-    private _blockMapByCoord = new Map<string, PixelBlock>();
+    private _gridMap = new Map<string, GridTile>();
     
-
     public get CenterMap(): Vec3
     {
         if (!this._centerMap)
@@ -59,7 +60,6 @@ export class LevelController extends Component
         }
         return this._centerMap;
     }
-
     
     private _debugTopLeftMap: Vec3 = new Vec3();
     private _debugTopRightMap: Vec3 = new Vec3();
@@ -103,8 +103,36 @@ export class LevelController extends Component
     {
         //#region Spawn Pixel Blocks
 
+        
+        this.pixelBlockHolder.setPosition(this.CenterMap);
+        const scaleHorizontal = this.WidthMap / this.levelData.widthMap;
+        const scaleVertical = this.HeightMap / this.levelData.heightMap;
+        const mapScale = Math.min(scaleHorizontal, scaleVertical);
+        this.pixelBlockHolder.setScale(mapScale, mapScale, mapScale);
+        
         const offsetX = -this.levelData.widthMap / 2 + 0.5;
         const offsetZ = -this.levelData.heightMap / 2 + 0.5;
+        
+        for (let i = 0; i < this.levelData.widthMap; i++)
+        {
+            for (let j = 0; j < this.levelData.heightMap; j++)
+            {
+                const key = Utils.generateKeyFromCoord(i, j);
+                const gridTile = new GridTile(i, j, this.pixelBlockHolder, new Vec3(i + offsetX, 0, j + offsetZ));
+                this._gridMap.set(key, gridTile);
+            }
+        }
+
+        for (const [ key, tile ] of this._gridMap)
+        {
+            const x = tile.getCoordX();
+            const z = tile.getCoordZ();
+            const topTile = this._gridMap.get( Utils.generateKeyFromCoord(x, z - 1) ) || null;
+            const bottomTile = this._gridMap.get( Utils.generateKeyFromCoord(x, z + 1) ) || null;
+            const leftTile = this._gridMap.get( Utils.generateKeyFromCoord(x - 1, z) ) || null;
+            const rightTile = this._gridMap.get( Utils.generateKeyFromCoord(x + 1, z) ) || null;
+            tile.setLinkedTiles(topTile, bottomTile,  leftTile, rightTile);
+        }
 
         for (let i = 0; i < this.levelData.pixels.length; i++)
         {
@@ -113,24 +141,11 @@ export class LevelController extends Component
             pixelNode.parent = this.pixelBlockHolder;
             pixelNode.setPosition(pixelData.x + offsetX, 0, pixelData.z + offsetZ);
             const pixelBlockComp = pixelNode.getComponent(PixelBlock);
-            pixelBlockComp.init(pixelData.id, pixelData.x, pixelData.z);
+            pixelBlockComp.init(pixelData.id);
             const key = Utils.generateKeyFromCoord(pixelData.x, pixelData.z);
-            this._blockMapByCoord.set(key, pixelBlockComp);
+            const gridTile = this._gridMap.get(key);
+            gridTile.setPixelBlock(pixelBlockComp);
         }
-        for (let [ key, pixelBlock ] of this._blockMapByCoord)
-        {
-            const ogCoord = pixelBlock.getCoord();
-            const topBlock = this._blockMapByCoord.get( Utils.generateKeyFromCoord(ogCoord.x, ogCoord.z - 1) ) || null;
-            const bottomBlock = this._blockMapByCoord.get( Utils.generateKeyFromCoord(ogCoord.x, ogCoord.z + 1) ) || null;
-            const leftBlock = this._blockMapByCoord.get( Utils.generateKeyFromCoord(ogCoord.x - 1, ogCoord.z) ) || null;
-            const rightBlock = this._blockMapByCoord.get( Utils.generateKeyFromCoord(ogCoord.x + 1, ogCoord.z) ) || null;
-            pixelBlock.setLinkedBlock(topBlock, bottomBlock, leftBlock, rightBlock);
-        }
-        this.pixelBlockHolder.setPosition(this.CenterMap);
-        const scaleHorizontal = this.WidthMap / this.levelData.widthMap;
-        const scaleVertical = this.HeightMap / this.levelData.heightMap;
-        const mapScale = Math.min(scaleHorizontal, scaleVertical);
-        this.pixelBlockHolder.setScale(mapScale, mapScale, mapScale);
         //#endregion
     }
 
@@ -147,10 +162,16 @@ export class LevelController extends Component
         return EDirection.BOTTOM;
     }
 
+    public getTileAtCoord(x: number, z: number): IGridTile | null
+    {
+        const key = Utils.generateKeyFromCoord(x, z);
+        return this._gridMap.get(key) || null;
+    }
+
     public getBlockAtCoord(x: number, z: number): PixelBlock | null
     {
         const key = Utils.generateKeyFromCoord(x, z);
-        return this._blockMapByCoord.get(key) || null;
+        return this._gridMap.get(key).getPixelBlock() as PixelBlock;
     }
 }
 
