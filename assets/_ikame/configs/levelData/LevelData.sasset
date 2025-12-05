@@ -5,8 +5,10 @@
     "_objFlags": 0,
     "__editorExtras__": {},
     "_native": "",
+    "slotCount": 0,
     "widthMap": 2,
     "heightMap": 4,
+    "shooterQueues": [],
     "pixels": [
       {
         "__id__": 1
@@ -29,48 +31,66 @@
       {
         "__id__": 7
       }
-    ]
+    ],
+    "levelJson": {
+      "__uuid__": "bef10a61-1218-4c10-bd04-9641ea2ff674",
+      "__expectedType__": "cc.JsonAsset"
+    }
   },
   {
     "__type__": "PixelData",
-    "id": 1,
     "x": 0,
-    "z": 0
+    "y": 0,
+    "material": 0,
+    "areaX": 1,
+    "areaY": 1
   },
   {
     "__type__": "PixelData",
-    "id": 1,
     "x": 0,
-    "z": 1
+    "y": 0,
+    "material": 0,
+    "areaX": 1,
+    "areaY": 1
   },
   {
     "__type__": "PixelData",
-    "id": 1,
     "x": 0,
-    "z": 2
+    "y": 0,
+    "material": 0,
+    "areaX": 1,
+    "areaY": 1
   },
   {
     "__type__": "PixelData",
-    "id": 0,
     "x": 0,
-    "z": 3
+    "y": 0,
+    "material": 0,
+    "areaX": 1,
+    "areaY": 1
   },
   {
     "__type__": "PixelData",
-    "id": 0,
     "x": 1,
-    "z": 0
+    "y": 0,
+    "material": 0,
+    "areaX": 1,
+    "areaY": 1
   },
   {
     "__type__": "PixelData",
-    "id": 0,
     "x": 1,
-    "z": 1
+    "y": 0,
+    "material": 0,
+    "areaX": 1,
+    "areaY": 1
   },
   {
     "__type__": "PixelData",
-    "id": 0,
     "x": 1,
-    "z": 2
+    "y": 0,
+    "material": 0,
+    "areaX": 1,
+    "areaY": 1
   }
 ]

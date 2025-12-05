@@ -102,7 +102,7 @@ export class LevelController extends Component implements ILevelController
     public spawnLevel(): void 
     {
         //#region Spawn Pixel Blocks
-
+        this.levelData.parseData();
         
         this.pixelBlockHolder.setPosition(this.CenterMap);
         const scaleHorizontal = this.WidthMap / this.levelData.widthMap;
@@ -139,10 +139,10 @@ export class LevelController extends Component implements ILevelController
             const pixelData = this.levelData.pixels[i];
             const pixelNode = instantiate(this.pixelBlockPrefab);
             pixelNode.parent = this.pixelBlockHolder;
-            pixelNode.setPosition(pixelData.x + offsetX, 0, pixelData.z + offsetZ);
+            pixelNode.setPosition(pixelData.x + offsetX, 0, pixelData.y + offsetZ);
             const pixelBlockComp = pixelNode.getComponent(PixelBlock);
-            pixelBlockComp.init(pixelData.id);
-            const key = Utils.generateKeyFromCoord(pixelData.x, pixelData.z);
+            pixelBlockComp.init(pixelData.material);
+            const key = Utils.generateKeyFromCoord(pixelData.x, pixelData.y);
             const gridTile = this._gridMap.get(key);
             gridTile.setPixelBlock(pixelBlockComp);
         }
