@@ -112,8 +112,8 @@ export class ShooterItem extends Component {
     {
         console.log("Shooting TOP");
         const z = 0;
-        let x = this.levelController.levelData.widthMap - 1;
-        while (x >= 0)
+        let x = 0;
+        while (x < this.levelController.levelData.widthMap )
         {
             let protentialTileTarget = this.levelController.getTileAtCoord(x, z);
             if (!protentialTileTarget)
@@ -122,9 +122,9 @@ export class ShooterItem extends Component {
                 return;
             }
 
-            if (protentialTileTarget.getWorldPosX() > this.node.worldPositionX)
+            if (protentialTileTarget.getWorldPosX() < this.node.worldPositionX)
             {
-                x--;
+                x++;
                 continue;
             }
 
@@ -145,7 +145,7 @@ export class ShooterItem extends Component {
 
             const targetBlock = protentialTileTarget.getPixelBlock();
             console.log("Shooting Block TOP at:", targetBlock.getUid());
-            x--;
+            x++;
         }
         console.log("----");
     }
