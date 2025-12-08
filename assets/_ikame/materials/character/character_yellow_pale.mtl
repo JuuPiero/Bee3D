@@ -10,9 +10,21 @@
   },
   "_techIdx": 0,
   "_defines": [
-    {}
+    {},
+    {
+      "USE_OUTLINE_PASS": true
+    }
   ],
   "_states": [
+    {
+      "rasterizerState": {},
+      "depthStencilState": {},
+      "blendState": {
+        "targets": [
+          {}
+        ]
+      }
+    },
     {
       "rasterizerState": {},
       "depthStencilState": {},
@@ -28,15 +40,15 @@
       "_Color": {
         "__type__": "cc.Color",
         "r": 248,
-        "g": 199,
-        "b": 36,
+        "g": 237,
+        "b": 76,
         "a": 255
       },
       "_ColorShadow": {
         "__type__": "cc.Color",
-        "r": 183,
-        "g": 80,
-        "b": 27,
+        "r": 167,
+        "g": 146,
+        "b": 72,
         "a": 255
       },
       "_Matcap": {
@@ -46,7 +58,13 @@
       "_MainTex": {
         "__uuid__": "b225f377-1729-4f8a-9524-c44d6581cf03@6c48a",
         "__expectedType__": "cc.Texture2D"
-      }
+      },
+      "_FlipZ": 0,
+      "_Glossiness": 0.5,
+      "_SpecularIntensity": 0.35
+    },
+    {
+      "lineWidth": 35
     }
   ]
 }

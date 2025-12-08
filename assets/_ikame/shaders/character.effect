@@ -10,11 +10,29 @@ CCEffect %{
         _ColorShadow:  { value: [0.0, 0.0, 0.0, 1.0], editor: { type: color } }
         _Matcap:       { value: black }
         _MainTex:      { value: white }
+        _FlipZ:        { value: 1.0, editor: { type: slider, min: 0.0, max: 1.0, step: 1.0 } }
+        _Glossiness:   { value: 2.0, editor: { type: slider, min: 0.0, max: 5.0, step: 0.1 } }
+        _SpecularIntensity: { value: 1.5, editor: { type: slider, min: 0.0, max: 3.0, step: 0.1 } }
       rasterizerState:
         cullMode: back
       blendState:
         targets:
           - blend: false
+
+    - switch: USE_OUTLINE_PASS
+      vert: silhouette-edge-vs
+      frag: silhouette-edge-fs
+      rasterizerState: &r1
+        cullMode: front
+      depthStencilState: &d1
+        depthFunc: less_equal
+        depthTest: true
+        depthWrite: true
+      properties:
+        lineWidth:     { value: 10, target: outlineParams.x }
+        depthBias:     { value: 0,  target: outlineParams.y }
+        baseColor:     { editor: { type: color } }
+        baseColorMap:  { value: grey }
 }%
 
 CCProgram cubeColor-vs %{
@@ -23,6 +41,15 @@ CCProgram cubeColor-vs %{
   #include <builtin/uniforms/cc-global>
   #include <legacy/decode-base>
   #include <legacy/local-batch>
+
+  // Material uniforms block: must match across VS/FS to avoid UBO conflicts
+  uniform Constant {
+    vec4 _Color;
+    vec4 _ColorShadow;
+    float _FlipZ;
+    float _Glossiness;
+    float _SpecularIntensity;
+  };
 
   out mediump vec4 v_cap; // xy: matcap coords, zw: uv coords
 
@@ -33,26 +60,31 @@ CCProgram cubeColor-vs %{
     mat4 matWorld, matWorldIT;
     CCGetWorldMatrixFull(matWorld, matWorldIT);
 
-    // Transform normal to view space for matcap
+    // Transform normal to view space for matcap - match Unity exactly
     vec3 worldNormal = normalize((matWorldIT * vec4(a_normal, 0.0)).xyz);
+    // Unity: worldNormal = mul((float3x3)UNITY_MATRIX_V, worldNormal);
     vec3 viewNormal = normalize((cc_matView * vec4(worldNormal, 0.0)).xyz);
     
-    // Flip Z to account for Cocos' reversed Z-axis compared to Unity
-    viewNormal.z = -viewNormal.z;
+    // Fix matcap coordinates to match Unity behavior
+    viewNormal.y = -viewNormal.y; // Flip Y coordinate
+    if (_FlipZ > 0.5) {
+        viewNormal.z = -viewNormal.z; // Flip Z if needed
+    }
     
-    // Convert view-space normal to matcap UV coordinates
+    // Unity matcap calculation: worldNormal.xy * 0.5 + 0.5
     v_cap.xy = viewNormal.xy * 0.5 + 0.5;
     
     // Pass through UV coordinates
     v_cap.zw = a_texCoord;
 
-    // Output clip position
-    return cc_matProj * (cc_matView * matWorld) * position;
+    // Output clip position (use combined view-projection for precision)
+    return cc_matViewProj * matWorld * position;
   }
 }%
 
 CCProgram cubeColor-fs %{
   precision highp float;
+  #include <legacy/output>
 
   in mediump vec4 v_cap;
   uniform sampler2D _Matcap;
@@ -61,22 +93,141 @@ CCProgram cubeColor-fs %{
   uniform Constant {
     vec4 _Color;
     vec4 _ColorShadow;
+    float _FlipZ;
+    float _Glossiness;
+    float _SpecularIntensity;
   };
 
   vec4 frag () {
-    // Sample matcap texture with normal-based UVs
-    vec2 matcapUV = clamp(v_cap.xy, 0.0, 1.0);
-    vec2 mask = texture(_Matcap, matcapUV).xy;
+    // Match Unity shader exactly: half4 final = 1;
+    vec4 final = vec4(1.0);
     
-    // Sample main texture with mesh UVs
-    vec2 mainUV = v_cap.zw;
-    float ambient = texture(_MainTex, mainUV).x;
+    // Unity: half2 mask = tex2D(_Matcap, i.cap.xy).xy;
+    vec2 mask = texture(_Matcap, v_cap.xy).xy;
     
-    // Calculate final color using Unity's logic
-    vec3 col = mix(_Color.rgb, _ColorShadow.rgb, mask.x);
-    col += (_Color.rgb + 0.2) * mask.y * 2.0 * ambient;
-    col = mix(pow(clamp(_ColorShadow.rgb, 0.0, 1.0), vec3(1.5)), col, ambient);
+    // Unity: half ambient = tex2D(_MainTex, i.cap.zw).x;
+    float ambient = texture(_MainTex, v_cap.zw).x;
     
-    return vec4(col, 1.0);
+    // Unity: final.rgb = lerp(_Color, _ColorShadow, mask.x);
+    final.rgb = mix(_Color.rgb, _ColorShadow.rgb, mask.x);
+    
+    // Enhanced glossy highlights
+    // Boost the specular contribution with glossiness control
+    float glossyMask = pow(mask.y, 1.0 / _Glossiness) * _SpecularIntensity;
+    final.rgb += (_Color.rgb + 0.2) * glossyMask * 2.0 * ambient;
+    
+    // Add extra rim lighting for glossy effect
+    float rimLight = pow(mask.y, 0.5) * _SpecularIntensity * 0.3;
+    final.rgb += _Color.rgb * rimLight;
+    
+    // Unity: final.rgb = lerp(pow(saturate(_ColorShadow),1.5),final.rgb,ambient);
+    final.rgb = mix(pow(clamp(_ColorShadow.rgb, 0.0, 1.0), vec3(1.5)), final.rgb, ambient);
+    
+    // Boost overall brightness slightly for glossy appearance
+    final.rgb = pow(final.rgb, vec3(1.23));
+    
+    return CCFragOutput(final);
   }
+}%
+
+
+CCProgram surface-vertex-silhouette-edge %{
+  uniform OutlineVert {
+  vec4 outlineParams; // x: line width, y: depth hack
+};
+
+  #define CC_SURFACES_VERTEX_MODIFY_LOCAL_POS
+  vec3 SurfacesVertexModifyLocalPos(in SurfacesStandardVertexIntermediate In)
+  {
+    float width = outlineParams.x * 0.001;
+    vec3 localPos = In.position.xyz;
+
+  #if USE_POSITION_SCALING
+    vec3 dir = normalize(localPos);
+    float flip = dot(dir, normalize(In.normal)) < 0.0 ? -1.0 : 1.0;
+    localPos += flip * dir * width * 2.0;
+  #else
+    localPos += normalize(In.normal) * width;
+  #endif
+    return localPos;
+  }
+
+  #define CC_SURFACES_VERTEX_MODIFY_CLIP_POS
+  vec4 SurfacesVertexModifyClipPos(in SurfacesStandardVertexIntermediate In)
+  {
+    vec4 clipPos = In.clipPos;
+    float scaleZ = cc_nearFar.z == 0.0 ? 0.5 : 1.0;
+    clipPos.z -= outlineParams.y * 0.002 * scaleZ;
+    return clipPos;
+  }
+}%
+CCProgram surface-vertex-silhouette-edge %{
+  uniform OutlineVert {
+  vec4 outlineParams; // x: line width, y: depth hack
+};
+
+  #define CC_SURFACES_VERTEX_MODIFY_LOCAL_POS
+  vec3 SurfacesVertexModifyLocalPos(in SurfacesStandardVertexIntermediate In)
+  {
+    float width = outlineParams.x * 0.001;
+    vec3 localPos = In.position.xyz;
+
+  #if USE_POSITION_SCALING
+    vec3 dir = normalize(localPos);
+    float flip = dot(dir, normalize(In.normal)) < 0.0 ? -1.0 : 1.0;
+    localPos += flip * dir * width * 2.0;
+  #else
+    localPos += normalize(In.normal) * width;
+  #endif
+    return localPos;
+  }
+
+  #define CC_SURFACES_VERTEX_MODIFY_CLIP_POS
+  vec4 SurfacesVertexModifyClipPos(in SurfacesStandardVertexIntermediate In)
+  {
+    vec4 clipPos = In.clipPos;
+    float scaleZ = cc_nearFar.z == 0.0 ? 0.5 : 1.0;
+    clipPos.z -= outlineParams.y * 0.002 * scaleZ;
+    return clipPos;
+  }
+}%
+
+CCProgram surface-fragment-silhouette-edge %{
+  uniform OutlineFrag {
+    vec4 baseColor;
+  };
+  #if USE_BASE_COLOR_MAP
+    uniform sampler2D baseColorMap;
+  #endif
+
+  // only for render-to-shadow-map or misc usage
+  #define CC_SURFACES_FRAGMENT_MODIFY_BASECOLOR_AND_TRANSPARENCY
+  vec4 SurfacesFragmentModifyBaseColorAndTransparency()
+  {
+    vec4 color = vec4(cc_mainLitColor.rgb, 1.0);
+    color.rgb = SRGBToLinear(baseColor.rgb);
+    #if USE_BASE_COLOR_MAP
+      vec4 texColor = texture(baseColorMap, FSInput_texcoord);
+      texColor.rgb = SRGBToLinear(texColor.rgb);
+      color *= texColor;
+    #endif
+
+    return color;
+  }
+}%
+
+CCProgram silhouette-edge-vs %{
+  precision highp float;
+  #include <surfaces/effect-macros/silhouette-edge>
+  #include <surfaces/includes/common-vs>
+  #include <surface-vertex-silhouette-edge>
+  #include <shading-entries/main-functions/misc/silhouette-edge-vs>
+}%
+
+CCProgram silhouette-edge-fs %{
+  precision highp float;
+  #include <surfaces/effect-macros/silhouette-edge>
+  #include <surfaces/includes/common-fs>
+  #include <surface-fragment-silhouette-edge>
+  #include <shading-entries/main-functions/misc/silhouette-edge-fs>
 }%

@@ -27,22 +27,24 @@
     {
       "_Color": {
         "__type__": "cc.Color",
-        "r": 229,
-        "g": 72,
-        "b": 165,
+        "r": 192,
+        "g": 91,
+        "b": 151,
         "a": 255
       },
       "_ColorShadow": {
         "__type__": "cc.Color",
-        "r": 156,
-        "g": 36,
-        "b": 107,
+        "r": 129,
+        "g": 25,
+        "b": 87,
         "a": 255
       },
       "_MatCap": {
         "__uuid__": "eaf4be1d-659a-46d5-9eba-f34922ad8190@6c48a",
         "__expectedType__": "cc.Texture2D"
-      }
+      },
+      "_Glossiness": 0,
+      "_SpecularIntensity": 0
     }
   ]
 }

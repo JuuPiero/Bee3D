@@ -9,6 +9,8 @@ CCEffect %{
         _Color:        { value: [0.5, 0.5, 0.5, 1.0], editor: { type: color } }
         _ColorShadow:  { value: [0.0, 0.0, 0.0, 1.0], editor: { type: color } }
         _MatCap:       { value: black }
+        _Glossiness:   { value: 2.0, editor: { type: slider, min: 0.0, max: 5.0, step: 0.1 } }
+        _SpecularIntensity: { value: 1.5, editor: { type: slider, min: 0.0, max: 3.0, step: 0.1 } }
       rasterizerState:
         cullMode: back
       blendState:
@@ -96,6 +98,8 @@ CCProgram cubeColor-fs %{
   uniform Constant {
     vec4 _Color;
     vec4 _ColorShadow;
+    float _Glossiness;
+    float _SpecularIntensity;
   };
 
   vec4 frag () {
@@ -111,8 +115,19 @@ CCProgram cubeColor-fs %{
     float sss   = texB.b; // like .z in Unity
 
     vec3 col = mix(_ColorShadow.rgb, _Color.rgb, maskY);
-    col += (col + 0.2) * maskX;
+    
+    // Enhanced glossy highlights
+    float glossyMask = pow(maskX, 1.0 / _Glossiness) * _SpecularIntensity;
+    col += (col + 0.2) * glossyMask;
+    
+    // Add rim lighting for glossy effect
+    float rimLight = pow(maskX, 0.5) * _SpecularIntensity * 0.3;
+    col += _Color.rgb * rimLight;
+    
     col += col * sss * 0.8;
+    
+    // Boost overall brightness slightly for glossy appearance
+    col = pow(col, vec3(1.23));
 
     // Return directly to avoid sRGB decode macro issues
     return vec4(col, 1.0);
