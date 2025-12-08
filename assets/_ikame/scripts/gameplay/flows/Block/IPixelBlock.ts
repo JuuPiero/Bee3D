@@ -7,5 +7,6 @@ export interface IPixelBlock {
     setTile(tile: IGridTile): void;
     getUid(): string;
     markForDestroy(): void;
+    isMarkedForDestroy(): boolean;
 }
 

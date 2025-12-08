@@ -99,15 +99,28 @@ export class GridTile implements IGridTile
         return this._rightLinkedTile;
     }
 
-    isOccupied(): boolean
+    isContainBlock(): boolean
     {
-        return this._pixelBlock != null;
+        if (!this._pixelBlock) return false;
+        if (this._pixelBlock.isMarkedForDestroy()) return false;
+        return true;
     }
 
     getOccupyingColorID(): number
     {
         if (!this._pixelBlock) return -1;
         return this._pixelBlock.getColorID();
+    }
+
+    removePixelBlock(): void
+    {
+        this._pixelBlock = null;
+    }
+
+    isMatchingColorID(colorID: number): boolean
+    {
+        if (!this.isContainBlock()) return false;
+        return this._pixelBlock.getColorID() === colorID;
     }
 }
 

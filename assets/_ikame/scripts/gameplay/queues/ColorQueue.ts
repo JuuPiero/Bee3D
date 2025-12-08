@@ -7,7 +7,7 @@ import { Queue } from '../../commons/Queue';
 const { ccclass, property } = _decorator;
 
 const QUEUE_GAP = 2;
-const TRANSLATE_SPEED = 2;
+const TRANSLATE_SPEED = 8;
 
 @ccclass('ColorQueue')
 export class ColorQueue extends Component implements IColorQueue {
@@ -72,6 +72,11 @@ export class ColorQueue extends Component implements IColorQueue {
     {
         const topShooter = this._shooterQueue.peek();
         return topShooter === shooter;
+    }
+
+    public dequeueShooter(): ShooterItem
+    {
+        return this._shooterQueue.dequeue();
     }
 }
 

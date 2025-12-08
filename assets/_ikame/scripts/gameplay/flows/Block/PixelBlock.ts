@@ -107,6 +107,12 @@ export class PixelBlock extends Component implements IPixelBlock
         if (this._isMarkedForDestroy) return;
         this._isMarkedForDestroy = true;
         this.node.active = false;
+        this._gridTile.removePixelBlock();
+    }
+
+    public isMarkedForDestroy(): boolean
+    {
+        return this._isMarkedForDestroy;
     }
 }
 

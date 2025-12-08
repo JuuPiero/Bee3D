@@ -260,6 +260,10 @@
       "__uuid__": "7842e53d-33a4-4b97-b73b-0f157ca26cec",
       "__expectedType__": "1499b0p04JIm57eqyewzwKE"
     },
+    "characterRoot": {
+      "__id__": 2
+    },
+    "animator": null,
     "_id": ""
   },
   {
@@ -1629,6 +1633,9 @@
       },
       {
         "__id__": 64
+      },
+      {
+        "__id__": 66
       }
     ],
     "nestedPrefabInstanceRoots": [
@@ -1677,6 +1684,28 @@
     "__type__": "cc.TargetInfo",
     "localID": [
       "7dv8T0BbpLJYHMlaOkd8Jp"
+    ]
+  },
+  {
+    "__type__": "cc.TargetOverrideInfo",
+    "source": {
+      "__id__": 12
+    },
+    "sourceInfo": null,
+    "propertyPath": [
+      "animator"
+    ],
+    "target": {
+      "__id__": 3
+    },
+    "targetInfo": {
+      "__id__": 67
+    }
+  },
+  {
+    "__type__": "cc.TargetInfo",
+    "localID": [
+      "83QjdpoMFMUYWIpflFVMtv"
     ]
   }
 ]

@@ -1,4 +1,4 @@
-import { _decorator, CCInteger, Component, EventKeyboard, Input, input, KeyCode, MeshRenderer, Node } from 'cc';
+import { _decorator, CCInteger, Component, director, EventKeyboard, Input, input, KeyCode, MeshRenderer, Node, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
 import { Utils } from '../../../utils/Utils';
 import { EDirection } from '../../../enums/EDirection';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
@@ -18,10 +18,14 @@ import { ShooterInConveyorShootState } from './states/implementStates/ShooterInC
 import ShooterRetriveState from './states/implementStates/ShooterRetriveState';
 import { ShooterFinishState } from './states/implementStates/ShooterFinishState';
 import { ShooterStateBase } from './states/ShooterStateBase';
+import { IShooterItem } from './IShooterItem';
+import { PromiseDelay } from '../../../commons/PromiseDelay';
 const { ccclass, property } = _decorator;
 
+const JUMP_DURATION = 0.5;
+
 @ccclass('ShooterItem')
-export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState> {
+export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {
     
     @property(CCInteger) public colorID: number = -1;
 
@@ -36,7 +40,13 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     @property(ColorConfig)
     public colorConfig: ColorConfig = null;
 
+    @property(Node)
+    public characterRoot : Node = null;
+
     private _ammoCount: number = 0;
+
+    @property(SkeletalAnimation) animator: SkeletalAnimation = null;
+    private _curAnimationName: string = "";
 
     private _stateMachine: ShooterStateMachine;
     private _staticState: ShooterStaticState;
@@ -46,6 +56,13 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private _inConveyorShotState: ShooterStaticState;
     private _retrieveState: ShooterStaticState;
     private _finishState: ShooterStaticState;
+
+    private _jumpToPosition: Vec3 = new Vec3();
+    private _jumpToQuat: Quat = new Quat();
+    private _startJumpPosition: Vec3 = new Vec3();
+    private _lerpPos = new Vec3();
+
+    private _targetCount : number = 0;
 
     public markBlockAsPassed(x: number, z: number): void {
         const key = Utils.generateKeyFromCoord(x, z);
@@ -80,9 +97,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         }
     }
 
-    private tryShootTargets(): void
+    public tryShootTargets(): boolean
     {
         // Implement shooting logic here
+        this._targetCount = 0;
         const edge = this._levelController.getShooterEdge(this.node.worldPosition.x, this.node.worldPosition.z);
         switch (edge)
         {
@@ -99,9 +117,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 this.shotTargetsRight();
                 break;
         }
+        return this._targetCount > 0;
     }
 
-    private shotTargetsBottom(): void 
+    private shotTargetsBottom(): number 
     {
         console.log("Shooting BOTTOM");
         const z = this._levelController.getLevelHeight() - 1;
@@ -125,14 +144,13 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 x--;
                 continue;
             }
-            this.markBlockAsPassed(x, z);
-            if (!protentialTileTarget.isOccupied())
+            if (!protentialTileTarget.isContainBlock())
             {
                 // Dig Upwards
                 let upLinkedTile = protentialTileTarget.getTopLinkedTile();
                 while (upLinkedTile)
                 {
-                    if (upLinkedTile.isOccupied())
+                    if (upLinkedTile.isContainBlock() || upLinkedTile.isMatchingColorID(this.colorID))
                     {
                         protentialTileTarget = upLinkedTile;
                         break;
@@ -142,14 +160,21 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             }
 
             const targetBlock = protentialTileTarget.getPixelBlock();
+            if (!targetBlock || targetBlock.getColorID() !== this.colorID)
+            {
+                x--;
+                continue;
+            }
+            this.markBlockAsPassed(x, z);
             console.log("Shooting Block 2 at: ", targetBlock.getUid());
             targetBlock.markForDestroy();
+            this._targetCount++;
             x--;
         }
         console.log("----");
     }
 
-    private shotTargetsTop(): void 
+    private shotTargetsTop(): number 
     {
         console.log("Shooting TOP");
         const z = 0;
@@ -173,14 +198,13 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 x++;
                 continue;
             }
-            this.markBlockAsPassed(x, z);
-            if (!protentialTileTarget.isOccupied())
+            if (!protentialTileTarget.isContainBlock())
             {
                 // Dig Downwards from top
                 let downLinkedTile = protentialTileTarget.getBottomLinkedTile();
                 while (downLinkedTile)
                 {
-                    if (downLinkedTile.isOccupied())
+                    if (downLinkedTile.isContainBlock() || downLinkedTile.isMatchingColorID(this.colorID))
                     {
                         protentialTileTarget = downLinkedTile;
                         break;
@@ -190,14 +214,21 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             }
 
             const targetBlock = protentialTileTarget.getPixelBlock();
+            if (!targetBlock || targetBlock.getColorID() !== this.colorID)
+            {
+                x++;
+                continue;
+            }
+            this.markBlockAsPassed(x, z);
             console.log("Shooting Block TOP at:", targetBlock.getUid());
             targetBlock.markForDestroy();
+            this._targetCount++;
             x++;
         }
         console.log("----");
     }
 
-    private shotTargetsLeft(): void 
+    private shotTargetsLeft(): number 
     {
         console.log("Shooting LEFT");
         const x = 0;
@@ -221,14 +252,13 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 z--;
                 continue;
             }
-            this.markBlockAsPassed(x, z);
-            if (!protentialTileTarget.isOccupied())
+            if (!protentialTileTarget.isContainBlock())
             {
                 // Dig Rightwards from left edge
                 let rightLinkedTile = protentialTileTarget.getRightLinkedTile();
                 while (rightLinkedTile)
                 {
-                    if (rightLinkedTile.isOccupied())
+                    if (rightLinkedTile.isContainBlock() || rightLinkedTile.isMatchingColorID(this.colorID))
                     {
                         protentialTileTarget = rightLinkedTile;
                         break;
@@ -238,14 +268,21 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             }
 
             const targetBlock = protentialTileTarget.getPixelBlock();
+            if (!targetBlock || targetBlock.getColorID() !== this.colorID)
+            {
+                z--;
+                continue;
+            }
+            this.markBlockAsPassed(x, z);
             console.log("Shooting Block LEFT at:", targetBlock.getUid());
             targetBlock.markForDestroy();
+            this._targetCount++;
             z--;
         }
         console.log("----");
     }
 
-    private shotTargetsRight(): void 
+    private shotTargetsRight(): number 
     {
         console.log("Shooting RIGHT");
         const x = this._levelController.getLevelWidth() - 1;
@@ -269,14 +306,13 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 z++;
                 continue;
             }
-            this.markBlockAsPassed(x, z);
-            if (!protentialTileTarget.isOccupied())
+            if (!protentialTileTarget.isContainBlock())
             {
                 // Dig Leftwards from right edge
                 let leftLinkedTile = protentialTileTarget.getLeftLinkedTile();
                 while (leftLinkedTile)
                 {
-                    if (leftLinkedTile.isOccupied())
+                    if (leftLinkedTile.isContainBlock() || leftLinkedTile.isMatchingColorID(this.colorID))
                     {
                         protentialTileTarget = leftLinkedTile;
                         break;
@@ -286,8 +322,15 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             }
 
             const targetBlock = protentialTileTarget.getPixelBlock();
+            if (!targetBlock || targetBlock.getColorID() !== this.colorID)
+            {
+                z++;
+                continue;
+            }
+            this.markBlockAsPassed(x, z);
             console.log("Shooting Block RIGHT at:", targetBlock.getUid());
             targetBlock.markForDestroy();
+            this._targetCount++;
             z++;
         }
         console.log("----");
@@ -329,19 +372,81 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         // super.update(deltaTime);
         // this.tryShootTargets();
+
+        this._stateMachine.update(deltaTime);
+    }
+
+    protected lateUpdate(dt: number): void
+    {
+        this._stateMachine.lateUpdate(dt);
     }
 
     public onTouchShooter(): void
     {
-        if (this._colorQueue.isOnTop(this))
+        if (!this.isAtTop() || this._stateMachine.currentState.name !== EShooterState.Ready) 
         {
-            console.log("Shooter touched and is on top, ready to shoot!");
+            return;
         }
+        this._stateMachine.changeState(EShooterState.Jump);
+    }
+
+    changeAnimation(animationName: string, force: boolean): void
+    {
+        if (this._curAnimationName === animationName && !force)
+        {
+            return;
+        }
+        this.animator.play(animationName);
+        this._curAnimationName = animationName;
     }
 
     onChangeState(stateFrom: EShooterState, toState: EShooterState): void
     {
         
+    }
+
+    public isAtTop(): boolean
+    {
+        return this._colorQueue.isOnTop(this);
+    }
+
+    public async jumpToConveyor(): Promise<void>
+    {
+        try
+        {
+            const scene = director.getScene();
+            this.node.setParent(scene, true);
+            this._colorQueue.dequeueShooter();
+            this.spline.getPercentageTransform(0, this._jumpToPosition, this._jumpToQuat);
+            this.node.getWorldPosition(this._startJumpPosition);
+            const tweenObj = { progress: 0 }
+            const tweenJump = tween(tweenObj)
+                .delay(0.21)
+                .to(JUMP_DURATION, { progress: 1 }, {
+                    onUpdate: (target: any, ratio: number) =>
+                    {
+                        Vec3.lerp(this._lerpPos, this._startJumpPosition, this._jumpToPosition, target.progress)
+                        this.node.setWorldPosition(this._lerpPos);
+                    }
+                })
+                .start();
+            return PromiseDelay.Wait(tweenJump.duration);
+        }
+        catch (error)
+        {
+            console.error("Error during jumpToConveyor:", error);
+            return Promise.resolve();
+        }
+    }
+
+    public moveAlongConveyor(dt: number): void
+    {
+        this.updatePosition(dt);
+    }
+
+    public faceTheMapDirection(): void
+    {
+        this.characterRoot.setRotationFromEuler(0, -90, 0);
     }
 }
 
