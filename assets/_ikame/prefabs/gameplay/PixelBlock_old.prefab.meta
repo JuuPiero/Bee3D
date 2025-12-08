@@ -2,12 +2,12 @@
   "ver": "1.1.50",
   "importer": "prefab",
   "imported": true,
-  "uuid": "52d032a1-3043-44ee-869c-1e73e490cfff",
+  "uuid": "93b0533a-36f6-44ef-8651-f84ca9e9eb3f",
   "files": [
     ".json"
   ],
   "subMetas": {},
   "userData": {
-    "syncNodeName": "PixelBlock"
+    "syncNodeName": "PixelBlock_old"
   }
 }

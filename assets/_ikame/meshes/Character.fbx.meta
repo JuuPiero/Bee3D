@@ -1,0 +1,358 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "09efeddb-627d-4421-a5af-346c912264c2",
+  "files": [
+    "__original-animation-0.cconb",
+    "__original-animation-1.cconb",
+    "__original-animation-2.cconb",
+    "__original-animation-3.cconb",
+    "__original-animation-4.cconb"
+  ],
+  "subMetas": {
+    "a62fe": {
+      "importer": "gltf-mesh",
+      "uuid": "09efeddb-627d-4421-a5af-346c912264c2@a62fe",
+      "displayName": "",
+      "id": "a62fe",
+      "name": "Scene.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 1326
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "8a5ac": {
+      "importer": "gltf-animation",
+      "uuid": "09efeddb-627d-4421-a5af-346c912264c2@8a5ac",
+      "displayName": "",
+      "id": "8a5ac",
+      "name": "Pixel_Static.animation",
+      "userData": {
+        "gltfIndex": 0,
+        "wrapMode": 2,
+        "sample": 30,
+        "span": {
+          "from": 0,
+          "to": 0.03333333507180214
+        },
+        "events": []
+      },
+      "ver": "1.0.17",
+      "imported": true,
+      "files": [
+        ".cconb"
+      ],
+      "subMetas": {}
+    },
+    "757ad": {
+      "importer": "gltf-animation",
+      "uuid": "09efeddb-627d-4421-a5af-346c912264c2@757ad",
+      "displayName": "",
+      "id": "757ad",
+      "name": "Pixel_Attack Sit.animation",
+      "userData": {
+        "gltfIndex": 1,
+        "wrapMode": 2,
+        "sample": 30,
+        "span": {
+          "from": 0,
+          "to": 0.1666666716337204
+        },
+        "events": []
+      },
+      "ver": "1.0.17",
+      "imported": true,
+      "files": [
+        ".cconb"
+      ],
+      "subMetas": {}
+    },
+    "01e2a": {
+      "importer": "gltf-animation",
+      "uuid": "09efeddb-627d-4421-a5af-346c912264c2@01e2a",
+      "displayName": "",
+      "id": "01e2a",
+      "name": "Pixel_Idle.animation",
+      "userData": {
+        "gltfIndex": 2,
+        "wrapMode": 2,
+        "sample": 30,
+        "span": {
+          "from": 0,
+          "to": 2.3333332538604736
+        },
+        "events": []
+      },
+      "ver": "1.0.17",
+      "imported": true,
+      "files": [
+        ".cconb"
+      ],
+      "subMetas": {}
+    },
+    "40c3e": {
+      "importer": "gltf-animation",
+      "uuid": "09efeddb-627d-4421-a5af-346c912264c2@40c3e",
+      "displayName": "",
+      "id": "40c3e",
+      "name": "Pixel_Jump.animation",
+      "userData": {
+        "gltfIndex": 3,
+        "wrapMode": 2,
+        "sample": 30,
+        "span": {
+          "from": 0,
+          "to": 0.7333333492279053
+        },
+        "events": []
+      },
+      "ver": "1.0.17",
+      "imported": true,
+      "files": [
+        ".cconb"
+      ],
+      "subMetas": {}
+    },
+    "8304d": {
+      "importer": "gltf-animation",
+      "uuid": "09efeddb-627d-4421-a5af-346c912264c2@8304d",
+      "displayName": "",
+      "id": "8304d",
+      "name": "Pixel_Jump Sit.animation",
+      "userData": {
+        "gltfIndex": 4,
+        "wrapMode": 2,
+        "sample": 30,
+        "span": {
+          "from": 0,
+          "to": 0.8666666746139526
+        },
+        "events": []
+      },
+      "ver": "1.0.17",
+      "imported": true,
+      "files": [
+        ".cconb"
+      ],
+      "subMetas": {}
+    },
+    "438fe": {
+      "importer": "gltf-skeleton",
+      "uuid": "09efeddb-627d-4421-a5af-346c912264c2@438fe",
+      "displayName": "",
+      "id": "438fe",
+      "name": "UnnamedSkeleton.skeleton",
+      "userData": {
+        "gltfIndex": 0,
+        "jointsLength": 16
+      },
+      "ver": "1.0.1",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "fd73d": {
+      "importer": "gltf-embeded-image",
+      "uuid": "09efeddb-627d-4421-a5af-346c912264c2@fd73d",
+      "displayName": "",
+      "id": "fd73d",
+      "name": "DiffuseColor_Texture.image",
+      "userData": {
+        "gltfIndex": 0,
+        "fixAlphaTransparencyArtifacts": true,
+        "hasAlpha": true,
+        "type": "texture"
+      },
+      "ver": "1.0.3",
+      "imported": true,
+      "files": [
+        ".json",
+        ".png"
+      ],
+      "subMetas": {}
+    },
+    "4f17a": {
+      "importer": "texture",
+      "uuid": "09efeddb-627d-4421-a5af-346c912264c2@4f17a",
+      "displayName": "",
+      "id": "4f17a",
+      "name": "DiffuseColor_Texture.texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "09efeddb-627d-4421-a5af-346c912264c2@fd73d"
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "82deb": {
+      "importer": "gltf-material",
+      "uuid": "09efeddb-627d-4421-a5af-346c912264c2@82deb",
+      "displayName": "",
+      "id": "82deb",
+      "name": "Yellow.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "1e9c3": {
+      "importer": "gltf-scene",
+      "uuid": "09efeddb-627d-4421-a5af-346c912264c2@1e9c3",
+      "displayName": "",
+      "id": "1e9c3",
+      "name": "Character.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [
+      {
+        "name": "DiffuseColor_Texture",
+        "uri": "09efeddb-627d-4421-a5af-346c912264c2@fd73d"
+      }
+    ],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "animationImportSettings": [
+      {
+        "name": "Pixel_Static",
+        "duration": 0.03333333507180214,
+        "fps": 30,
+        "splits": [
+          {
+            "name": "Pixel_Static",
+            "from": 0,
+            "to": 0.03333333507180214,
+            "wrapMode": 2,
+            "previousId": "8a5ac"
+          }
+        ]
+      },
+      {
+        "name": "Pixel_Attack Sit",
+        "duration": 0.1666666716337204,
+        "fps": 30,
+        "splits": [
+          {
+            "name": "Pixel_Attack Sit",
+            "from": 0,
+            "to": 0.1666666716337204,
+            "wrapMode": 2,
+            "previousId": "757ad"
+          }
+        ]
+      },
+      {
+        "name": "Pixel_Idle",
+        "duration": 2.3333332538604736,
+        "fps": 30,
+        "splits": [
+          {
+            "name": "Pixel_Idle",
+            "from": 0,
+            "to": 2.3333332538604736,
+            "wrapMode": 2,
+            "previousId": "01e2a"
+          }
+        ]
+      },
+      {
+        "name": "Pixel_Jump",
+        "duration": 0.7333333492279053,
+        "fps": 30,
+        "splits": [
+          {
+            "name": "Pixel_Jump",
+            "from": 0,
+            "to": 0.7333333492279053,
+            "wrapMode": 2,
+            "previousId": "40c3e"
+          }
+        ]
+      },
+      {
+        "name": "Pixel_Jump Sit",
+        "duration": 0.8666666746139526,
+        "fps": 30,
+        "splits": [
+          {
+            "name": "Pixel_Jump Sit",
+            "from": 0,
+            "to": 0.8666666746139526,
+            "wrapMode": 2,
+            "previousId": "8304d"
+          }
+        ]
+      }
+    ],
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "09efeddb-627d-4421-a5af-346c912264c2@a62fe"
+      ],
+      "skeletons": [
+        "09efeddb-627d-4421-a5af-346c912264c2@438fe"
+      ],
+      "textures": [
+        "09efeddb-627d-4421-a5af-346c912264c2@4f17a"
+      ],
+      "materials": [
+        "09efeddb-627d-4421-a5af-346c912264c2@82deb"
+      ],
+      "scenes": [
+        "09efeddb-627d-4421-a5af-346c912264c2@1e9c3"
+      ]
+    }
+  }
+}

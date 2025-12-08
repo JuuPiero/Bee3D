@@ -1,0 +1,125 @@
+// WaterFlow 3D Unlit Shader (Converted from Unity URP)
+
+CCEffect %{
+  techniques:
+  - name: opaque
+    passes:
+    - vert: unlit-vs:vert
+      frag: unlit-fs:frag
+      properties:
+        mainTexture: { value: white }
+    - &shadow-caster
+      vert: shadow-caster-vs:vert
+      frag: shadow-caster-fs:frag
+      phase: shadow-caster
+      propertyIndex: 0
+      rasterizerState:
+        cullMode: back
+}%
+
+CCProgram unlit-vs %{
+  precision highp float;
+  #include <legacy/input>
+  #include <builtin/uniforms/cc-global>
+  #include <legacy/decode-base>
+  #include <legacy/local-batch>
+
+  out vec4 v_uv; // v_uv.xy: texture uv, v_uv.zw: viewDir.xy
+  out vec4 v_worldNormal; // v_worldNormal.xyz: normal, v_worldNormal.w: viewDir.z
+  out vec3 v_lightDirection;
+
+  vec4 vert() {
+    vec4 position;
+    CCVertInput(position);
+
+    mat4 matWorld, matWorldIT;
+    CCGetWorldMatrixFull(matWorld, matWorldIT);
+    
+    vec4 pos = matWorld * position;
+    vec3 worldNormal = normalize((matWorldIT * vec4(a_normal, 0.0)).xyz);
+    
+    v_uv.xy = a_texCoord;
+    
+    // Calculate view direction
+    vec3 viewDir = normalize(cc_cameraPos.xyz - pos.xyz);
+    v_uv.zw = viewDir.xy;
+    v_worldNormal.xyz = worldNormal;
+    v_worldNormal.w = viewDir.z;
+    
+    // Main light direction
+    v_lightDirection = -cc_mainLitDir.xyz;
+    
+    return cc_matProj * cc_matView * pos;
+  }
+}%
+
+CCProgram unlit-fs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #include <legacy/output>
+  #include <common/color/gamma>
+
+  in vec4 v_uv;
+  in vec4 v_worldNormal;
+  in vec3 v_lightDirection;
+
+  uniform sampler2D mainTexture;
+
+  vec4 frag() {
+    vec4 final = texture(mainTexture, v_uv.xy);
+    
+    // Lighting calculation
+    float lighting = dot(normalize(v_lightDirection), normalize(v_worldNormal.xyz));
+    lighting = smoothstep(0.0, 1.0, lighting);
+    final.rgb = mix(pow(abs(final.rgb), vec3(2.2)) * 0.9, final.rgb, lighting);
+    
+    // Specular calculation
+    vec3 refVec = reflect(normalize(-v_lightDirection), normalize(v_worldNormal.xyz));
+    vec3 viewDir = normalize(vec3(v_uv.zw, v_worldNormal.w));
+    float spec = clamp(dot(normalize(refVec), viewDir), 0.0, 1.0);
+    spec = pow(spec, 5.0);
+    final.rgb = mix(final.rgb, clamp(final.rgb * 3.0, 0.0, 1.0) + 0.2, spec);
+    
+    return CCFragOutput(final);
+  }
+}%
+
+CCProgram shadow-caster-vs %{
+  precision highp float;
+  #include <legacy/input>
+  #include <builtin/uniforms/cc-global>
+  #include <legacy/decode-base>
+  #include <legacy/local-batch>
+
+  vec4 vert() {
+    vec4 position;
+    CCVertInput(position);
+
+    mat4 matWorld, matWorldIT;
+    CCGetWorldMatrixFull(matWorld, matWorldIT);
+    
+    vec4 worldPos = matWorld * position;
+    vec3 worldNormal = normalize((matWorldIT * vec4(a_normal, 0.0)).xyz);
+    
+    // Shadow bias
+    vec3 lightDir = -cc_mainLitDir.xyz;
+    float invNdotL = 1.0 - clamp(dot(lightDir, worldNormal), 0.0, 1.0);
+    float scale = invNdotL * 0.01;
+    worldPos.xyz += lightDir * 0.001;
+    worldPos.xyz += worldNormal * scale;
+    
+    vec4 clipPos = cc_matProj * cc_matView * worldPos;
+    clipPos.z = max(clipPos.z, clipPos.w * 0.0);
+    
+    return clipPos;
+  }
+}%
+
+CCProgram shadow-caster-fs %{
+  precision highp float;
+  #include <legacy/output>
+
+  vec4 frag() {
+    return CCFragOutput(vec4(0.0));
+  }
+}%

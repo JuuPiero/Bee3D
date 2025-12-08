@@ -2,12 +2,12 @@
   "ver": "1.1.50",
   "importer": "prefab",
   "imported": true,
-  "uuid": "52d032a1-3043-44ee-869c-1e73e490cfff",
+  "uuid": "2fab43af-b8d6-403a-bdc9-c20c753b57c5",
   "files": [
     ".json"
   ],
   "subMetas": {},
   "userData": {
-    "syncNodeName": "PixelBlock"
+    "syncNodeName": "Floater"
   }
 }

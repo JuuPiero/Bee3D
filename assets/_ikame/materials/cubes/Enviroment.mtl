@@ -5,14 +5,24 @@
   "__editorExtras__": {},
   "_native": "",
   "_effectAsset": {
-    "__uuid__": "e415b520-c738-43aa-bd21-9fb3b64826f3",
+    "__uuid__": "14861f96-e95f-46b4-9fe1-03128f505aa6",
     "__expectedType__": "cc.EffectAsset"
   },
   "_techIdx": 0,
   "_defines": [
+    {},
     {}
   ],
   "_states": [
+    {
+      "rasterizerState": {},
+      "depthStencilState": {},
+      "blendState": {
+        "targets": [
+          {}
+        ]
+      }
+    },
     {
       "rasterizerState": {},
       "depthStencilState": {},
@@ -25,24 +35,11 @@
   ],
   "_props": [
     {
-      "_Color": {
-        "__type__": "cc.Color",
-        "r": 229,
-        "g": 72,
-        "b": 165,
-        "a": 255
-      },
-      "_ColorShadow": {
-        "__type__": "cc.Color",
-        "r": 156,
-        "g": 36,
-        "b": 107,
-        "a": 255
-      },
-      "_MatCap": {
-        "__uuid__": "eaf4be1d-659a-46d5-9eba-f34922ad8190@6c48a",
+      "mainTexture": {
+        "__uuid__": "8ca0a505-b59a-417d-8245-68aa2c46c821@6c48a",
         "__expectedType__": "cc.Texture2D"
       }
-    }
+    },
+    {}
   ]
 }
