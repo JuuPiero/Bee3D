@@ -70,6 +70,20 @@ export class LevelData extends bh.ScriptableAsset
         this.shooterQueues = data.shooterQueues;
         this.pixels = data.pixels;
 
+        // Flip Y axis for pixels
+        const flippedPixels: PixelData[] = [];
+        for (const pixel of this.pixels) {
+            const flippedPixel = new PixelData();
+            flippedPixel.x = pixel.x;
+            flippedPixel.y = this.heightMap - pixel.y - pixel.areaY;
+            flippedPixel.material = pixel.material;
+            flippedPixel.areaX = pixel.areaX;
+            flippedPixel.areaY = pixel.areaY;
+            flippedPixels.push(flippedPixel);
+        }   
+
+        this.pixels = flippedPixels;
+
         return this;
     }
 }

@@ -1,0 +1,124 @@
+// FakeShadow Shader - Converted from Unity to Cocos Creator 3.8.7
+// Effect Syntax Guide: https://docs.cocos.com/creator/manual/zh/shader/index.html
+
+CCEffect %{
+  techniques:
+  - name: transparent
+    passes:
+    - vert: fakeshadow-vs
+      frag: fakeshadow-fs
+      properties: &props
+        mainTexture:              { value: white, target: mainTex, editor: { displayName: "Shadow Texture", parent: USE_TEXTURE } }
+        color:                    { value: [0.5, 0.5, 0.5, 1.0],editor: { type: color }}
+        colorDropShadow:          { value: [0.0, 0.0, 0.0, 1.0], editor: { type: color }}
+      embeddedMacros: { USE_TEXTURE: true }
+      depthStencilState:
+        depthTest: true
+        depthWrite: false
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendDst: one_minus_src_alpha
+          blendSrcAlpha: one
+          blendDstAlpha: one_minus_src_alpha
+      rasterizerState:
+        cullMode: back
+}%
+
+
+CCProgram shared-ubos %{
+  uniform Constants {
+    vec4 color;
+    vec4 colorDropShadow;
+  };
+}%
+
+CCProgram macro-remapping %{
+  // ui displayed macros
+  #pragma define-meta USE_TEXTURE
+  #define CC_USE_TEXTURE USE_TEXTURE
+}%
+
+
+
+
+CCProgram fakeshadow-vs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #include <builtin/uniforms/cc-local>
+  #include <shared-ubos>
+
+  in vec3 a_position;
+  in vec2 a_texCoord;
+
+  out vec2 v_uv;
+
+  // Compute scale from world matrix columns (x and z axes)
+  vec2 getObjectScaleXZ() {
+    vec3 col0 = vec3(cc_matWorld[0][0], cc_matWorld[1][0], cc_matWorld[2][0]);
+    vec3 col2 = vec3(cc_matWorld[0][2], cc_matWorld[1][2], cc_matWorld[2][2]);
+    float sx = length(col0);
+    float sz = length(col2);
+    return vec2(sx, sz);
+  }
+
+  void main () {
+    vec2 objScale = getObjectScaleXZ();
+
+    vec3 p = a_position;
+    // Normalize xz by their respective scales
+    p.x /= objScale.x;
+    p.z /= objScale.y;
+
+    if (min(objScale.x, objScale.y) == objScale.x) {
+      // Use x scale
+      p.x *= objScale.x;
+      p.z *= objScale.x;
+      if (a_position.y > 0.0) {
+        p.y += (objScale.y - objScale.x) / (objScale.y * 2.0);
+      } else {
+        p.y -= (objScale.y - objScale.x) / (objScale.y * 2.0);
+      }
+    } else {
+      // Use z scale
+      p.x *= objScale.y;
+      p.z *= objScale.y;
+      if (a_position.x > 0.0) {
+        p.x += (objScale.x - objScale.y) / (objScale.x * 2.0);
+      } else {
+        p.x -= (objScale.x - objScale.y) / (objScale.x * 2.0);
+      }
+    }
+
+    vec4 pos = vec4(p, 1.0);
+    gl_Position = cc_matViewProj * cc_matWorld * pos;
+    v_uv = a_texCoord;
+  }
+}%
+
+CCProgram fakeshadow-fs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #include <macro-remapping>
+  #include <shared-ubos>
+
+  in vec2 v_uv;
+
+  #if USE_TEXTURE
+    uniform sampler2D mainTex;
+  #endif
+
+  layout(location = 0) out vec4 fragColor;
+
+  void main () {
+    vec2 mask = vec2(1.0, 1.0);
+    #if USE_TEXTURE
+      mask = texture(mainTex, v_uv).xy;
+    #endif
+
+    float a = mask.x * colorDropShadow.a;
+    vec3 rgb = mix(colorDropShadow.rgb, color.rgb, mask.y);
+    fragColor = vec4(rgb, a);
+  }
+}%

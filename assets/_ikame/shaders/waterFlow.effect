@@ -1,0 +1,136 @@
+CCEffect %{
+  techniques:
+  - name: waterFlow
+    passes:
+    - vert: waterFlow-vs:vert
+      frag: waterFlow-fs:frag
+
+      properties: &props
+        _MainTex:        { value: white }
+        _MainTex_ST:     { value: [1.0, 1.0, 0.1, 0.15], editor: { displayName: "Main Tex Tiling & Speed" } }
+        _Bubble:         { value: black }
+        _Bubble_ST:      { value: [2.0, 2.0, 0.05, 0.08], editor: { displayName: "Bubble Tiling & Speed" } }
+        _ColorOut:       { value: [0.5, 0.5, 0.5, 1.0], editor: { type: color } }
+        _ColorIn:        { value: [0.0, 0.0, 0.0, 1.0], editor: { type: color } }
+        _ColorHighlight: { value: [1.0, 1.0, 1.0, 1.0], editor: { type: color } }
+      rasterizerState:
+        cullMode: none
+      depthStencilState:
+        depthTest: true
+        depthWrite: false
+      blendState:
+        targets:
+          - blend: true
+            blendSrc: src_alpha
+            blendDst: one_minus_src_alpha
+}%
+
+CCProgram waterFlow-vs %{
+  precision highp float;
+  #include <legacy/input>
+  #include <builtin/uniforms/cc-global>
+  #include <legacy/decode-base>
+  #include <legacy/local-batch>
+
+  out vec4 v_uv;
+  out vec4 v_screenPos;
+  out vec3 v_worldPos;
+
+  uniform TexCoords {
+    vec4 _MainTex_ST;
+    vec4 _Bubble_ST;
+  };
+
+  vec4 vert () {
+    vec4 position;
+    CCVertInput(position);
+
+    mat4 matWorld;
+    CCGetWorldMatrix(matWorld);
+
+    // Calculate world position
+    vec4 worldPos = matWorld * position;
+    v_worldPos = worldPos.xyz;
+
+    // Calculate clip position
+    vec4 clipPos = cc_matProj * (cc_matView * worldPos);
+    
+    // Calculate screen position
+    v_screenPos = clipPos;
+    v_screenPos.y = -v_screenPos.y; // Flip Y for screen space
+
+    // Calculate scrolling UVs
+    vec2 uv = a_texCoord;
+    v_uv.xy = uv * _MainTex_ST.xy;
+    v_uv.x += fract(cc_time.x * _MainTex_ST.z);
+    
+    v_uv.zw = uv * _MainTex_ST.xy;
+    v_uv.z += fract(cc_time.x * _MainTex_ST.w);
+
+    return clipPos;
+  }
+}%
+
+CCProgram waterFlow-fs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+
+  in vec4 v_uv;
+  in vec4 v_screenPos;
+  in vec3 v_worldPos;
+
+  uniform sampler2D _MainTex;
+  uniform sampler2D _Bubble;
+
+  uniform TexCoords {
+    vec4 _MainTex_ST;
+    vec4 _Bubble_ST;
+  };
+
+  uniform Colors {
+    vec4 _ColorOut;
+    vec4 _ColorIn;
+    vec4 _ColorHighlight;
+  };
+
+  vec4 frag () {
+    vec4 col = vec4(1.0);
+    
+    // Sample and combine main texture masks
+    vec3 mask = texture(_MainTex, v_uv.xy).xyz;
+    mask *= texture(_MainTex, v_uv.zw).xyz;
+    
+    // Base color from mask blue channel
+    col.rgb = mix(_ColorOut.rgb, _ColorIn.rgb, mask.b);
+    
+    // Calculate screen-space UV for bubbles
+    vec2 uvScreen = v_screenPos.xy / v_screenPos.w;
+    uvScreen = uvScreen * 0.5 + 0.5; // Convert from [-1,1] to [0,1]
+    uvScreen.x *= cc_screenSize.x / cc_screenSize.y;
+    uvScreen *= _Bubble_ST.xy;
+    uvScreen.y += uvScreen.x / _Bubble_ST.x;
+    
+    // Sample bubble texture with different scrolling speeds
+    float bubble = texture(_Bubble, uvScreen - fract(-cc_time.x * _Bubble_ST.zw)).r;
+    bubble += texture(_Bubble, uvScreen - fract(-cc_time.x * _Bubble_ST.zw * 0.7)).g;
+    bubble += texture(_Bubble, uvScreen - fract(-cc_time.x * _Bubble_ST.zw * 0.3)).b;
+    
+    // Apply bubble highlights with vertical gradient
+    float vertGradient = 1.0 - abs(v_uv.y * 3.0 - 1.5);
+    col.rgb = mix(col.rgb, _ColorHighlight.rgb, pow(clamp(bubble, 0.0, 1.0), 0.45) * vertGradient * 0.5);
+    
+    // Add highlights from green channel
+    col.rgb += _ColorHighlight.rgb * (smoothstep(0.0, 0.8, mask.g) + mask.g) * 0.8;
+    col.rgb = mix(col.rgb, vec3(1.0), smoothstep(0.2, 0.5, mask.g) * 2.0);
+    
+    // Calculate alpha from red channel
+    col.a = smoothstep(0.0, 0.01, mask.r);
+    col.rgb = mix(_ColorIn.rgb, col.rgb, col.a);
+    
+    // Add vertical edge fade
+    float edgeFade = pow(clamp(1.0 - abs(v_uv.y * 2.0 - 1.0), 0.0, 1.0), 2.25) * 0.8;
+    col.a = clamp(col.a + edgeFade, 0.0, 1.0);
+    
+    return col;
+  }
+}%
