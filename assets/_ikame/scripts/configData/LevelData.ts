@@ -3,7 +3,7 @@ import { bh } from 'db://scriptable-asset/scriptable_runtime';
 const { ccclass, property } = _decorator;
 
 @ccclass('Shooter')
-class Shooter {
+export class Shooter {
     @property(CCInteger)
     public id: number = 0;
 
@@ -15,13 +15,13 @@ class Shooter {
 }
 
 @ccclass('ShooterQueue')
-class ShooterQueue {
+export class ShooterQueue {
     @property([Shooter])
     public shooters: Shooter[] = [];
 }
 
 @ccclass('PixelData')
-class PixelData {
+export class PixelData {
     @property(CCInteger)
     public x: number = 0;
 

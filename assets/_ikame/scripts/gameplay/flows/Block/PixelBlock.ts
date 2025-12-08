@@ -1,5 +1,5 @@
 import { _decorator, Camera, CCBoolean, CCInteger, Color, Component, director, MeshRenderer, Vec3 } from 'cc';
-import { ColorData } from '../../../configData/ColorData';
+import { ColorConfig } from '../../../configData/ColorConfig';
 import { EDITOR } from 'cc/env';
 import { IPixelBlock } from './IPixelBlock';
 import { IGridTile } from '../MapTiles/IGridTile';
@@ -8,8 +8,8 @@ const { ccclass, property } = _decorator;
 @ccclass('PixelBlock')
 export class PixelBlock extends Component implements IPixelBlock
 {
-    @property({ type: ColorData , group: 'Color' })
-    public colorData: ColorData = null;
+    @property({ type: ColorConfig , group: 'Color' })
+    public colorData: ColorConfig = null;
 
     @property({ type: MeshRenderer, group: 'Renderer' })
     public meshRenderer: MeshRenderer = null;
@@ -34,7 +34,7 @@ export class PixelBlock extends Component implements IPixelBlock
 
     init(colorID: number): void 
     {
-        const color = this.colorData.getColorById(colorID);
+        const color = this.colorData.getPixelBlockMaterialById(colorID);
         this.meshRenderer.setSharedMaterial( color, 0);
         this.colorID = colorID;
     }

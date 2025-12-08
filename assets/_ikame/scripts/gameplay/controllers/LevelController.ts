@@ -1,4 +1,4 @@
-import { _decorator, Camera, CCBoolean, CCFloat, Color, Component, instantiate, Node, Prefab, Vec3 } from 'cc';
+import { _decorator, Camera, CCBoolean, CCFloat, Color, Component, EventTouch, Input, input, instantiate, Node, PhysicsSystem, Prefab, Vec2, Vec3 } from 'cc';
 import { LevelData } from '../../configData/LevelData';
 import { EDITOR } from 'cc/env';
 import { PixelBlock } from '../flows/Block/PixelBlock';
@@ -7,6 +7,10 @@ import { EDirection } from '../../enums/EDirection';
 import { GridTile } from '../flows/MapTiles/GridTile';
 import { ILevelController } from './ILevelController';
 import { IGridTile } from '../flows/MapTiles/IGridTile';
+import { ColorQueueControllers } from '../queues/ColorQueueControllers';
+import { SplineSmooth } from '../../splines/SplineSmooth';
+import { Conveyor } from '../flows/Conveyor/Conveyor';
+import { ShooterItem } from '../flows/ShooterItem/ShooterItem';
 const { ccclass, property } = _decorator;
 
 @ccclass('LevelController')
@@ -66,6 +70,12 @@ export class LevelController extends Component implements ILevelController
     private _debugBottomLeftMap: Vec3 = new Vec3();
     private _debugBottomRightMap: Vec3 = new Vec3();
 
+    @property({ type: ColorQueueControllers, group: 'Controllers' })
+    protected colorQueueControllers: ColorQueueControllers = null;
+
+    @property({ type: Conveyor, group: 'Controllers' })
+    protected conveyor: Conveyor = null;
+
     protected _debugDrawSpline(): void
     {
         if (!this.cameraMain || !EDITOR || !this.debugDrawMapBorder) return;
@@ -91,12 +101,14 @@ export class LevelController extends Component implements ILevelController
                 this.cameraMain.camera.initGeometryRenderer();
         }
 
+        input.on(Input.EventType.TOUCH_START, this.onTouchStart, this);
 
         this.spawnLevel();
     }
 
     protected onDestroy(): void
     {
+        input.off(Input.EventType.TOUCH_START, this.onTouchStart, this);
     }
 
     public spawnLevel(): void 
@@ -147,6 +159,9 @@ export class LevelController extends Component implements ILevelController
             gridTile.setPixelBlock(pixelBlockComp);
         }
         //#endregion
+
+        this.colorQueueControllers.init(this.levelData.shooterQueues, this);
+
     }
 
     protected lateUpdate(dt: number): void
@@ -179,6 +194,35 @@ export class LevelController extends Component implements ILevelController
     {
         const key = Utils.generateKeyFromCoord(x, z);
         return this._gridMap.get(key).getPixelBlock() as PixelBlock;
+    }
+
+    public getLevelWidth(): number
+    {
+        return this.levelData.widthMap;
+    }
+
+    public getLevelHeight(): number
+    {
+        return this.levelData.heightMap;
+    }
+
+    public getSpline(): SplineSmooth
+    {
+        return this.conveyor;
+    }
+
+    private _screenPos = new Vec2();
+
+    private onTouchStart(event: EventTouch): void
+    {
+        event.getLocation(this._screenPos);
+        const ray = this.cameraMain.screenPointToRay(this._screenPos.x, this._screenPos.y);
+        const isHit = PhysicsSystem.instance.raycastClosest(ray);
+        if (!isHit) return;
+        const hitResult = PhysicsSystem.instance.raycastClosestResult;
+        const shooter = hitResult.collider.node.getComponent(ShooterItem);
+        if (!shooter) return;
+        shooter.onTouchShooter();
     }
 }
 

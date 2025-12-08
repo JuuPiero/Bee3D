@@ -1,0 +1,25 @@
+export enum EColor {
+    Red = 0,
+    Orange = 1,
+    OrangePale = 2,
+    Brown = 3,
+    Yellow = 4,
+    YellowPale = 5,
+    Lime = 6,
+    LimeDark = 7,
+    Green = 8,
+    GreenPale = 9,
+    Cyan = 10,
+    TurquoiseDark = 11,
+    Blue = 12,
+    BluePale = 13,
+    Purple = 14,
+    PurpleDark = 15,
+    Magenta = 16,
+    Pink = 17,
+    White = 18,
+    Black = 19,
+    Hidden = 20,
+}
+
+

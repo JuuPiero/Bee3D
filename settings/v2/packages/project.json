@@ -7,5 +7,10 @@
       "fitWidth": false
     }
   },
-  "custom_joint_texture_layouts": []
+  "custom_joint_texture_layouts": [],
+  "physics": {
+    "collisionMatrix": {
+      "0": 0
+    }
+  }
 }
