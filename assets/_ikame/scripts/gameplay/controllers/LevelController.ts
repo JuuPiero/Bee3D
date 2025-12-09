@@ -11,6 +11,7 @@ import { ColorQueueControllers } from '../queues/ColorQueueControllers';
 import { SplineSmooth } from '../../splines/SplineSmooth';
 import { Conveyor } from '../flows/Conveyor/Conveyor';
 import { ShooterItem } from '../flows/ShooterItem/ShooterItem';
+import { CacheSlotController } from '../cacheSlots/CacheSlotController';
 const { ccclass, property } = _decorator;
 
 @ccclass('LevelController')
@@ -75,6 +76,9 @@ export class LevelController extends Component implements ILevelController
 
     @property({ type: Conveyor, group: 'Controllers' })
     protected conveyor: Conveyor = null;
+
+    @property({ type: CacheSlotController, group: 'Controllers' })
+    protected cacheSlotController: CacheSlotController = null;
 
     protected _debugDrawSpline(): void
     {
@@ -161,7 +165,7 @@ export class LevelController extends Component implements ILevelController
         //#endregion
 
         this.colorQueueControllers.init(this.levelData.shooterQueues, this);
-
+        this.cacheSlotController.init(this.levelData.slotCount);
     }
 
     protected lateUpdate(dt: number): void
