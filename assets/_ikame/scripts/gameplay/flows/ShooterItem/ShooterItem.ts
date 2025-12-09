@@ -70,7 +70,9 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     private _targetCount: number = 0;
 
-    private _floaterNode : Node = null;
+    private _floaterNode: Node = null;
+    
+    @property(Node) private firePointNode: Node = null;
 
     public reduceAmmoCount(): number {
         this._ammoCount = Math.max(0, this._ammoCount - 1);
@@ -184,7 +186,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 continue;
             }
             this.markBlockAsPassed(x, z);
-            targetBlock.markForDestroy();
+            targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
             this._targetCount++;
             x--;
         }
@@ -235,7 +237,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 continue;
             }
             this.markBlockAsPassed(x, z);
-            targetBlock.markForDestroy();
+            targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
             this._targetCount++;
             x++;
         }
@@ -286,7 +288,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 continue;
             }
             this.markBlockAsPassed(x, z);
-            targetBlock.markForDestroy();
+            targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
             this._targetCount++;
             z--;
         }
@@ -337,7 +339,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 continue;
             }
             this.markBlockAsPassed(x, z);
-            targetBlock.markForDestroy();
+            targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
             this._targetCount++;
             z++;
         }

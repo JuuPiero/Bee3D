@@ -6,7 +6,7 @@ export interface IPixelBlock {
     getColorID(): number;
     setTile(tile: IGridTile): void;
     getUid(): string;
-    markForDestroy(): void;
+    markForDestroy(barrolPosition: Vec3): void;
     isMarkedForDestroy(): boolean;
 }
 

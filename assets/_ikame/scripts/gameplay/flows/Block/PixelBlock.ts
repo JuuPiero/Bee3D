@@ -1,4 +1,4 @@
-import { _decorator, Camera, CCBoolean, CCInteger, Color, Component, director, MeshRenderer, Vec3 } from 'cc';
+import { _decorator, Camera, CCBoolean, CCInteger, Node, Component, director, MeshRenderer, Vec3, tween, Scene } from 'cc';
 import { ColorConfig } from '../../../configData/ColorConfig';
 import { EDITOR } from 'cc/env';
 import { IPixelBlock } from './IPixelBlock';
@@ -35,14 +35,17 @@ export class PixelBlock extends Component implements IPixelBlock
 
     private _level: ILevelController = null;
 
+    @property(Node) bulletNode : Node = null;
+
     init(colorID: number, level: ILevelController): void 
     {
         const color = this.colorData.getPixelBlockMaterialById(colorID);
         this.meshRenderer.setSharedMaterial( color, 0);
         this.colorID = colorID;
         this._level = level;
+    
+        this.bulletNode.active = false;
     }
-
 
     getWorldPosition(): Vec3
     {
@@ -78,13 +81,27 @@ export class PixelBlock extends Component implements IPixelBlock
         return this.node.uuid;
     }
 
-    public markForDestroy(): void
+    public markForDestroy(barrolPosition: Vec3): void
     {
         if (this._isMarkedForDestroy) return;
         this._isMarkedForDestroy = true;
-        this.node.active = false;
         this._gridTile.removePixelBlock();
         this._level.checkWinCondition();
+
+        // const scene = director.getScene();
+        // this.bulletNode.setParent(scene);
+        this.bulletNode.active = true;
+        this.bulletNode.setWorldPosition(barrolPosition);
+        this.bulletNode.worldScale = new Vec3(0.02, 0.02, 0.02);
+        const targetPos = this.node.getWorldPosition();
+        targetPos.y = barrolPosition.y;
+        tween(this.bulletNode)
+            .to(0.1, { worldPosition: targetPos})
+            .call(() => {
+                this.bulletNode.active = false;
+                this.node.active = false;
+            })
+            .start();
     }
 
     public isMarkedForDestroy(): boolean
