@@ -9,6 +9,7 @@ export interface IShooterItem {
     retrieveToCacheSlot(): Promise<void>;
     reduceAmmoCount(): number;
     getAmmoCount(): number;
+    finishAnimation(): void;
 }
 
 

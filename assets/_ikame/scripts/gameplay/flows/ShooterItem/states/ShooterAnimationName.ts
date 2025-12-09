@@ -3,5 +3,6 @@ export const ShooterAnimationName = {
     Floating: "Pixel_Attack Sit",
     Idle: "Pixel_Idle",
     Jump: "Pixel_Jump Sit",
-    Attack: "Pixel_Attack Sit"
+    Attack: "Pixel_Attack Sit",
+    JumpOut : "Pixel_Jump"
 }

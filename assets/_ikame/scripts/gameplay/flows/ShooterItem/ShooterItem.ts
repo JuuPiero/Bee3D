@@ -6,7 +6,6 @@ import { Shooter } from '../../../configData/LevelData';
 import { IColorQueue } from '../../queues/IColorQueue';
 import { ILevelController } from '../../controllers/ILevelController';
 import { ColorConfig } from '../../../configData/ColorConfig';
-import { SplineSmooth } from '../../../splines/SplineSmooth';
 import { ShooterStateMachine } from './states/ShooterStateMachine';
 import { ShooterStaticState } from './states/implementStates/ShooterStaticState';
 import { IStateHolder } from '../../../designPatterns/stateMachine/BaseStateMachine';
@@ -21,9 +20,13 @@ import { IShooterItem } from './IShooterItem';
 import { PromiseDelay } from '../../../commons/PromiseDelay';
 import { ShooterRetriveState } from './states/implementStates/ShooterRetriveState';
 import { ICacheSlotController } from '../../cacheSlots/ICacheSlotController';
+import { ShooterAnimationName } from './states/ShooterAnimationName';
 const { ccclass, property } = _decorator;
 
 const JUMP_DURATION = 0.5;
+
+const RIGHT_ROT = new Vec3(0, -90, 0);
+const LEFT_ROT = new Vec3(0, 90, 0);
 
 @ccclass('ShooterItem')
 export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {
@@ -438,7 +441,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             this.node.getWorldPosition(this._startJumpPosition);
             const tweenObj = { progress: 0 }
             const tweenJump = tween(tweenObj)
-                .delay(0.21)
                 .to(JUMP_DURATION, { progress: 1 }, {
                     onUpdate: (target: any, ratio: number) =>
                     {
@@ -524,6 +526,35 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     getAmmoCount(): number
     {
         return this._ammoCount;
+    }
+
+    public async finishAnimation(): Promise<void> 
+    {
+        const isRight = this.node.worldPositionX > 0;
+        const startPosition = this.node.worldPosition.clone();
+        const targetPosition = new Vec3(isRight ? startPosition.x + 7 : startPosition.x - 7, startPosition.y + 5, startPosition.z);
+        const rot = isRight ? RIGHT_ROT : LEFT_ROT;
+        this.characterRoot.setWorldRotationFromEuler(rot.x, rot.y, rot.z);
+        this.changeAnimation(ShooterAnimationName.Jump, true);
+        
+        const jumpHeight = 2;
+        const tweenObj = { progress: 0 };
+        this.ammoLabel.node.active = false;
+        const tweenJump = tween(tweenObj)
+            // .delay(0.03)
+            .to(JUMP_DURATION, { progress: 1 }, {
+                onUpdate: (target: any, ratio: number) =>
+                {
+                    Vec3.lerp(this._lerpPos, startPosition, targetPosition, target.progress);
+                    const heightOffset = Math.sin(target.progress * Math.PI) * jumpHeight;
+                    this._lerpPos.y += heightOffset;
+                    this.node.setWorldPosition(this._lerpPos);
+                }
+            })
+            .start();
+
+        await PromiseDelay.Wait(tweenJump.duration);
+        this.node.active = false;
     }
 }
 

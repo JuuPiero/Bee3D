@@ -109,7 +109,7 @@
         "wrapMode": 1,
         "sample": 30,
         "span": {
-          "from": 0,
+          "from": 0.05343383700404335,
           "to": 0.7333333492279053
         },
         "events": []
@@ -132,7 +132,7 @@
         "wrapMode": 1,
         "sample": 30,
         "span": {
-          "from": 0,
+          "from": 0.07621440605901594,
           "to": 0.8666666746139526
         },
         "events": []
@@ -297,7 +297,7 @@
         "splits": [
           {
             "name": "Pixel_Jump",
-            "from": 0,
+            "from": 0.05343383700404335,
             "to": 0.7333333492279053,
             "wrapMode": 1,
             "previousId": "40c3e"
@@ -311,7 +311,7 @@
         "splits": [
           {
             "name": "Pixel_Jump Sit",
-            "from": 0,
+            "from": 0.07621440605901594,
             "to": 0.8666666746139526,
             "wrapMode": 1,
             "previousId": "8304d"
