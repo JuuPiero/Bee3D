@@ -1,5 +1,6 @@
 import { EDirection } from "../../enums/EDirection"
 import { SplineSmooth } from "../../splines/SplineSmooth"
+import { ICacheSlotController } from "../cacheSlots/ICacheSlotController"
 import { PixelBlock } from "../flows/Block/PixelBlock"
 import { IGridTile } from "../flows/MapTiles/IGridTile"
 
@@ -12,6 +13,7 @@ export interface ILevelController
     getLevelWidth(): number
     getLevelHeight(): number
     getSpline(): SplineSmooth
+    getCacheSlotController(): ICacheSlotController
 }
 
 

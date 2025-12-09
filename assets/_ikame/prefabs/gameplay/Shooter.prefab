@@ -250,7 +250,7 @@
     "spline": null,
     "progress": 0,
     "updateRotation": true,
-    "speed": 1,
+    "speed": 3,
     "isLooping": false,
     "colorID": -1,
     "characterMesh": {

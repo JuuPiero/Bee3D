@@ -5,6 +5,8 @@ export interface IShooterItem {
     tryShootTargets(): boolean;
     moveAlongConveyor(dt: number): void;
     faceTheMapDirection(): void;
+    setCacheSlot(slotIndex: number, isJump: boolean): void;
+    retrieveToCacheSlot(): Promise<void>;
 }
 
 

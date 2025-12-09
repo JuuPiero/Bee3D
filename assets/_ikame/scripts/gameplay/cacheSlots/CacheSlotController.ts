@@ -1,6 +1,7 @@
 import { _decorator, Component, Node } from 'cc';
 import { ICacheSlotController } from './ICacheSlotController';
 import { CacheSlot } from './CacheSlot';
+import { IShooterItem } from '../flows/ShooterItem/IShooterItem';
 const { ccclass, property } = _decorator;
 
 const QUEUE_GAP = 2;
@@ -10,6 +11,9 @@ export class CacheSlotController extends Component implements ICacheSlotControll
     
     private _cacheSlots: CacheSlot[] = [];
     private _activeSlots: CacheSlot[] = [];
+
+    private _inSlotShooters : IShooterItem[] = [];
+
 
     protected onLoad(): void
     {
@@ -41,6 +45,48 @@ export class CacheSlotController extends Component implements ICacheSlotControll
             );
         }
     }
+
+    /**
+     * Finds the next empty slot from left to right starting at index 0.
+     * Returns the `CacheSlot` if found, otherwise `null`.
+     */
+    getNextEmptySlot(): CacheSlot | null
+    {
+        for (let i = 0; i < this._activeSlots.length; i++)
+        {
+            const slot = this._activeSlots[i];
+            if (slot.isEmpty())
+            {
+                return slot;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Compacts the active slots by shifting items towards index 0.
+     * This removes gaps by moving right-side items left into empty slots.
+     */
+    compactLeft(): void
+    {
+        this._inSlotShooters = [];
+        for (let i = 0; i < this._activeSlots.length - 1; i++)
+        {
+            const currentSlot = this._activeSlots[ i ];
+            if (!currentSlot.getShooter())
+                continue;
+            currentSlot.removeShooter();
+            this._inSlotShooters.push( currentSlot.getShooter() as IShooterItem );
+        }
+        for (let i = 0; i < this._inSlotShooters.length; i++)
+        {
+            const shooter = this._inSlotShooters[ i ];
+            const slot = this._activeSlots[ i ];
+            slot.setShooter(shooter);
+            shooter.setCacheSlot(i, true);
+        }
+    }
+    
 }
 
 

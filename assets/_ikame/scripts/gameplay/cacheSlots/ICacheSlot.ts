@@ -6,6 +6,7 @@ export interface ICacheSlot {
     setShooter(shooter: IShooterItem);
     getShooter(): IShooterItem | null;
     removeShooter(): IShooterItem | null;
+    isEmpty(): boolean;
 }
 
 

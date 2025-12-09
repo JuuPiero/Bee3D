@@ -12,6 +12,7 @@ import { SplineSmooth } from '../../splines/SplineSmooth';
 import { Conveyor } from '../flows/Conveyor/Conveyor';
 import { ShooterItem } from '../flows/ShooterItem/ShooterItem';
 import { CacheSlotController } from '../cacheSlots/CacheSlotController';
+import { ICacheSlotController } from '../cacheSlots/ICacheSlotController';
 const { ccclass, property } = _decorator;
 
 @ccclass('LevelController')
@@ -227,6 +228,11 @@ export class LevelController extends Component implements ILevelController
         const shooter = hitResult.collider.node.getComponent(ShooterItem);
         if (!shooter) return;
         shooter.onTouchShooter();
+    }
+
+    public getCacheSlotController(): ICacheSlotController
+    {
+        return this.cacheSlotController;
     }
 }
 

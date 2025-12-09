@@ -46,6 +46,11 @@ export class CacheSlot extends Component implements ICacheSlot
         this._shooterItem = null;
         return shooter;
     }
+
+    isEmpty(): boolean
+    {
+        return this._shooterItem === null;
+    }
 }
 
 

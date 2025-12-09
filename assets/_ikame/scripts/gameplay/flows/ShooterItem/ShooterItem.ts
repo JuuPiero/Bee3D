@@ -15,11 +15,12 @@ import { ShooterReadyState } from './states/implementStates/ShooterReadyState';
 import { ShooterJumpState } from './states/implementStates/ShooterJumpState';
 import { ShooterInConveyorIdleState } from './states/implementStates/ShooterInConveyorIdleState';
 import { ShooterInConveyorShootState } from './states/implementStates/ShooterInConveyorShootState';
-import ShooterRetriveState from './states/implementStates/ShooterRetriveState';
 import { ShooterFinishState } from './states/implementStates/ShooterFinishState';
 import { ShooterStateBase } from './states/ShooterStateBase';
 import { IShooterItem } from './IShooterItem';
 import { PromiseDelay } from '../../../commons/PromiseDelay';
+import { ShooterRetriveState } from './states/implementStates/ShooterRetriveState';
+import { ICacheSlotController } from '../../cacheSlots/ICacheSlotController';
 const { ccclass, property } = _decorator;
 
 const JUMP_DURATION = 0.5;
@@ -29,8 +30,9 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     
     @property(CCInteger) public colorID: number = -1;
 
-    public _levelController: ILevelController = null;
-    public _colorQueue: IColorQueue = null;
+    private _levelController: ILevelController = null;
+    private _colorQueue: IColorQueue = null;
+    private _cacheSlotController: ICacheSlotController;
 
     private _passedBlockCoords: Set<string> = new Set<string>();
 
@@ -44,6 +46,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public characterRoot : Node = null;
 
     private _ammoCount: number = 0;
+    private _cacheSlotIndex: number = -1;
 
     @property(SkeletalAnimation) animator: SkeletalAnimation = null;
     private _curAnimationName: string = "";
@@ -340,6 +343,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public init(shooterData: Shooter, colorQueue: IColorQueue, levelController: ILevelController): void
     {
         this.spline = levelController.getSpline();
+        this._cacheSlotController = levelController.getCacheSlotController();
         this.colorID = shooterData.material;
         this._colorQueue = colorQueue;
         this._levelController = levelController;
@@ -414,6 +418,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         try
         {
+            this._cacheSlotIndex = -1;
             const scene = director.getScene();
             this.node.setParent(scene, true);
             this._colorQueue.dequeueShooter();
@@ -447,6 +452,61 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public faceTheMapDirection(): void
     {
         this.characterRoot.setRotationFromEuler(0, -90, 0);
+    }
+
+    public onCompleteLoop(): void
+    {
+        this._stateMachine.changeState(EShooterState.Retrieve);
+    }
+
+    setCacheSlot(slotIndex: number, isJump: boolean): void
+    {
+        this._cacheSlotIndex = slotIndex;
+        if (isJump)
+        {
+            this.condenseToCacheSlot();
+        }
+    }
+
+    private async condenseToCacheSlot()
+    {
+        // TODO: Implement jump to cache slot logic
+    }
+
+    public async retrieveToCacheSlot(): Promise<void>
+    {
+        const targetSlot = this._cacheSlotController.getNextEmptySlot();
+        if (!targetSlot) {
+            console.warn("No empty cache slot available for retrieval.");
+            return;
+        }
+        targetSlot.setShooter(this);
+        this.resetRotation();
+
+        // Jump to target slot using tween with sine-based height
+        const targetPosition = targetSlot.node.worldPosition.clone();
+        const startPosition = this.node.worldPosition.clone();
+        const jumpHeight = 2; // Adjust this value for desired arc height
+        const tweenObj = { progress: 0 };
+        const tweenJump = tween(tweenObj)
+            .to(JUMP_DURATION, { progress: 1 }, {
+                onUpdate: (target: any, ratio: number) =>
+                {
+                    Vec3.lerp(this._lerpPos, startPosition, targetPosition, target.progress);
+                    // Add height using sine wave for smooth arc
+                    const heightOffset = Math.sin(target.progress * Math.PI) * jumpHeight;
+                    this._lerpPos.y += heightOffset;
+                    this.node.setWorldPosition(this._lerpPos);
+                }
+            })
+            .start();
+        
+        await PromiseDelay.Wait(tweenJump.duration);
+    }
+
+    private resetRotation(): void 
+    {
+        this.characterRoot.setRotationFromEuler(0, 0, 0);
     }
 }
 
