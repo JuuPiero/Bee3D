@@ -7,6 +7,8 @@ export interface IShooterItem {
     faceTheMapDirection(): void;
     setCacheSlot(slotIndex: number, isJump: boolean): void;
     retrieveToCacheSlot(): Promise<void>;
+    reduceAmmoCount(): number;
+    getAmmoCount(): number;
 }
 
 

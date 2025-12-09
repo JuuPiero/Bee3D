@@ -89,7 +89,6 @@ export class SplineSmooth extends Component {
                 result = this.generateSmoothPath();
                 break;
             default:
-                console.warn('SplineSmooth: Unsupported spline type, defaulting to LINEAR.');
                 result = this.positions.map(p => p.clone());
                 break;
         }
@@ -405,12 +404,10 @@ export class SplineSmooth extends Component {
     {
         if (percent < 0 || percent > 1)
         {
-            console.warn('SplineSmooth: Percent value must be between 0 and 1.');
             return false;
         }
         if (this._smoothPath.length < 2)
         {
-            console.warn('SplineSmooth: Smooth path is not generated or has insufficient points.');
             return false;
         }
         const fullPath = this._smoothPath;
@@ -427,7 +424,6 @@ export class SplineSmooth extends Component {
         
         if (this._smoothPath.length < 2)
         {
-            console.warn('SplineSmooth: Smooth path is not generated or has insufficient points.');
             return false;
         }
         
@@ -496,7 +492,6 @@ export class SplineSmooth extends Component {
     {
         if (!positions || positions.length < 2)
         {
-            console.warn('SplineSmooth: Invalid positions array. It must contain at least two points.');
             return;
         }
         this.positions = positions;

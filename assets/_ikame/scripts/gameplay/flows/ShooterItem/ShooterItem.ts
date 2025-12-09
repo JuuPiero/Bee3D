@@ -1,4 +1,4 @@
-import { _decorator, CCInteger, Component, director, EventKeyboard, Input, input, KeyCode, MeshRenderer, Node, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
+import { _decorator, CCInteger, Component, director, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
 import { Utils } from '../../../utils/Utils';
 import { EDirection } from '../../../enums/EDirection';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
@@ -65,7 +65,15 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private _startJumpPosition: Vec3 = new Vec3();
     private _lerpPos = new Vec3();
 
-    private _targetCount : number = 0;
+    private _targetCount: number = 0;
+
+    public reduceAmmoCount(): number {
+        this._ammoCount = Math.max(0, this._ammoCount - 1);
+        this.ammoLabel.string = this._ammoCount.toString();
+        return this._ammoCount;
+    }
+    
+    @property(Label) private ammoLabel: Label = null;
 
     public markBlockAsPassed(x: number, z: number): void {
         const key = Utils.generateKeyFromCoord(x, z);
@@ -102,7 +110,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public tryShootTargets(): boolean
     {
-        // Implement shooting logic here
+        if (this._ammoCount <= 0)
+        {
+            return false;
+        }
         this._targetCount = 0;
         const edge = this._levelController.getShooterEdge(this.node.worldPosition.x, this.node.worldPosition.z);
         switch (edge)
@@ -125,7 +136,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     private shotTargetsBottom(): number 
     {
-        console.log("Shooting BOTTOM");
         const z = this._levelController.getLevelHeight() - 1;
         let x = this._levelController.getLevelWidth() - 1;
         while (x >= 0)
@@ -169,17 +179,14 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 continue;
             }
             this.markBlockAsPassed(x, z);
-            console.log("Shooting Block 2 at: ", targetBlock.getUid());
             targetBlock.markForDestroy();
             this._targetCount++;
             x--;
         }
-        console.log("----");
     }
 
     private shotTargetsTop(): number 
     {
-        console.log("Shooting TOP");
         const z = 0;
         let x = 0;
         while (x < this._levelController.getLevelWidth() )
@@ -223,17 +230,14 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 continue;
             }
             this.markBlockAsPassed(x, z);
-            console.log("Shooting Block TOP at:", targetBlock.getUid());
             targetBlock.markForDestroy();
             this._targetCount++;
             x++;
         }
-        console.log("----");
     }
 
     private shotTargetsLeft(): number 
     {
-        console.log("Shooting LEFT");
         const x = 0;
         let z = this._levelController.getLevelHeight() - 1;
         while (z >= 0)
@@ -277,17 +281,14 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 continue;
             }
             this.markBlockAsPassed(x, z);
-            console.log("Shooting Block LEFT at:", targetBlock.getUid());
             targetBlock.markForDestroy();
             this._targetCount++;
             z--;
         }
-        console.log("----");
     }
 
     private shotTargetsRight(): number 
     {
-        console.log("Shooting RIGHT");
         const x = this._levelController.getLevelWidth() - 1;
         let z = 0;
         while (z >= 0 && z < this._levelController.getLevelHeight())
@@ -331,12 +332,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 continue;
             }
             this.markBlockAsPassed(x, z);
-            console.log("Shooting Block RIGHT at:", targetBlock.getUid());
             targetBlock.markForDestroy();
             this._targetCount++;
             z++;
         }
-        console.log("----");
     }
 
 
@@ -348,6 +347,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this._colorQueue = colorQueue;
         this._levelController = levelController;
         this._ammoCount = shooterData.ammo;
+        this.ammoLabel.string = this._ammoCount.toString();
         const mat = this.colorConfig.getShooterColorById(shooterData.material);
         this.characterMesh.setSharedMaterial(mat, 0);
 
@@ -489,7 +489,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         const targetSlot = this._cacheSlotController.getNextEmptySlot();
         if (!targetSlot) {
-            console.warn("No empty cache slot available for retrieval.");
             this._levelController.lose();
             return;
         }
@@ -520,6 +519,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private resetRotation(): void 
     {
         this.characterRoot.setRotationFromEuler(0, 0, 0);
+    }
+
+    getAmmoCount(): number
+    {
+        return this._ammoCount;
     }
 }
 

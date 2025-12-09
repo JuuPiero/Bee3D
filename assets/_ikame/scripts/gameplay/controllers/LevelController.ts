@@ -262,7 +262,6 @@ export class LevelController extends Component implements ILevelController
         {
             this._isFinished = true;
             EventDispatcher.dispatch(EventName.EndGame, true);
-            console.log("Win Game");
         }
     }
 }

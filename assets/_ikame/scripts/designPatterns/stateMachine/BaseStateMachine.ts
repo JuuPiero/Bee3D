@@ -46,7 +46,6 @@ export class BaseStateMachine<E> implements IChangeState<E> {
     {
         if (this.currentState && stateName == this.currentState.name && !force)
         {
-            console.warn(`BaseStateMachine: Attempted to change to the same state: ${stateName}`);
             return;
         }
         this.stateHolder?.onChangeState(this.currentState?.name, stateName);

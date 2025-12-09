@@ -90,8 +90,6 @@ export namespace bh {
             let className = js.getClassName(ctor);
             let classId = js.getClassId(ctor);
             if (!classId || classId.trim() === "") {
-                console.warn(`class ${className} has no classId,please use @bh.scriptable first ,
-                 like @bh.scriptable("<ClassName>")\nclass TestClass`);
             }
             ctor.__$createAssetMenuItemInfo = {
                 fileName,
@@ -140,7 +138,6 @@ export namespace bh {
                 if (!asset.uuid) console.error(`asset uuid is null,please use`)
                 Editor.Message.request("asset-db", "save-asset", asset.uuid, EditorExtends.serialize(asset));
             } else {
-                console.warn(`env is not in Editor,please use api in Editor`)
             }
         }
         /**
@@ -166,7 +163,6 @@ export namespace bh {
                     });
                 return
             } else {
-                console.warn(`env is not in Editor,please use api in Editor`)
             }
 
         }
