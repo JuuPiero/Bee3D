@@ -3,5 +3,5 @@ import { ShooterItem } from "../flows/ShooterItem/ShooterItem";
 export interface IColorQueue
 {
     isOnTop(shooter: ShooterItem): boolean;
-    dequeueShooter(): ShooterItem;
+    removeShooter(shooter: ShooterItem): boolean;
 }

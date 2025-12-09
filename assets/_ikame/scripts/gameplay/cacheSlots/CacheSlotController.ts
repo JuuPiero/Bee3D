@@ -41,7 +41,8 @@ export class CacheSlotController extends Component implements ICacheSlotControll
             slot.node.setPosition(i * QUEUE_GAP + offsetX, 0, 0);
             slot.init(this,
                 i < this._activeSlots.length - 1 ? this._activeSlots[i + 1] : null,
-                i > 0 ? this._activeSlots[i - 1] : null
+                i > 0 ? this._activeSlots[ i - 1 ] : null,
+                i
             );
         }
     }
@@ -85,6 +86,13 @@ export class CacheSlotController extends Component implements ICacheSlotControll
             slot.setShooter(shooter);
             shooter.setCacheSlot(i, true);
         }
+    }
+
+    getSlotAtIndex(index: number): CacheSlot | null
+    {
+        if (index < 0 || index >= this._activeSlots.length)
+            return null;
+        return this._activeSlots[index];
     }
     
 }

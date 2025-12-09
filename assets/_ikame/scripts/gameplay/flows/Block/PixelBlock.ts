@@ -3,6 +3,7 @@ import { ColorConfig } from '../../../configData/ColorConfig';
 import { EDITOR } from 'cc/env';
 import { IPixelBlock } from './IPixelBlock';
 import { IGridTile } from '../MapTiles/IGridTile';
+import { ILevelController } from '../../controllers/ILevelController';
 const { ccclass, property } = _decorator;
 
 @ccclass('PixelBlock')
@@ -32,11 +33,14 @@ export class PixelBlock extends Component implements IPixelBlock
 
     private _isMarkedForDestroy: boolean = false;
 
-    init(colorID: number): void 
+    private _level: ILevelController = null;
+
+    init(colorID: number, level: ILevelController): void 
     {
         const color = this.colorData.getPixelBlockMaterialById(colorID);
         this.meshRenderer.setSharedMaterial( color, 0);
         this.colorID = colorID;
+        this._level = level;
     }
 
 
@@ -62,34 +66,6 @@ export class PixelBlock extends Component implements IPixelBlock
         return this.colorID;
     }
 
-    protected lateUpdate(dt: number): void
-    {
-        // if(EDITOR && this.debugDraw)
-        // {
-        //     const worldPos = this.node.getWorldPosition();
-        //     if (this._topLinkedBlock)
-        //     {
-        //         const topWorldPos = this._topLinkedBlock.getWorldPosition();
-        //         this._debugCamera.camera.geometryRenderer?.addLine(worldPos, topWorldPos, Color.GREEN);
-        //     }
-        //     if (this._bottomLinkedBlock)
-        //     {
-        //         const bottomWorldPos = this._bottomLinkedBlock.getWorldPosition();
-        //         this._debugCamera.camera.geometryRenderer?.addLine(worldPos, bottomWorldPos, Color.GREEN);
-        //     }
-        //     if (this._leftLinkedBlock)
-        //     {
-        //         const leftWorldPos = this._leftLinkedBlock.getWorldPosition();
-        //         this._debugCamera.camera.geometryRenderer?.addLine(worldPos, leftWorldPos, Color.GREEN);
-        //     }
-        //     if (this._rightLinkedBlock)
-        //     {
-        //         const rightWorldPos = this._rightLinkedBlock.getWorldPosition();
-        //         this._debugCamera.camera.geometryRenderer?.addLine(worldPos, rightWorldPos, Color.GREEN);
-        //     }
-        // }
-    }
-
     setTile(tile: IGridTile): void
     {
         this._gridTile = tile;
@@ -108,6 +84,7 @@ export class PixelBlock extends Component implements IPixelBlock
         this._isMarkedForDestroy = true;
         this.node.active = false;
         this._gridTile.removePixelBlock();
+        this._level.checkWinCondition();
     }
 
     public isMarkedForDestroy(): boolean

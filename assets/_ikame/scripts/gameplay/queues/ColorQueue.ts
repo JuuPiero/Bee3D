@@ -74,9 +74,14 @@ export class ColorQueue extends Component implements IColorQueue {
         return topShooter === shooter;
     }
 
-    public dequeueShooter(): ShooterItem
+    public removeShooter(shooter: ShooterItem): boolean
     {
-        return this._shooterQueue.dequeue();
+        if (this.isOnTop(shooter))
+        {
+            this._shooterQueue.dequeue();
+            return true;
+        }
+        return false;
     }
 }
 

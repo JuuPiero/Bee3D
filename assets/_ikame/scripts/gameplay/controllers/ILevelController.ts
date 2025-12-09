@@ -14,6 +14,8 @@ export interface ILevelController
     getLevelHeight(): number
     getSpline(): SplineSmooth
     getCacheSlotController(): ICacheSlotController
+    lose(): void 
+    checkWinCondition(): void 
 }
 
 

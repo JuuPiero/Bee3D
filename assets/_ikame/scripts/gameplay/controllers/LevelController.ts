@@ -13,11 +13,16 @@ import { Conveyor } from '../flows/Conveyor/Conveyor';
 import { ShooterItem } from '../flows/ShooterItem/ShooterItem';
 import { CacheSlotController } from '../cacheSlots/CacheSlotController';
 import { ICacheSlotController } from '../cacheSlots/ICacheSlotController';
+import { EventDispatcher } from '../../designPatterns/observer/EventDispatcher';
+import { EventName } from '../../designPatterns/observer/EventName';
 const { ccclass, property } = _decorator;
 
 @ccclass('LevelController')
 export class LevelController extends Component implements ILevelController
 {    
+
+    private _isFinished: boolean = false;
+
     @property({ type: Prefab, group: 'Pixel Map' })
     public pixelBlockPrefab: Prefab = null;
     @property({ type: Node, group: 'Pixel Map' })
@@ -81,6 +86,8 @@ export class LevelController extends Component implements ILevelController
     @property({ type: CacheSlotController, group: 'Controllers' })
     protected cacheSlotController: CacheSlotController = null;
 
+    private _totalPixelsCount : number = 0;
+
     protected _debugDrawSpline(): void
     {
         if (!this.cameraMain || !EDITOR || !this.debugDrawMapBorder) return;
@@ -118,6 +125,8 @@ export class LevelController extends Component implements ILevelController
 
     public spawnLevel(): void 
     {
+        this._isFinished = false;
+
         //#region Spawn Pixel Blocks
         this.levelData.parseData();
         
@@ -158,7 +167,7 @@ export class LevelController extends Component implements ILevelController
             pixelNode.parent = this.pixelBlockHolder;
             pixelNode.setPosition(pixelData.x + offsetX, 0, pixelData.y + offsetZ);
             const pixelBlockComp = pixelNode.getComponent(PixelBlock);
-            pixelBlockComp.init(pixelData.material);
+            pixelBlockComp.init(pixelData.material , this);
             const key = Utils.generateKeyFromCoord(pixelData.x, pixelData.y);
             const gridTile = this._gridMap.get(key);
             gridTile.setPixelBlock(pixelBlockComp);
@@ -167,6 +176,7 @@ export class LevelController extends Component implements ILevelController
 
         this.colorQueueControllers.init(this.levelData.shooterQueues, this);
         this.cacheSlotController.init(this.levelData.slotCount);
+        this._totalPixelsCount = this.levelData.pixels.length;
     }
 
     protected lateUpdate(dt: number): void
@@ -220,6 +230,8 @@ export class LevelController extends Component implements ILevelController
 
     private onTouchStart(event: EventTouch): void
     {
+        if (this._isFinished) return;
+
         event.getLocation(this._screenPos);
         const ray = this.cameraMain.screenPointToRay(this._screenPos.x, this._screenPos.y);
         const isHit = PhysicsSystem.instance.raycastClosest(ray);
@@ -233,6 +245,25 @@ export class LevelController extends Component implements ILevelController
     public getCacheSlotController(): ICacheSlotController
     {
         return this.cacheSlotController;
+    }
+
+    lose(): void
+    {
+        if (this._isFinished) return;
+        this._isFinished = true;
+        EventDispatcher.dispatch(EventName.EndGame, false);
+    }
+
+    checkWinCondition(): void 
+    {
+        if (this._isFinished) return;
+        this._totalPixelsCount--;
+        if (this._totalPixelsCount <= 0)
+        {
+            this._isFinished = true;
+            EventDispatcher.dispatch(EventName.EndGame, true);
+            console.log("Win Game");
+        }
     }
 }
 

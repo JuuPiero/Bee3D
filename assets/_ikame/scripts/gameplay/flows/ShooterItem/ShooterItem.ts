@@ -387,6 +387,12 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public onTouchShooter(): void
     {
+        if (this._cacheSlotIndex >= 0 && this._stateMachine.currentState.name === EShooterState.Ready)
+        {
+            this._stateMachine.changeState(EShooterState.Jump);
+            return;
+        }
+
         if (!this.isAtTop() || this._stateMachine.currentState.name !== EShooterState.Ready) 
         {
             return;
@@ -418,10 +424,16 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         try
         {
+            if (this._cacheSlotIndex >= 0)
+            {
+                const curSlot = this._cacheSlotController.getSlotAtIndex(this._cacheSlotIndex);
+                curSlot.removeShooter();
+            }
+            this.progress = 0;
             this._cacheSlotIndex = -1;
             const scene = director.getScene();
             this.node.setParent(scene, true);
-            this._colorQueue.dequeueShooter();
+            this._colorQueue.removeShooter(this);
             this.spline.getPercentageTransform(0, this._jumpToPosition, this._jumpToQuat);
             this.node.getWorldPosition(this._startJumpPosition);
             const tweenObj = { progress: 0 }
@@ -478,11 +490,12 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         const targetSlot = this._cacheSlotController.getNextEmptySlot();
         if (!targetSlot) {
             console.warn("No empty cache slot available for retrieval.");
+            this._levelController.lose();
             return;
         }
         targetSlot.setShooter(this);
+        this._cacheSlotIndex = targetSlot.getIndex();
         this.resetRotation();
-
         // Jump to target slot using tween with sine-based height
         const targetPosition = targetSlot.node.worldPosition.clone();
         const startPosition = this.node.worldPosition.clone();

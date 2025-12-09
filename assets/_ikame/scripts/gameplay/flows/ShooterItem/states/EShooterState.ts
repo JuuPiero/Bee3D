@@ -5,7 +5,6 @@ export enum EShooterState {
     InConveyor_Idle,
     InConveyor_Shot,
     Retrieve,
-    Finish
+    Finish,
+    Lost
 }
-
-
