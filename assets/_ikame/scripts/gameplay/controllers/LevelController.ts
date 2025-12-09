@@ -235,7 +235,7 @@ export class LevelController extends Component implements ILevelController
 
     private onTouchStart(event: EventTouch): void
     {
-        if (this._isFinished) return;
+        if (this._isFinished || !this.floaterPool.isCanGetFloater()) return;
 
         event.getLocation(this._screenPos);
         const ray = this.cameraMain.screenPointToRay(this._screenPos.x, this._screenPos.y);
@@ -244,7 +244,7 @@ export class LevelController extends Component implements ILevelController
         const hitResult = PhysicsSystem.instance.raycastClosestResult;
         const shooter = hitResult.collider.node.getComponent(ShooterItem);
         if (!shooter) return;
-        shooter.onTouchShooter();
+        const canAdd = shooter.onTouchShooter();
     }
 
     public getCacheSlotController(): ICacheSlotController

@@ -5,7 +5,7 @@ import { ShooterQueue } from '../../configData/LevelData';
 import { ILevelController } from '../controllers/ILevelController';
 const { ccclass, property } = _decorator;
 
-const QUEUE_GAP = 2;
+const QUEUE_GAP = 1.5;
 
 @ccclass('ColorQueueControllers')
 export class ColorQueueControllers extends Component implements IColorQueueControllers {

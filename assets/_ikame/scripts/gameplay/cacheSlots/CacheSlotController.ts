@@ -4,7 +4,7 @@ import { CacheSlot } from './CacheSlot';
 import { IShooterItem } from '../flows/ShooterItem/IShooterItem';
 const { ccclass, property } = _decorator;
 
-const QUEUE_GAP = 2;
+const QUEUE_GAP = 1.32;
 
 @ccclass('CacheSlotController')
 export class CacheSlotController extends Component implements ICacheSlotController {

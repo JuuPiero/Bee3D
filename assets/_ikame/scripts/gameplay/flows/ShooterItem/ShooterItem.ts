@@ -24,6 +24,7 @@ import { ShooterAnimationName } from './states/ShooterAnimationName';
 const { ccclass, property } = _decorator;
 
 const JUMP_DURATION = 0.5;
+const RETREIVE_JUMP_DURATION = 0.36;
 
 const RIGHT_ROT = new Vec3(0, -90, 0);
 const LEFT_ROT = new Vec3(0, 90, 0);
@@ -392,19 +393,20 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this._stateMachine.lateUpdate(dt);
     }
 
-    public onTouchShooter(): void
+    public onTouchShooter(): boolean
     {
         if (this._cacheSlotIndex >= 0 && this._stateMachine.currentState.name === EShooterState.Ready)
         {
             this._stateMachine.changeState(EShooterState.Jump);
-            return;
+            return true;
         }
 
         if (!this.isAtTop() || this._stateMachine.currentState.name !== EShooterState.Ready) 
         {
-            return;
+            return false;
         }
         this._stateMachine.changeState(EShooterState.Jump);
+        return true;
     }
 
     changeAnimation(animationName: string, force: boolean): void
@@ -561,7 +563,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this.ammoLabel.node.active = false;
         const tweenJump = tween(tweenObj)
             // .delay(0.03)
-            .to(JUMP_DURATION, { progress: 1 }, {
+            .to(RETREIVE_JUMP_DURATION, { progress: 1 }, {
                 onUpdate: (target: any, ratio: number) =>
                 {
                     Vec3.lerp(this._lerpPos, startPosition, targetPosition, target.progress);

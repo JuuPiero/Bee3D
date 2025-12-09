@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, tween, Vec3 } from 'cc';
+import { _decorator, Component, Label, Node, tween, Vec3 } from 'cc';
 import { Queue } from '../../../commons/Queue';
 const { ccclass, property } = _decorator;
 
@@ -14,6 +14,8 @@ export class FloaterPool extends Component {
     private _showCount: number = 0;
 
     private _startPos = new Vec3();
+
+    @property(Label ) countLabel: Label = null;
     
     @property(Node) holder: Node = null;
     @property(Node) returnPos: Node = null;
@@ -37,7 +39,7 @@ export class FloaterPool extends Component {
             floater.active = true;
             this._queue.enqueue(floater);
         }
-        this.updateLocations();
+        this.updateView();
     }
 
     public getFloaterOut(): Node 
@@ -48,7 +50,7 @@ export class FloaterPool extends Component {
             return null;
         }
         const floater = this._queue.dequeue();
-        this.updateLocations();
+        this.updateView();
         return floater;
     }
 
@@ -56,10 +58,10 @@ export class FloaterPool extends Component {
     {
         floater.setWorldPosition(this.returnPos.getWorldPosition());
         this._queue.enqueue(floater);
-        this.updateLocations();
+        this.updateView();
     }
 
-    private updateLocations(): void 
+    private updateView(): void 
     {
         this.holder.getWorldPosition(this._startPos);
         for (let i = 0; i < this._queue.Items.length; i++)
@@ -71,7 +73,11 @@ export class FloaterPool extends Component {
                 .to(0.23, { worldPosition: targetPos })
                 .start();
         }
+        this.countLabel.string = `${this._queue.size()}/${this._showCount}`;
+    }
+
+    public isCanGetFloater(): boolean
+    {
+        return !this._queue.isEmpty();
     }
 }
-
-
