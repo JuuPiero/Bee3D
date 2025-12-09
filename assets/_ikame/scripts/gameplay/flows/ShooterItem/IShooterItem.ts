@@ -10,6 +10,7 @@ export interface IShooterItem {
     reduceAmmoCount(): number;
     getAmmoCount(): number;
     finishAnimation(): void;
+    shootSoundEffect(): void;
 }
 
 

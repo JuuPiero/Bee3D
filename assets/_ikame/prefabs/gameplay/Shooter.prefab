@@ -663,6 +663,26 @@
     "firePointNode": {
       "__id__": 11
     },
+    "shootSound": {
+      "__uuid__": "77fc482f-0229-49c7-af78-6ba0e8715925",
+      "__expectedType__": "cc.AudioClip"
+    },
+    "jumpSound": {
+      "__uuid__": "a98676aa-f209-4984-af7f-90301ea786a1",
+      "__expectedType__": "cc.AudioClip"
+    },
+    "finishSound1": {
+      "__uuid__": "4caa6ea2-eebc-4016-9326-ebfb7d2490fb",
+      "__expectedType__": "cc.AudioClip"
+    },
+    "finishSound2": {
+      "__uuid__": "fea1b496-82ef-428b-b7c0-4f15457a0fe4",
+      "__expectedType__": "cc.AudioClip"
+    },
+    "retrieveSound": {
+      "__uuid__": "242327c1-47ed-4716-b35c-a575b0c27664",
+      "__expectedType__": "cc.AudioClip"
+    },
     "ammoLabel": {
       "__id__": 20
     },

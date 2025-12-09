@@ -1,4 +1,4 @@
-import { _decorator, CCInteger, Component, director, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
+import { _decorator, AudioClip, CCInteger, Component, director, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
 import { Utils } from '../../../utils/Utils';
 import { EDirection } from '../../../enums/EDirection';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
@@ -21,6 +21,8 @@ import { PromiseDelay } from '../../../commons/PromiseDelay';
 import { ShooterRetriveState } from './states/implementStates/ShooterRetriveState';
 import { ICacheSlotController } from '../../cacheSlots/ICacheSlotController';
 import { ShooterAnimationName } from './states/ShooterAnimationName';
+import { EventDispatcher } from '../../../designPatterns/observer/EventDispatcher';
+import { EventName } from '../../../designPatterns/observer/EventName';
 const { ccclass, property } = _decorator;
 
 const JUMP_DURATION = 0.5;
@@ -74,6 +76,19 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private _floaterNode: Node = null;
     
     @property(Node) private firePointNode: Node = null;
+
+    @property(AudioClip)
+    public shootSound: AudioClip = null;
+
+    @property(AudioClip)
+    public jumpSound: AudioClip = null;
+
+    @property(AudioClip)
+    public finishSound1: AudioClip = null;
+    @property(AudioClip)
+    public finishSound2: AudioClip = null;
+    @property(AudioClip)
+    public retrieveSound: AudioClip = null;
 
     public reduceAmmoCount(): number {
         this._ammoCount = Math.max(0, this._ammoCount - 1);
@@ -433,6 +448,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         try
         {
+            EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
             this._floaterNode = this._levelController.getFloaterToStream();
             if (this._cacheSlotIndex >= 0)
             {
@@ -513,6 +529,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             this._levelController.lose();
             return;
         }
+        EventDispatcher.dispatch(EventName.PlaySFX, this.retrieveSound);
         targetSlot.setShooter(this);
         this._cacheSlotIndex = targetSlot.getIndex();
         this.resetRotation();
@@ -557,13 +574,14 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         const rot = isRight ? RIGHT_ROT : LEFT_ROT;
         this.characterRoot.setWorldRotationFromEuler(rot.x, rot.y, rot.z);
         this.changeAnimation(ShooterAnimationName.Jump, true);
-        
+        const winSound = isRight ? this.finishSound1 : this.finishSound2;
+        EventDispatcher.dispatch(EventName.PlaySFX, winSound);
         const jumpHeight = 2;
         const tweenObj = { progress: 0 };
         this.ammoLabel.node.active = false;
         const tweenJump = tween(tweenObj)
             // .delay(0.03)
-            .to(JUMP_DURATION, { progress: 1 }, {
+            .to(JUMP_DURATION * 2, { progress: 1 }, {
                 onUpdate: (target: any, ratio: number) =>
                 {
                     Vec3.lerp(this._lerpPos, startPosition, targetPosition, target.progress);
@@ -576,6 +594,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
         await PromiseDelay.Wait(tweenJump.duration);
         this.node.active = false;
+    }
+
+    public shootSoundEffect(): void
+    {
+        EventDispatcher.dispatch(EventName.PlaySFX, this.shootSound);
     }
 }
 

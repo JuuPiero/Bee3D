@@ -118,8 +118,6 @@ export class LevelController extends Component implements ILevelController
         }
 
         input.on(Input.EventType.TOUCH_START, this.onTouchStart, this);
-
-        this.spawnLevel();
     }
 
     protected onDestroy(): void
@@ -235,7 +233,7 @@ export class LevelController extends Component implements ILevelController
 
     public clearLevel(): void
     {
-        
+
     }
 
     private onTouchStart(event: EventTouch): void
@@ -271,7 +269,7 @@ export class LevelController extends Component implements ILevelController
         if (this._totalPixelsCount <= 0)
         {
             this._isFinished = true;
-            EventDispatcher.dispatch(EventName.EndGame, true);
+            EventDispatcher.dispatch(EventName.EndGame, true, true);
         }
     }
 

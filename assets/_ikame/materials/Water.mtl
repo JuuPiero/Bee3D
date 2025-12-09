@@ -28,12 +28,26 @@
   "_props": [
     {
       "_MainTex": {
-        "__uuid__": "57da89db-0bee-4c4c-ac78-24c2f9683d61@6c48a",
+        "__uuid__": "2a244f61-dbdc-4c7b-942c-72a5c5f7bea4@6c48a",
         "__expectedType__": "cc.Texture2D"
+      },
+      "_MainTex_ST": {
+        "__type__": "cc.Vec4",
+        "x": 1,
+        "y": 1,
+        "z": 0.3,
+        "w": -0.1
       },
       "_Bubble": {
         "__uuid__": "d4d9350b-9a63-4f70-a189-39746d705b0b@6c48a",
         "__expectedType__": "cc.Texture2D"
+      },
+      "_Bubble_ST": {
+        "__type__": "cc.Vec4",
+        "x": 8,
+        "y": 8,
+        "z": 0.1,
+        "w": 0.5
       },
       "_ColorOut": {
         "__type__": "cc.Color",
@@ -55,25 +69,6 @@
         "g": 224,
         "b": 224,
         "a": 255
-      },
-      "_MainTex_ST": {
-        "__type__": "cc.Vec4",
-        "x": 1,
-        "y": 1,
-        "z": 0.3,
-        "w": -0.1
-      },
-      "_Bubble_ST": {
-        "__type__": "cc.Vec4",
-        "x": 8,
-        "y": 8,
-        "z": 0.1,
-        "w": 0.5
-      },
-      "_BubbleFlowDir": {
-        "__type__": "cc.Vec2",
-        "x": 1,
-        "y": 1
       }
     }
   ]
