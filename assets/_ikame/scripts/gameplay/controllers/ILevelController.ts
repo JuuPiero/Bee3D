@@ -3,6 +3,7 @@ import { SplineSmooth } from "../../splines/SplineSmooth"
 import { ICacheSlotController } from "../cacheSlots/ICacheSlotController"
 import { PixelBlock } from "../flows/Block/PixelBlock"
 import { IGridTile } from "../flows/MapTiles/IGridTile"
+import { Node } from "cc"
 
 export interface ILevelController
 {
@@ -16,6 +17,8 @@ export interface ILevelController
     getCacheSlotController(): ICacheSlotController
     lose(): void 
     checkWinCondition(): void 
+    getFloaterToStream(): Node 
+    returnFloaterToPool(floater: Node): void
 }
 
 

@@ -1,4 +1,4 @@
-import { _decorator, Camera, CCBoolean, CCFloat, Color, Component, EventTouch, Input, input, instantiate, Node, PhysicsSystem, Prefab, Vec2, Vec3 } from 'cc';
+import { _decorator, Camera, CCBoolean, CCFloat, Color, Component, EventTouch, Input, input, instantiate, Node, PhysicsSystem, Prefab, Quat, tween, Vec2, Vec3 } from 'cc';
 import { LevelData } from '../../configData/LevelData';
 import { EDITOR } from 'cc/env';
 import { PixelBlock } from '../flows/Block/PixelBlock';
@@ -15,6 +15,7 @@ import { CacheSlotController } from '../cacheSlots/CacheSlotController';
 import { ICacheSlotController } from '../cacheSlots/ICacheSlotController';
 import { EventDispatcher } from '../../designPatterns/observer/EventDispatcher';
 import { EventName } from '../../designPatterns/observer/EventName';
+import { FloaterPool } from '../flows/Floater/FloaterPool';
 const { ccclass, property } = _decorator;
 
 @ccclass('LevelController')
@@ -86,7 +87,10 @@ export class LevelController extends Component implements ILevelController
     @property({ type: CacheSlotController, group: 'Controllers' })
     protected cacheSlotController: CacheSlotController = null;
 
-    private _totalPixelsCount : number = 0;
+    @property({ type: FloaterPool, group: 'Controllers' })
+    protected floaterPool: FloaterPool = null;
+
+    private _totalPixelsCount: number = 0;
 
     protected _debugDrawSpline(): void
     {
@@ -177,6 +181,7 @@ export class LevelController extends Component implements ILevelController
         this.colorQueueControllers.init(this.levelData.shooterQueues, this);
         this.cacheSlotController.init(this.levelData.slotCount);
         this._totalPixelsCount = this.levelData.pixels.length;
+        this.floaterPool.init(5);
     }
 
     protected lateUpdate(dt: number): void
@@ -263,6 +268,52 @@ export class LevelController extends Component implements ILevelController
             this._isFinished = true;
             EventDispatcher.dispatch(EventName.EndGame, true);
         }
+    }
+
+    public getFloaterToStream(): Node 
+    {
+        const floater = this.floaterPool.getFloaterOut();
+        if (!floater) return null;
+
+        const pos = new Vec3();
+        const rot = new Quat();
+
+        const startPos = new Vec3();
+        const startRot = new Quat();
+        floater.getWorldPosition(startPos);
+        floater.getWorldRotation(startRot);
+        
+        const targetPos = new Vec3();
+        const targetRot = new Quat();
+
+        this.conveyor.getPercentageTransform(0, targetPos, targetRot);
+        
+        const tweenObj = { progress: 0 }
+        const jumpHeight = 2;
+
+        tween (tweenObj)
+            .to(0.35, { progress: 1 }, {
+                onUpdate: (target: any, ratio: number) =>   
+                {
+                    Vec3.lerp(pos, startPos, targetPos, target.progress);
+            
+                    // add some jump height
+                    pos.y += Math.sin(target.progress * Math.PI) * jumpHeight;
+
+                    Quat.slerp(rot, startRot, targetRot, target.progress);
+                    floater.setWorldPosition(pos);
+                    floater.setWorldRotation(rot);
+                }
+            })
+            .start();
+
+
+        return floater;
+    }
+
+    public returnFloaterToPool(floater: Node): void
+    {
+        this.floaterPool.returnFloater(floater);
     }
 }
 

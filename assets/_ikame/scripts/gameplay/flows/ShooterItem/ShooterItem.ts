@@ -70,6 +70,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     private _targetCount: number = 0;
 
+    private _floaterNode : Node = null;
+
     public reduceAmmoCount(): number {
         this._ammoCount = Math.max(0, this._ammoCount - 1);
         this.ammoLabel.string = this._ammoCount.toString();
@@ -427,6 +429,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         try
         {
+            this._floaterNode = this._levelController.getFloaterToStream();
             if (this._cacheSlotIndex >= 0)
             {
                 const curSlot = this._cacheSlotController.getSlotAtIndex(this._cacheSlotIndex);
@@ -461,6 +464,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public moveAlongConveyor(dt: number): void
     {
         this.updatePosition(dt);
+        if (this._floaterNode)
+            this._floaterNode.setWorldPosition(this.node.getWorldPosition());
     }
 
     public faceTheMapDirection(): void
@@ -471,6 +476,16 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public onCompleteLoop(): void
     {
         this._stateMachine.changeState(EShooterState.Retrieve);
+        this.returnFloaterToPool();
+    }
+
+    private returnFloaterToPool(): void
+    {
+        if (this._floaterNode)
+        {
+            this._levelController.returnFloaterToPool(this._floaterNode);
+            this._floaterNode = null;
+        }
     }
 
     setCacheSlot(slotIndex: number, isJump: boolean): void
@@ -530,6 +545,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public async finishAnimation(): Promise<void> 
     {
+        this.returnFloaterToPool();
+
         const isRight = this.node.worldPositionX > 0;
         const startPosition = this.node.worldPosition.clone();
         const targetPosition = new Vec3(isRight ? startPosition.x + 7 : startPosition.x - 7, startPosition.y + 5, startPosition.z);
