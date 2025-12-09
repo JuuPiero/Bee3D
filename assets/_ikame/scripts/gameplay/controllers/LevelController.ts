@@ -233,6 +233,11 @@ export class LevelController extends Component implements ILevelController
 
     private _screenPos = new Vec2();
 
+    public clearLevel(): void
+    {
+        
+    }
+
     private onTouchStart(event: EventTouch): void
     {
         if (this._isFinished || !this.floaterPool.isCanGetFloater()) return;

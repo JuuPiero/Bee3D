@@ -522,7 +522,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         const jumpHeight = 2; // Adjust this value for desired arc height
         const tweenObj = { progress: 0 };
         const tweenJump = tween(tweenObj)
-            .to(JUMP_DURATION, { progress: 1 }, {
+            .to(RETREIVE_JUMP_DURATION, { progress: 1 }, {
                 onUpdate: (target: any, ratio: number) =>
                 {
                     Vec3.lerp(this._lerpPos, startPosition, targetPosition, target.progress);
@@ -563,7 +563,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this.ammoLabel.node.active = false;
         const tweenJump = tween(tweenObj)
             // .delay(0.03)
-            .to(RETREIVE_JUMP_DURATION, { progress: 1 }, {
+            .to(JUMP_DURATION, { progress: 1 }, {
                 onUpdate: (target: any, ratio: number) =>
                 {
                     Vec3.lerp(this._lerpPos, startPosition, targetPosition, target.progress);

@@ -7,6 +7,7 @@ import { Node } from "cc"
 
 export interface ILevelController
 {
+    clearLevel(): void
     spawnLevel(): void
     getShooterEdge(x: number, z: number): EDirection
     getTileAtCoord(x: number, z: number): IGridTile | null
