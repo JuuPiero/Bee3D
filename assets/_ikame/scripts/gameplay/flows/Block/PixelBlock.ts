@@ -6,6 +6,8 @@ import { IGridTile } from '../MapTiles/IGridTile';
 import { ILevelController } from '../../controllers/ILevelController';
 const { ccclass, property } = _decorator;
 
+const BULLET_SCALE = 0.03;
+
 @ccclass('PixelBlock')
 export class PixelBlock extends Component implements IPixelBlock
 {
@@ -92,7 +94,7 @@ export class PixelBlock extends Component implements IPixelBlock
         // this.bulletNode.setParent(scene);
         this.bulletNode.active = true;
         this.bulletNode.setWorldPosition(barrolPosition);
-        this.bulletNode.worldScale = new Vec3(0.02, 0.02, 0.02);
+        this.bulletNode.setWorldScale(BULLET_SCALE, BULLET_SCALE, BULLET_SCALE);
         const targetPos = this.node.getWorldPosition();
         targetPos.y = barrolPosition.y;
         tween(this.bulletNode)

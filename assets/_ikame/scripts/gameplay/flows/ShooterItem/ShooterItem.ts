@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, CCInteger, Component, director, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
+import { _decorator, AudioClip, CCInteger, director, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
 import { Utils } from '../../../utils/Utils';
 import { EDirection } from '../../../enums/EDirection';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
@@ -448,6 +448,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         try
         {
+            this.clearPassedBlocks();
             EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
             this._floaterNode = this._levelController.getFloaterToStream();
             if (this._cacheSlotIndex >= 0)
@@ -575,7 +576,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this.characterRoot.setWorldRotationFromEuler(rot.x, rot.y, rot.z);
         this.changeAnimation(ShooterAnimationName.Jump, true);
         const winSound = isRight ? this.finishSound1 : this.finishSound2;
-        EventDispatcher.dispatch(EventName.PlaySFX, winSound);
+        EventDispatcher.dispatch(EventName.PlaySFX, winSound, 0.5);
         const jumpHeight = 2;
         const tweenObj = { progress: 0 };
         this.ammoLabel.node.active = false;

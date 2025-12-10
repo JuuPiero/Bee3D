@@ -322,7 +322,7 @@
     "_clip": null,
     "_loop": false,
     "_playOnAwake": false,
-    "_volume": 1,
+    "_volume": 0.5,
     "_id": "60Trkh0fFCx7TY6O2vLYiR"
   },
   {
@@ -5112,7 +5112,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 0,
+      "x": -0.497,
       "y": 0,
       "z": 0
     },
