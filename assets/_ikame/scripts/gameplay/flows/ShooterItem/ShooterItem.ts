@@ -23,6 +23,7 @@ import { ICacheSlotController } from '../../cacheSlots/ICacheSlotController';
 import { ShooterAnimationName } from './states/ShooterAnimationName';
 import { EventDispatcher } from '../../../designPatterns/observer/EventDispatcher';
 import { EventName } from '../../../designPatterns/observer/EventName';
+import { Queue } from '../../../commons/Queue';
 const { ccclass, property } = _decorator;
 
 const JUMP_DURATION = 0.5;
@@ -31,9 +32,13 @@ const RETREIVE_JUMP_DURATION = 0.36;
 const RIGHT_ROT = new Vec3(0, -90, 0);
 const LEFT_ROT = new Vec3(0, 90, 0);
 
+const JUMP_OFFSET_DURATION = 0.16;
+
 @ccclass('ShooterItem')
 export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {
     
+    static JumpToConveyorQueue: Queue<ShooterItem> = new Queue<ShooterItem>();
+
     @property(CCInteger) public colorID: number = -1;
 
     private _levelController: ILevelController = null;
@@ -90,8 +95,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     @property(AudioClip)
     public retrieveSound: AudioClip = null;
 
-    public reduceAmmoCount(): number {
-        this._ammoCount = Math.max(0, this._ammoCount - 1);
+    public reduceAmmoCount(amount: number): number {
+        this._ammoCount = Math.max(0, this._ammoCount - amount);
         this.ammoLabel.string = this._ammoCount.toString();
         return this._ammoCount;
     }
@@ -131,11 +136,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         }
     }
 
-    public tryShootTargets(): boolean
+    public tryShootTargets(): number
     {
         if (this._ammoCount <= 0)
         {
-            return false;
+            return 0;
         }
         this._targetCount = 0;
         const edge = this._levelController.getShooterEdge(this.node.worldPosition.x, this.node.worldPosition.z);
@@ -154,7 +159,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 this.shotTargetsRight();
                 break;
         }
-        return this._targetCount > 0;
+        return this._targetCount;
     }
 
     private shotTargetsBottom(): number 
@@ -448,6 +453,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         try
         {
+            const inQueueCount = ShooterItem.JumpToConveyorQueue.size();
+            ShooterItem.JumpToConveyorQueue.enqueue(this);
             this.clearPassedBlocks();
             EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
             this._floaterNode = this._levelController.getFloaterToStream();
@@ -465,7 +472,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             this.node.getWorldPosition(this._startJumpPosition);
             const tweenObj = { progress: 0 }
             const tweenJump = tween(tweenObj)
-                .to(JUMP_DURATION, { progress: 1 }, {
+                .to(JUMP_DURATION + (inQueueCount * JUMP_OFFSET_DURATION), { progress: 1 }, {
                     onUpdate: (target: any, ratio: number) =>
                     {
                         Vec3.lerp(this._lerpPos, this._startJumpPosition, this._jumpToPosition, target.progress)
@@ -473,7 +480,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                     }
                 })
                 .start();
-            return PromiseDelay.Wait(tweenJump.duration);
+            await PromiseDelay.Wait(tweenJump.duration);
+            ShooterItem.JumpToConveyorQueue.dequeue();
         }
         catch (error)
         {

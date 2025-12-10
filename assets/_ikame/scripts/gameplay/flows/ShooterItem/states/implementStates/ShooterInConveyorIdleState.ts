@@ -13,10 +13,11 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
 
     public onUpdate(dt: number): void
     {
-        if (this._shooter.tryShootTargets())
+        const targetCount = this._shooter.tryShootTargets();
+        if (targetCount > 0)
         {
             this._shooter.changeAnimation(ShooterAnimationName.Attack, true);
-            this._shooter.reduceAmmoCount();
+            this._shooter.reduceAmmoCount(targetCount);
             this._shooter.shootSoundEffect();
             if (this._shooter.getAmmoCount() <= 0)
             {

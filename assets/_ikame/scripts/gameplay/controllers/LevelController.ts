@@ -180,6 +180,8 @@ export class LevelController extends Component implements ILevelController
         this.cacheSlotController.init(this.levelData.slotCount);
         this._totalPixelsCount = this.levelData.pixels.length;
         this.floaterPool.init(5);
+
+        ShooterItem.JumpToConveyorQueue.clear();
     }
 
     protected lateUpdate(dt: number): void
