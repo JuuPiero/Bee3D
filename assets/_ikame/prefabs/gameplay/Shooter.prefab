@@ -684,6 +684,7 @@
       "__expectedType__": "cc.AudioClip"
     },
     "waterParticles": [],
+    "fastSpeed": 8,
     "ammoLabel": {
       "__id__": 20
     },

@@ -20,6 +20,7 @@ export interface ILevelController
     checkWinCondition(): void 
     getFloaterToStream(): Node 
     returnFloaterToPool(floater: Node): void
+    getRemainCount(): number 
 }
 
 

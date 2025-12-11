@@ -44,6 +44,17 @@ export class ColorQueueControllers extends Component implements IColorQueueContr
             queue.init( shooterQueues[i].shooters, this._levelController );
         }
     }
+
+    getRemainCount(): number 
+    {
+        let count = 0;
+        for (let i = 0; i < this._activeQueues.length; i++)
+        {
+            const queue = this._activeQueues[i];
+            count += queue.getRemainCount();
+        }
+        return count;
+    }
 }
 
 

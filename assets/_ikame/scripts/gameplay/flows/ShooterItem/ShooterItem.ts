@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, CCInteger, director, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
+import { _decorator, AudioClip, CCFloat, CCInteger, director, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
 import { Utils } from '../../../utils/Utils';
 import { EDirection } from '../../../enums/EDirection';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
@@ -97,6 +97,9 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     @property([ ParticleSystem ])
     waterParticles: ParticleSystem[] = [];
+
+    @property(CCFloat)
+    private fastSpeed : number = 0;
 
     public reduceAmmoCount(amount: number): number {
         this._ammoCount = Math.max(0, this._ammoCount - amount);
@@ -486,6 +489,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             await PromiseDelay.Wait(tweenJump.duration);
             ShooterItem.JumpToConveyorQueue.dequeue();
             this.playWaterParticles();
+
+            const remainCount = this._levelController.getRemainCount();
+            if (remainCount <= 0)
+                this.speed = this.fastSpeed;
         }
         catch (error)
         {

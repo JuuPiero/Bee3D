@@ -320,6 +320,11 @@ export class LevelController extends Component implements ILevelController
     {
         this.floaterPool.returnFloater(floater);
     }
+
+    public getRemainCount(): number 
+    {
+        return this.colorQueueControllers.getRemainCount();
+    }
 }
 
 

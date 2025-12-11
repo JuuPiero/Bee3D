@@ -83,6 +83,11 @@ export class ColorQueue extends Component implements IColorQueue {
         }
         return false;
     }
+
+    public getRemainCount(): number 
+    {
+        return this._shooterQueue.size();
+    }
 }
 
 
