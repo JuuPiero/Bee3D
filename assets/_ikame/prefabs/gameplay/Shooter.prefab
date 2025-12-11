@@ -683,6 +683,7 @@
       "__uuid__": "242327c1-47ed-4716-b35c-a575b0c27664",
       "__expectedType__": "cc.AudioClip"
     },
+    "waterParticles": [],
     "ammoLabel": {
       "__id__": 20
     },

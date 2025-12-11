@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, CCInteger, director, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
+import { _decorator, AudioClip, CCInteger, director, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
 import { Utils } from '../../../utils/Utils';
 import { EDirection } from '../../../enums/EDirection';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
@@ -32,7 +32,7 @@ const RETREIVE_JUMP_DURATION = 0.36;
 const RIGHT_ROT = new Vec3(0, -90, 0);
 const LEFT_ROT = new Vec3(0, 90, 0);
 
-const JUMP_OFFSET_DURATION = 0.16;
+const JUMP_OFFSET_DURATION = 0.16
 
 @ccclass('ShooterItem')
 export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {
@@ -94,6 +94,9 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public finishSound2: AudioClip = null;
     @property(AudioClip)
     public retrieveSound: AudioClip = null;
+
+    @property([ ParticleSystem ])
+    waterParticles: ParticleSystem[] = [];
 
     public reduceAmmoCount(amount: number): number {
         this._ammoCount = Math.max(0, this._ammoCount - amount);
@@ -482,6 +485,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 .start();
             await PromiseDelay.Wait(tweenJump.duration);
             ShooterItem.JumpToConveyorQueue.dequeue();
+            this.playWaterParticles();
         }
         catch (error)
         {
@@ -538,6 +542,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             this._levelController.lose();
             return;
         }
+        this.playWaterParticles();
         EventDispatcher.dispatch(EventName.PlaySFX, this.retrieveSound);
         targetSlot.setShooter(this);
         this._cacheSlotIndex = targetSlot.getIndex();
@@ -576,7 +581,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public async finishAnimation(): Promise<void> 
     {
         this.returnFloaterToPool();
-
+        this.playWaterParticles();
         const isRight = this.node.worldPositionX > 0;
         const startPosition = this.node.worldPosition.clone();
         const targetPosition = new Vec3(isRight ? startPosition.x + 7 : startPosition.x - 7, startPosition.y + 5, startPosition.z);
@@ -608,6 +613,16 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public shootSoundEffect(): void
     {
         EventDispatcher.dispatch(EventName.PlaySFX, this.shootSound);
+    }
+
+    public playWaterParticles(): void
+    {
+        this.waterParticles.forEach(particle =>
+        {
+            particle.stop();
+            particle.clear();
+            particle.play();
+        });
     }
 }
 

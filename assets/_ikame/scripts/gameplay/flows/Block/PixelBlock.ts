@@ -1,4 +1,4 @@
-import { _decorator, Camera, CCBoolean, CCInteger, Node, Component, director, MeshRenderer, Vec3, tween, Scene } from 'cc';
+import { _decorator, Camera, CCBoolean, CCInteger, Node, Component, director, MeshRenderer, Vec3, tween, Scene, easing } from 'cc';
 import { ColorConfig } from '../../../configData/ColorConfig';
 import { EDITOR } from 'cc/env';
 import { IPixelBlock } from './IPixelBlock';
@@ -38,6 +38,8 @@ export class PixelBlock extends Component implements IPixelBlock
     private _level: ILevelController = null;
 
     @property(Node) bulletNode : Node = null;
+    @property(Node) public particleNode: Node = null;
+    @property(Node) public cubeRoot: Node = null;
 
     init(colorID: number, level: ILevelController): void 
     {
@@ -101,6 +103,17 @@ export class PixelBlock extends Component implements IPixelBlock
             .to(0.1, { worldPosition: targetPos})
             .call(() => {
                 this.bulletNode.active = false;
+                // this.node.active = false;
+            })
+            .start();
+        tween(this.cubeRoot)
+            .delay(0.05)
+            .call(() => {
+                this.particleNode.active = true;
+            })
+            .to(0.12, { scale: new Vec3(1, 3.5, 1) }, { easing: easing.backOut })
+            .to(0.1, { scale: new Vec3(1, 0, 1) }, { easing: easing.smooth })
+            .call(() => {
                 this.node.active = false;
             })
             .start();

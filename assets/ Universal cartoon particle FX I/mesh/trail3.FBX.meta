@@ -1,0 +1,79 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "938a6dfe-529c-4d32-9f06-cef207f4aac0",
+  "files": [],
+  "subMetas": {
+    "9f98d": {
+      "importer": "gltf-mesh",
+      "uuid": "938a6dfe-529c-4d32-9f06-cef207f4aac0@9f98d",
+      "displayName": "",
+      "id": "9f98d",
+      "name": "Loft001.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 112
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "2af4d": {
+      "importer": "gltf-scene",
+      "uuid": "938a6dfe-529c-4d32-9f06-cef207f4aac0@2af4d",
+      "displayName": "",
+      "id": "2af4d",
+      "name": "trail3.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true,
+      "matchMeshNames": false
+    },
+    "assetFinder": {
+      "meshes": [
+        "938a6dfe-529c-4d32-9f06-cef207f4aac0@9f98d"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [],
+      "scenes": [
+        "938a6dfe-529c-4d32-9f06-cef207f4aac0@2af4d"
+      ]
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    }
+  }
+}

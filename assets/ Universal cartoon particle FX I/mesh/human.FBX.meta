@@ -1,0 +1,79 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "df5d1f05-3a4f-44fd-abe8-f3d6d9c47949",
+  "files": [],
+  "subMetas": {
+    "2dd28": {
+      "importer": "gltf-mesh",
+      "uuid": "df5d1f05-3a4f-44fd-abe8-f3d6d9c47949@2dd28",
+      "displayName": "",
+      "id": "2dd28",
+      "name": "Cone001.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 1244
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "a970a": {
+      "importer": "gltf-scene",
+      "uuid": "df5d1f05-3a4f-44fd-abe8-f3d6d9c47949@a970a",
+      "displayName": "",
+      "id": "a970a",
+      "name": "human.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true,
+      "matchMeshNames": false
+    },
+    "assetFinder": {
+      "meshes": [
+        "df5d1f05-3a4f-44fd-abe8-f3d6d9c47949@2dd28"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [],
+      "scenes": [
+        "df5d1f05-3a4f-44fd-abe8-f3d6d9c47949@a970a"
+      ]
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "e56d137a-5031-4976-8c6a-bd70c21c7326",
+  "files": [],
+  "subMetas": {
+    "f0481": {
+      "importer": "gltf-mesh",
+      "uuid": "e56d137a-5031-4976-8c6a-bd70c21c7326@f0481",
+      "displayName": "",
+      "id": "f0481",
+      "name": "Tube001.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 58
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "11fa5": {
+      "importer": "gltf-scene",
+      "uuid": "e56d137a-5031-4976-8c6a-bd70c21c7326@11fa5",
+      "displayName": "",
+      "id": "11fa5",
+      "name": "trail5.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true,
+      "matchMeshNames": false
+    },
+    "assetFinder": {
+      "meshes": [
+        "e56d137a-5031-4976-8c6a-bd70c21c7326@f0481"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [],
+      "scenes": [
+        "e56d137a-5031-4976-8c6a-bd70c21c7326@11fa5"
+      ]
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    }
+  }
+}
