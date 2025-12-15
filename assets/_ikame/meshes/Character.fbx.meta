@@ -353,6 +353,26 @@
       "scenes": [
         "09efeddb-627d-4421-a5af-346c912264c2@1e9c3"
       ]
-    }
+    },
+    "meshCompress": {
+      "enable": true,
+      "compress": true,
+      "encode": false,
+      "quantize": false
+    },
+    "meshOptimize": {
+      "enable": true,
+      "vertexCache": true,
+      "vertexFetch": true,
+      "overdraw": true
+    },
+    "meshSimplify": {
+      "enable": true,
+      "targetRatio": 0.8,
+      "errorRate": 0.8
+    },
+    "allowMeshDataAccess": false,
+    "disableMeshSplit": false,
+    "skipValidation": false
   }
 }

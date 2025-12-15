@@ -107,7 +107,7 @@
             "_value": true
           },
           "profiler": {
-            "_value": false
+            "_value": true
           },
           "occlusion-query": {
             "_value": false
@@ -206,6 +206,7 @@
           "physics-cannon",
           "primitive",
           "procedural-animation",
+          "profiler",
           "skeletal-animation",
           "tween",
           "ui",

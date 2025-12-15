@@ -518,7 +518,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 0.146,
+      "x": 0,
       "y": 18.444,
       "z": 9.066
     },
@@ -1025,10 +1025,10 @@
       "__uuid__": "3c2a18a1-2d35-4d09-a391-347a474b32ff",
       "__expectedType__": "ec5e8rUXbdEPamn6LkyATNv"
     },
-    "maxX": 2,
-    "minX": -2,
-    "maxZ": 0.6,
-    "minZ": -4.8,
+    "maxX": 2.43,
+    "minX": -2.43,
+    "maxZ": 1.5,
+    "minZ": -5.35,
     "cameraMain": {
       "__id__": 16
     },
