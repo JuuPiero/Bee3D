@@ -27,6 +27,21 @@ CCProgram cubeColor-vs %{
 
   out mediump vec4 v_cap; // xy: matcap by normal, zw: matcap by adjusted pos
 
+  // Instanced attributes so different per-object params still batch
+  #if USE_INSTANCING
+    #pragma format(RGBA8)
+    in vec4 a_instanced_color;        // _Color
+    #pragma format(RGBA8)
+    in vec4 a_instanced_colorShadow;  // _ColorShadow
+    in vec2 a_instanced_params;       // x: _Glossiness, y: _SpecularIntensity
+    in float a_instanced_enable;      // 0: use uniforms, 1: use instanced
+
+    out vec4 v_i_color;
+    out vec4 v_i_colorShadow;
+    out vec2 v_i_params;
+    out float v_i_enable;
+  #endif
+
   // Compute object scale from world matrix columns
   vec3 getObjectScale(mat4 m) {
     vec3 sx = vec3(m[0].x, m[1].x, m[2].x);
@@ -84,6 +99,13 @@ CCProgram cubeColor-vs %{
     viewPos.y = -viewPos.y;
     v_cap.zw = viewPos.xy * 0.5 + 0.5;
 
+    #if USE_INSTANCING
+      v_i_color = a_instanced_color;         // normalized by RGBA8
+      v_i_colorShadow = a_instanced_colorShadow;
+      v_i_params = a_instanced_params;
+      v_i_enable = a_instanced_enable;
+    #endif
+
     // Output clip position from original position
     return cc_matProj * (cc_matView * matWorld) * position;
   }
@@ -102,6 +124,14 @@ CCProgram cubeColor-fs %{
     float _SpecularIntensity;
   };
 
+  // Instanced property varyings (optional)
+  #if USE_INSTANCING
+    in vec4 v_i_color;
+    in vec4 v_i_colorShadow;
+    in vec2 v_i_params;
+    in float v_i_enable;
+  #endif
+
   vec4 frag () {
     vec2 mcA = clamp(v_cap.xy, 0.0, 1.0);
     vec2 mcB = clamp(v_cap.zw, 0.0, 1.0);
@@ -114,15 +144,28 @@ CCProgram cubeColor-fs %{
     float maskX = texA.r; // use red as an extra mask channel (Unity used .x)
     float sss   = texB.b; // like .z in Unity
 
-    vec3 col = mix(_ColorShadow.rgb, _Color.rgb, maskY);
+    // Resolve base/shadow colors and parameters (instanced if enabled)
+    vec3 baseCol = _Color.rgb;
+    vec3 shadowCol = _ColorShadow.rgb;
+    float gloss = _Glossiness;
+    float specInt = _SpecularIntensity;
+    #if USE_INSTANCING
+      if (v_i_enable > 0.5) {
+        baseCol = v_i_color.rgb;
+        shadowCol = v_i_colorShadow.rgb;
+        gloss = v_i_params.x;
+        specInt = v_i_params.y;
+      }
+    #endif
+    vec3 col = mix(shadowCol, baseCol, maskY);
     
     // Enhanced glossy highlights
-    float glossyMask = pow(maskX, 1.0 / _Glossiness) * _SpecularIntensity;
+    float glossyMask = pow(maskX, 1.0 / max(0.0001, gloss)) * specInt;
     col += (col + 0.2) * glossyMask;
     
     // Add rim lighting for glossy effect
-    float rimLight = pow(maskX, 0.5) * _SpecularIntensity * 0.3;
-    col += _Color.rgb * rimLight;
+    float rimLight = pow(maskX, 0.5) * specInt * 0.3;
+    col += baseCol * rimLight;
     
     col += col * sss * 0.8;
     
