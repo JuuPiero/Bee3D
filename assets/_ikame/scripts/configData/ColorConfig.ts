@@ -14,43 +14,6 @@ export class ColorData
     
     @property({ type: Material })
     public chracterMaterial: Material = null;
-
-    private _mainColorArr: number[] = null;
-    private _shadowColorArr: number[] = null;
-
-    constructor(colorID : number , mainColorHex : string, shadowColorHex : string)
-    {
-        this.colorEnum = colorID;
-    }
-
-    public getColorArray(colorHex: string): number[]
-    {
-        const color = new Color();
-        Color.fromHEX(color, colorHex);
-        return [color.r / 255, color.g / 255, color.b / 255, color.a / 255];
-    }
-
-    public get mainColorArr(): number[]
-    {
-        return this._mainColorArr;
-    }
-
-    public get shadowColorArr(): number[]
-    {
-        return this._shadowColorArr;
-    }
-}
-
-class ColorDataParser
-{
-    materialId: number;
-    mainColorHex: string;
-    shadowColorHex: string;
-}
-
-class ColorConfigParser 
-{
-    colors: ColorDataParser[];
 }
 
 @bh.createAssetMenu('ColorConfig', 'ScriptableAsset/ColorConfig')
@@ -71,7 +34,6 @@ export class ColorConfig extends bh.ScriptableAsset
                 this._colorMap.set(colorData.colorEnum, colorData);
             }
         }
-
         const colorData = this._colorMap.get(id);
         return colorData ? colorData.chracterMaterial : null;
     }

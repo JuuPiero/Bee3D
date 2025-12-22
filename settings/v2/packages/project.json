@@ -13,5 +13,11 @@
     "collisionMatrix": {
       "0": 0
     }
-  }
+  },
+  "layer": [
+    {
+      "name": "BACK",
+      "value": 524288
+    }
+  ]
 }

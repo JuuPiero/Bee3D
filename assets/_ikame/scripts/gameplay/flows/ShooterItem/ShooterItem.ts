@@ -24,6 +24,8 @@ import { ShooterAnimationName } from './states/ShooterAnimationName';
 import { EventDispatcher } from '../../../designPatterns/observer/EventDispatcher';
 import { EventName } from '../../../designPatterns/observer/EventName';
 import { Queue } from '../../../commons/Queue';
+import { PREVIEW } from 'cc/env';
+import { EColor } from '../../../enums/EColor';
 const { ccclass, property } = _decorator;
 
 const JUMP_DURATION = 0.5;
@@ -383,6 +385,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this._ammoCount = shooterData.ammo;
         this.ammoLabel.string = this._ammoCount.toString();
         const mat = this.colorConfig.getShooterColorById(shooterData.material);
+        // if (PREVIEW)
+        {
+            if (!mat) console.warn("Material not found for colorID:", EColor[shooterData.material]);
+        }
         this.characterMesh.setSharedMaterial(mat, 0);
 
         this._stateMachine = new ShooterStateMachine(this);
