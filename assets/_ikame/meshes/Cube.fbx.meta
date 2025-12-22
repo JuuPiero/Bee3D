@@ -108,6 +108,9 @@
       "scenes": [
         "3644183b-837e-4230-a5b8-b4dc79aee4f4@9d327"
       ]
-    }
+    },
+    "skipValidation": true,
+    "disableMeshSplit": true,
+    "allowMeshDataAccess": true
   }
 }
