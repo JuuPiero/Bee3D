@@ -181,6 +181,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 x--;
                 continue;
             }
+
             let protentialTileTarget = this._levelController.getTileAtCoord(x, z);
             if (!protentialTileTarget)
             {  
@@ -193,6 +194,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 x--;
                 continue;
             }
+
             if (!protentialTileTarget.isContainBlock())
             {
                 // Dig Upwards
@@ -211,12 +213,19 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             const targetBlock = protentialTileTarget.getPixelBlock();
             if (!targetBlock || targetBlock.getColorID() !== this.colorID)
             {
+                this.markBlockAsPassed(x, z);
                 x--;
                 continue;
             }
+            
+            // Đánh dấu cả tile gốc và tile chứa block thực sự
             this.markBlockAsPassed(x, z);
-            targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
-            this._targetCount++;
+            this.markBlockAsPassed(protentialTileTarget.getCoordX(), protentialTileTarget.getCoordZ());
+            
+            const canBeTargeted = targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
+            if (canBeTargeted) {
+                this._targetCount++;
+            }
             x--;
         }
     }
@@ -244,6 +253,9 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 x++;
                 continue;
             }
+
+            this.markBlockAsPassed(x, z);
+
             if (!protentialTileTarget.isContainBlock())
             {
                 // Dig Downwards from top
@@ -265,9 +277,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 x++;
                 continue;
             }
-            this.markBlockAsPassed(x, z);
-            targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
-            this._targetCount++;
+            const canBeTargeted = targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
+            if (canBeTargeted) {
+                this._targetCount++;
+            }
             x++;
         }
     }
@@ -295,6 +308,9 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 z--;
                 continue;
             }
+
+            this.markBlockAsPassed(x, z);
+
             if (!protentialTileTarget.isContainBlock())
             {
                 // Dig Rightwards from left edge
@@ -316,9 +332,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 z--;
                 continue;
             }
-            this.markBlockAsPassed(x, z);
-            targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
-            this._targetCount++;
+            const canBeTargeted = targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
+            if (canBeTargeted) {
+                this._targetCount++;
+            }
             z--;
         }
     }
@@ -346,6 +363,9 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 z++;
                 continue;
             }
+
+            this.markBlockAsPassed(x, z);
+
             if (!protentialTileTarget.isContainBlock())
             {
                 // Dig Leftwards from right edge
@@ -367,9 +387,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 z++;
                 continue;
             }
-            this.markBlockAsPassed(x, z);
-            targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
-            this._targetCount++;
+            const canBeTargeted = targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
+            if (canBeTargeted) {
+                this._targetCount++;
+            }
             z++;
         }
     }
@@ -467,7 +488,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         {
             const inQueueCount = ShooterItem.JumpToConveyorQueue.size();
             ShooterItem.JumpToConveyorQueue.enqueue(this);
-            this.clearPassedBlocks();
             EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
             this._floaterNode = this._levelController.getFloaterToStream();
             if (this._cacheSlotIndex >= 0)

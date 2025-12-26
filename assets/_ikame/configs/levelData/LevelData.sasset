@@ -7,8 +7,5 @@
   "slotCount": 4,
   "widthMap": 2,
   "heightMap": 4,
-  "levelJson": {
-    "__uuid__": "89970e29-4a52-4ad8-8174-fe5e51bcbc3c",
-    "__expectedType__": "cc.JsonAsset"
-  }
+  "levelJson": null
 }

@@ -85,15 +85,15 @@ export class PixelBlock extends Component implements IPixelBlock
         return this.node.uuid;
     }
 
-    public markForDestroy(barrolPosition: Vec3): void
+    public markForDestroy(barrolPosition: Vec3): boolean
     {
-        if (this._isMarkedForDestroy) return;
+        if (this._isMarkedForDestroy) {
+            return false;
+        }
         this._isMarkedForDestroy = true;
         this._gridTile.removePixelBlock();
         this._level.checkWinCondition();
 
-        // const scene = director.getScene();
-        // this.bulletNode.setParent(scene);
         this.bulletNode.active = true;
         this.bulletNode.setWorldPosition(barrolPosition);
         this.bulletNode.setWorldScale(BULLET_SCALE, BULLET_SCALE, BULLET_SCALE);
@@ -117,6 +117,8 @@ export class PixelBlock extends Component implements IPixelBlock
                 this.node.active = false;
             })
             .start();
+        
+        return true;
     }
 
     public isMarkedForDestroy(): boolean

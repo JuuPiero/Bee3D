@@ -11,6 +11,7 @@ export interface IShooterItem {
     getAmmoCount(): number;
     finishAnimation(): void;
     shootSoundEffect(): void;
+    clearPassedBlocks(): void;
 }
 
 

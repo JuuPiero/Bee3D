@@ -1,4 +1,4 @@
-import { _decorator, Camera, CCBoolean, CCFloat, Color, Component, EventTouch, Input, input, instantiate, Node, PhysicsSystem, Prefab, Quat, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, Camera, CCBoolean, CCFloat, Color, Component, EventKeyboard, EventTouch, Input, input, instantiate, KeyCode, Node, PhysicsSystem, Prefab, Quat, tween, Vec2, Vec3 } from 'cc';
 import { LevelData } from '../../configData/LevelData';
 import { EDITOR } from 'cc/env';
 import { PixelBlock } from '../flows/Block/PixelBlock';
@@ -118,11 +118,21 @@ export class LevelController extends Component implements ILevelController
         }
 
         input.on(Input.EventType.TOUCH_START, this.onTouchStart, this);
+        input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
+    }
+
+    private onKeyDown(event: EventKeyboard): void 
+    {
+        if (event.keyCode === KeyCode.KEY_Q)
+        {
+            this.levelData.verifyData();
+        }
     }
 
     protected onDestroy(): void
     {
         input.off(Input.EventType.TOUCH_START, this.onTouchStart, this);
+        input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
     }
 
     public spawnLevel(): void 
