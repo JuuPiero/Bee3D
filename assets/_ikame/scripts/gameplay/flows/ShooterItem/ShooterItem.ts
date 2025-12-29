@@ -107,7 +107,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public reduceAmmoCount(amount: number): number
     {
         this._ammoCount = Math.max(0, this._ammoCount - amount);
-        let count = this._ammoDisplayCount < this._ammoCount ? this._ammoDisplayCount : this._ammoCount;
+        const count = this._ammoDisplayCount < this._ammoCount ? this._ammoDisplayCount : this._ammoCount;
         this.ammoLabel.string = count.toString();
         return this._ammoCount;
     }
