@@ -59,6 +59,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public characterRoot : Node = null;
 
     private _ammoCount: number = 0;
+    private _ammoDisplayCount: number = 0;
     private _cacheSlotIndex: number = -1;
 
     @property(SkeletalAnimation) animator: SkeletalAnimation = null;
@@ -103,9 +104,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     @property(CCFloat)
     private fastSpeed : number = 0;
 
-    public reduceAmmoCount(amount: number): number {
+    public reduceAmmoCount(amount: number): number
+    {
         this._ammoCount = Math.max(0, this._ammoCount - amount);
-        this.ammoLabel.string = this._ammoCount.toString();
+        const count = this._ammoDisplayCount < this._ammoCount ? this._ammoDisplayCount : this._ammoCount;
+        this.ammoLabel.string = count.toString();
         return this._ammoCount;
     }
     
@@ -128,10 +131,17 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     protected start(): void
     {
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
+        EventDispatcher.addListener(EventName.ZeroRemainInQueue, this.speedUp, this);
+    }
+
+    private speedUp(): void
+    {
+        this.speed = this.fastSpeed;
     }
 
     protected onDestroy(): void
     {
+        EventDispatcher.addListener(EventName.ZeroRemainInQueue, this.speedUp, this);
         input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
     }
 
@@ -395,7 +405,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         }
     }
 
-
     public init(shooterData: Shooter, colorQueue: IColorQueue, levelController: ILevelController): void
     {
         this.spline = levelController.getSpline();
@@ -404,7 +413,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this._colorQueue = colorQueue;
         this._levelController = levelController;
         this._ammoCount = shooterData.ammo;
-        this.ammoLabel.string = this._ammoCount.toString();
+        this._ammoDisplayCount = this._ammoCount - this._ammoCount % 10;
+        this.ammoLabel.string = this._ammoDisplayCount.toString();
         const mat = this.colorConfig.getShooterColorById(shooterData.material);
         // if (PREVIEW)
         {
@@ -518,7 +528,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
             const remainCount = this._levelController.getRemainCount();
             if (remainCount <= 0)
-                this.speed = this.fastSpeed;
+                EventDispatcher
         }
         catch (error)
         {
