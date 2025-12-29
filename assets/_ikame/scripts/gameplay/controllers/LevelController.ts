@@ -140,7 +140,7 @@ export class LevelController extends Component implements ILevelController
         this._isFinished = false;
 
         //#region Spawn Pixel Blocks
-        this.levelData.parseData();
+        this.levelData.doStart();
         
         this.pixelBlockHolder.setPosition(this.CenterMap);
         const scaleHorizontal = this.WidthMap / this.levelData.widthMap;
@@ -260,6 +260,14 @@ export class LevelController extends Component implements ILevelController
         const shooter = hitResult.collider.node.getComponent(ShooterItem);
         if (!shooter) return;
         const canAdd = shooter.onTouchShooter();
+
+        if (canAdd)
+        {
+            if (this.colorQueueControllers.getRemainCount() <= 0)
+            {
+                EventDispatcher.dispatch(EventName.ZeroRemainInQueue);
+            }
+        }
     }
 
     public getCacheSlotController(): ICacheSlotController
