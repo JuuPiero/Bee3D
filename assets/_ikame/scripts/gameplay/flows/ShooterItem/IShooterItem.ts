@@ -1,3 +1,5 @@
+import { Vec3 } from "cc";
+
 export interface IShooterItem {
     changeAnimation(animationName: string, force: boolean): void;
     isAtTop(): boolean;
@@ -12,6 +14,9 @@ export interface IShooterItem {
     finishAnimation(): void;
     shootSoundEffect(): void;
     clearPassedBlocks(): void;
+
+    shuffleToCache(pos: Vec3): void
+    setCacheSlotIndex(index: number): void
 }
 
 

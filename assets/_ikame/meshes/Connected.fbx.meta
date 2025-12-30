@@ -1,0 +1,97 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "f8518c35-8595-419c-a84b-058d086341c2",
+  "files": [],
+  "subMetas": {
+    "07bc6": {
+      "importer": "gltf-mesh",
+      "uuid": "f8518c35-8595-419c-a84b-058d086341c2@07bc6",
+      "displayName": "",
+      "id": "07bc6",
+      "name": "Connect.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 194
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "4c534": {
+      "importer": "gltf-mesh",
+      "uuid": "f8518c35-8595-419c-a84b-058d086341c2@4c534",
+      "displayName": "",
+      "id": "4c534",
+      "name": "Connect_Wire.mesh",
+      "userData": {
+        "gltfIndex": 1,
+        "triangleCount": 16
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "70b1b": {
+      "importer": "gltf-scene",
+      "uuid": "f8518c35-8595-419c-a84b-058d086341c2@70b1b",
+      "displayName": "",
+      "id": "70b1b",
+      "name": "Connected.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "f8518c35-8595-419c-a84b-058d086341c2@07bc6",
+        "f8518c35-8595-419c-a84b-058d086341c2@4c534"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [],
+      "scenes": [
+        "f8518c35-8595-419c-a84b-058d086341c2@70b1b"
+      ]
+    }
+  }
+}

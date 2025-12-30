@@ -1,9 +1,11 @@
-import { CacheSlot } from "./CacheSlot";
+import { Vec3 } from "cc";
+import { IShooterItem } from "../flows/ShooterItem/IShooterItem";
 
 export interface ICacheSlotController 
 {
-    getSlotAtIndex(index: number): CacheSlot | null;
-    getNextEmptySlot(): CacheSlot | null
+    getNextEmptyPosition(): Vec3 | null
+    addToCache(shooter: IShooterItem): boolean;
+    removeFromCache(shooter: IShooterItem): boolean;
 }
 
 

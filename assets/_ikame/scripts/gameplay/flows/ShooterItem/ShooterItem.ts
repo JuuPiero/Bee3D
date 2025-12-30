@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, CCFloat, CCInteger, director, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
+import { _decorator, AudioClip, CCFloat, CCInteger, director, easing, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
 import { Utils } from '../../../utils/Utils';
 import { EDirection } from '../../../enums/EDirection';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
@@ -24,7 +24,6 @@ import { ShooterAnimationName } from './states/ShooterAnimationName';
 import { EventDispatcher } from '../../../designPatterns/observer/EventDispatcher';
 import { EventName } from '../../../designPatterns/observer/EventName';
 import { Queue } from '../../../commons/Queue';
-import { PREVIEW } from 'cc/env';
 import { EColor } from '../../../enums/EColor';
 const { ccclass, property } = _decorator;
 
@@ -501,11 +500,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             ShooterItem.JumpToConveyorQueue.enqueue(this);
             EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
             this._floaterNode = this._levelController.getFloaterToStream();
-            if (this._cacheSlotIndex >= 0)
-            {
-                const curSlot = this._cacheSlotController.getSlotAtIndex(this._cacheSlotIndex);
-                curSlot.removeShooter();
-            }
+            this._cacheSlotController.removeFromCache(this);
             this.progress = 0;
             this._cacheSlotIndex = -1;
             const scene = director.getScene();
@@ -581,18 +576,16 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public async retrieveToCacheSlot(): Promise<void>
     {
-        const targetSlot = this._cacheSlotController.getNextEmptySlot();
-        if (!targetSlot) {
+        const targetPosition = this._cacheSlotController.getNextEmptyPosition();
+        if (!targetPosition) {
             this._levelController.lose();
             return;
         }
         this.playWaterParticles();
         EventDispatcher.dispatch(EventName.PlaySFX, this.retrieveSound);
-        targetSlot.setShooter(this);
-        this._cacheSlotIndex = targetSlot.getIndex();
         this.resetRotation();
+        this._cacheSlotController.addToCache(this);
         // Jump to target slot using tween with sine-based height
-        const targetPosition = targetSlot.node.worldPosition.clone();
         const startPosition = this.node.worldPosition.clone();
         const jumpHeight = 2; // Adjust this value for desired arc height
         const tweenObj = { progress: 0 };
@@ -667,6 +660,36 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             particle.clear();
             particle.play();
         });
+    }
+
+    private _tweenMoveToDest: any;
+
+    public shuffleToCache(pos: Vec3): void
+    {
+        const distanceToTarget = Vec3.distance(this.node.worldPosition, pos);
+        if (distanceToTarget < 0.05)
+            return;
+        this._tweenMoveToDest?.stop();
+        const jumpHeight = 1.5;
+        const jumpDuration = 0.365;
+        const startPos = this.node.worldPosition.clone();
+        const tweenJump = {x : 0};
+        this._tweenMoveToDest = tween(tweenJump)
+            .to(jumpDuration, { x: 1 }, { easing: easing.sineInOut,
+                onUpdate: (target: any, ratio: number) =>
+                {
+                    Vec3.lerp(this._lerpPos, startPos, pos, target.x);
+                    const heightOffset = Math.sin(target.x * Math.PI) * jumpHeight;
+                    this._lerpPos.y += heightOffset;
+                    this.node.setWorldPosition(this._lerpPos);
+                }
+            })            
+            .start();
+    }
+
+    public setCacheSlotIndex(index: number): void
+    {
+        this._cacheSlotIndex = index;
     }
 }
 

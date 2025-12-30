@@ -1,4 +1,4 @@
-import { _decorator, Component, Node } from 'cc';
+import { _decorator, Component, Node, Vec3 } from 'cc';
 import { ICacheSlotController } from './ICacheSlotController';
 import { CacheSlot } from './CacheSlot';
 import { IShooterItem } from '../flows/ShooterItem/IShooterItem';
@@ -12,7 +12,8 @@ export class CacheSlotController extends Component implements ICacheSlotControll
     private _cacheSlots: CacheSlot[] = [];
     private _activeSlots: CacheSlot[] = [];
 
-    private _inSlotShooters : IShooterItem[] = [];
+    private _inSlotShooters: IShooterItem[] = [];
+    private _maxSlotCount: number = 0;
 
 
     protected onLoad(): void
@@ -22,6 +23,7 @@ export class CacheSlotController extends Component implements ICacheSlotControll
 
     init(slotCount : number): void
     {
+        this._maxSlotCount = slotCount;
         this._activeSlots = [];
         for (let i = 0; i < this._cacheSlots.length; i++) 
         {
@@ -64,37 +66,55 @@ export class CacheSlotController extends Component implements ICacheSlotControll
         return null;
     }
 
-    /**
-     * Compacts the active slots by shifting items towards index 0.
-     * This removes gaps by moving right-side items left into empty slots.
-     */
-    compactLeft(): void
-    {
-        this._inSlotShooters = [];
-        for (let i = 0; i < this._activeSlots.length - 1; i++)
-        {
-            const currentSlot = this._activeSlots[ i ];
-            if (!currentSlot.getShooter())
-                continue;
-            currentSlot.removeShooter();
-            this._inSlotShooters.push( currentSlot.getShooter() as IShooterItem );
-        }
-        for (let i = 0; i < this._inSlotShooters.length; i++)
-        {
-            const shooter = this._inSlotShooters[ i ];
-            const slot = this._activeSlots[ i ];
-            slot.setShooter(shooter);
-            shooter.setCacheSlot(i, true);
-        }
-    }
-
     getSlotAtIndex(index: number): CacheSlot | null
     {
         if (index < 0 || index >= this._activeSlots.length)
             return null;
         return this._activeSlots[index];
     }
+
+    public addToCache(shooter: IShooterItem): boolean
+    {
+        if (this._inSlotShooters.length >= this._maxSlotCount)
+            return false;
+
+        this._inSlotShooters.push(shooter);
+        this.compactCache();
+        return true;
+    }
+
+    public removeFromCache(shooter: IShooterItem): boolean
+    {
+        const index = this._inSlotShooters.indexOf(shooter);
+        shooter.setCacheSlotIndex(-1);
+        if (index !== -1)
+        {
+            this._inSlotShooters.splice(index, 1);
+            this.compactCache();
+            return true;
+        }
+        return false;
+    }
     
+
+    public compactCache(): void 
+    {
+        let index = 0;
+        for (const shooter of this._inSlotShooters)
+        {
+            shooter.setCacheSlotIndex(index);
+            shooter.shuffleToCache(this._activeSlots[index].node.worldPosition);
+            index++;
+        }
+    }
+
+    public getNextEmptyPosition(): Vec3 | null
+    {
+        const filledCount = this._inSlotShooters.length;
+        if (filledCount >= this._activeSlots.length)
+            return null;
+        return this._activeSlots[filledCount].node.worldPosition;
+    }
 }
 
 
