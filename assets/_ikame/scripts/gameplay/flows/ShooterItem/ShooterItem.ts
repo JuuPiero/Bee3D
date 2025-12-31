@@ -721,14 +721,25 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     private _tweenShuffle: Tween<any>;
 
+    private _shuffleUpdateActive: boolean = false;
+    private _shuffleUpdateProgress: number = 0;
+    private _shuffleUpdateDuration: number = 0.3;
+    private _shuffleUpdateHeight: number = 1.5;
+    private _shuffleUpdateStartPos: Vec3 = new Vec3();
+    private _shuffleUpdateTargetPos: Vec3 = new Vec3();
+    private _shuffleUpdateIndex: number = -1;
+
     public shuffleToCache(pos: Vec3, index: number): void
     {
         const v2 = new Vec2(this.node.worldPosition.x, this.node.worldPosition.z);
         const v2Target = new Vec2(pos.x, pos.z);
         const distanceToTarget = Vec2.distance(v2, v2Target);
+
+        if (this._tweenRetrieve && this._tweenRetrieve.running)
+            return;
         if (distanceToTarget < 0.1)
             return;
-        if (this._tweenRetrieve && this._tweenRetrieve.running)
+        if (this._tweenRetrieve && this._tweenRetrieve.running && this._cacheSlotIndex === index)
         {
             return;
         }
@@ -752,6 +763,63 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 }
             })            
             .start();
+    }
+
+    /**
+     * Shuffle-to-cache movement driven by `dt` (call this inside `update(deltaTime)`).
+     * - First call (or when target/index changes) will (re)start the motion.
+     * - Subsequent calls will advance the motion until it reaches the target.
+     */
+    
+    public shuffleToCacheUpdate(dt: number, pos: Vec3, index: number): void
+    {
+        if (this._tweenRetrieve && this._tweenRetrieve.running)
+            return;
+
+        const distanceToTarget = Vec3.distance(this.node.worldPosition, pos);
+        if (distanceToTarget < 0.01)
+        {
+            this._shuffleUpdateActive = false;
+            return;
+        }
+
+        const targetChanged = Vec3.squaredDistance(this._shuffleUpdateTargetPos, pos) > 0.0001;
+        const indexChanged = this._shuffleUpdateIndex !== index;
+
+        if (!this._shuffleUpdateActive || targetChanged || indexChanged)
+        {
+            if (this._tweenShuffle)
+            {
+                this._tweenShuffle.stop();
+            }
+            this._tweenShuffle?.stop();
+
+            this._shuffleUpdateActive = true;
+            this._shuffleUpdateProgress = 0;
+            this._shuffleUpdateIndex = index;
+            this.node.getWorldPosition(this._shuffleUpdateStartPos);
+            this._shuffleUpdateTargetPos.set(pos);
+        }
+
+        if (!this._shuffleUpdateActive)
+            return;
+
+        const duration = Math.max(0.0001, this._shuffleUpdateDuration);
+        this._shuffleUpdateProgress = Math.min(1, this._shuffleUpdateProgress + (dt / duration));
+
+        const rawT = this._shuffleUpdateProgress;
+        const easedT = easing.sineInOut(rawT);
+
+        Vec3.lerp(this._lerpPos, this._shuffleUpdateStartPos, this._shuffleUpdateTargetPos, easedT);
+        const heightOffset = Math.sin(rawT * Math.PI) * this._shuffleUpdateHeight;
+        this._lerpPos.y += heightOffset;
+        this.node.setWorldPosition(this._lerpPos);
+
+        if (this._shuffleUpdateProgress >= 1)
+        {
+            this.node.setWorldPosition(this._shuffleUpdateTargetPos);
+            this._shuffleUpdateActive = false;
+        }
     }
 
     public setCacheSlotIndex(index: number): void

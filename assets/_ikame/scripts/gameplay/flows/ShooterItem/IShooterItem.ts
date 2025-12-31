@@ -33,6 +33,8 @@ export interface IShooterItem {
     getRightLinkedShooter(): IShooterItem | null
 
     finishSelf(): void 
+
+    shuffleToCacheUpdate(dt: number, pos: Vec3, index: number): void
 }
 
 
