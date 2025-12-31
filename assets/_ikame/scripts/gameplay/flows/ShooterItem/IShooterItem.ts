@@ -1,4 +1,5 @@
 import { Vec3 , Node} from "cc";
+import { EShooterState } from "./states/EShooterState";
 
 export interface IShooterItem {
     changeAnimation(animationName: string, force: boolean): void;
@@ -15,11 +16,23 @@ export interface IShooterItem {
     shootSoundEffect(): void;
     clearPassedBlocks(): void;
 
-    shuffleToCache(pos: Vec3): void
+    shuffleToCache(pos: Vec3, index: number): void
     setCacheSlotIndex(index: number): void
 
-    setLinkedShooter(shooters: IShooterItem)
     getLinkedWirePoint(): Node
+
+    changeState(stateName: EShooterState): void
+    tryCompleteShooter(): void
+
+    isReadyToJump(): boolean
+
+    setLinkedShooters(shooterLeft: IShooterItem, shooterRight: IShooterItem, firstChainShooter: IShooterItem): void
+    
+    canJumpToConveyorSelf(): boolean
+
+    getRightLinkedShooter(): IShooterItem | null
+
+    finishSelf(): void 
 }
 
 

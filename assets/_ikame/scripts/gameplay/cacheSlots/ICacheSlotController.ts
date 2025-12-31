@@ -6,6 +6,7 @@ export interface ICacheSlotController
     getNextEmptyPosition(): Vec3 | null
     addToCache(shooter: IShooterItem): boolean;
     removeFromCache(shooter: IShooterItem): boolean;
+    compactCache(): void 
 }
 
 

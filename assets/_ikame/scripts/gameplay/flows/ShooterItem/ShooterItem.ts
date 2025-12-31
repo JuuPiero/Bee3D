@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, CCFloat, CCInteger, director, easing, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, tween, Vec3 } from 'cc';
+import { _decorator, AudioClip, CCFloat, CCInteger, director, easing, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, Tween, tween, Vec3 } from 'cc';
 import { Utils } from '../../../utils/Utils';
 import { EDirection } from '../../../enums/EDirection';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
@@ -29,13 +29,13 @@ import { LinkedConnection } from './LinkedConnection/LinkedCollection';
 import { PREVIEW } from 'cc/env';
 const { ccclass, property } = _decorator;
 
-const JUMP_DURATION = 0.5;
-const RETREIVE_JUMP_DURATION = 0.36;
+const JUMP_DURATION = 0.45;
+const RETREIVE_JUMP_DURATION = 0.32;
 
 const RIGHT_ROT = new Vec3(0, -90, 0);
 const LEFT_ROT = new Vec3(0, 90, 0);
 
-const JUMP_OFFSET_DURATION = 0.16
+const JUMP_OFFSET_DURATION = 0.26
 
 @ccclass('ShooterItem')
 export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {
@@ -109,14 +109,35 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     @property(CCFloat)
     private fastSpeed: number = 0;
-    
-    private _linkedShooter: IShooterItem[] = []
 
-    public setLinkedShooter(shooters: IShooterItem): void
+    private _firstChainShooter: IShooterItem = null;
+    private _rightLinkedShooter: IShooterItem | null = null;
+
+    @property(Node)
+    private connectionRoot: Node = null;
+
+    public setLinkedShooters(shooterLeft: IShooterItem, shooterRight: IShooterItem, firstChainShooter: IShooterItem): void
     {
-        this._linkedShooter.push(shooters);
-        this.connections[ this._linkedShooter.length - 1 ].setTargetNode(shooters.getLinkedWirePoint());
-        this.connections[ this._linkedShooter.length - 1 ].node.active = true;
+        console.log("Setting linked shooters for shooter ID:", this.id, "Left:", shooterLeft ? shooterLeft : "null", "Right:", shooterRight ? shooterRight : "null");
+        if (shooterLeft)
+        {
+            this.connections[ 0 ].setTargetNode(shooterLeft.getLinkedWirePoint());
+            this.connections[ 0 ].node.active = true;
+        }
+        if (shooterRight)
+        {
+            this.connections[ this.connections.length - 1 ].setTargetNode(shooterRight.getLinkedWirePoint());
+            this.connections[ this.connections.length - 1 ].node.active = true;
+        }
+
+        this._firstChainShooter = firstChainShooter;
+        this._rightLinkedShooter = shooterRight;
+
+        console.log("First chain shooter set to:", this._firstChainShooter);
+        if (this._firstChainShooter)
+        {
+            this.connectionRoot.active = true;
+        }
     }
 
     public reduceAmmoCount(amount: number): number
@@ -475,20 +496,26 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this._stateMachine.lateUpdate(dt);
     }
 
-    public onTouchShooter(): boolean
+    public onTouchShooter(remainCount: number): boolean
     {
-        if (this._cacheSlotIndex >= 0 && this._stateMachine.currentState.name === EShooterState.Ready)
+        if (this.canJumpToConveyor(remainCount))
         {
-            this._stateMachine.changeState(EShooterState.Jump);
+            if (this._firstChainShooter)
+            {
+                let shooter: IShooterItem = this._firstChainShooter;
+                while (shooter)
+                {
+                    shooter.changeState(EShooterState.Jump);
+                    shooter = shooter.getRightLinkedShooter();
+                }
+            }
+            else 
+            {
+                this.changeState(EShooterState.Jump);
+            }
             return true;
         }
-
-        if (!this.isAtTop() || this._stateMachine.currentState.name !== EShooterState.Ready) 
-        {
-            return false;
-        }
-        this._stateMachine.changeState(EShooterState.Jump);
-        return true;
+        return false;
     }
 
     changeAnimation(animationName: string, force: boolean): void
@@ -497,6 +524,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         {
             return;
         }
+        const newJumpDuration = JUMP_DURATION + ShooterItem.JumpToConveyorQueue.size() * JUMP_OFFSET_DURATION;
+        const scale = newJumpDuration / JUMP_DURATION;
+
+        this.animator.getState(animationName).speed = animationName === ShooterAnimationName.Jump ? 1 / scale : 1;
         this.animator.play(animationName);
         this._curAnimationName = animationName;
     }
@@ -515,11 +546,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         try
         {
+            this._cacheSlotController.removeFromCache(this);
             const inQueueCount = ShooterItem.JumpToConveyorQueue.size();
             ShooterItem.JumpToConveyorQueue.enqueue(this);
             EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
             this._floaterNode = this._levelController.getFloaterToStream();
-            this._cacheSlotController.removeFromCache(this);
             this.progress = 0;
             this._cacheSlotIndex = -1;
             const scene = director.getScene();
@@ -566,7 +597,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public onCompleteLoop(): void
     {
-        this._stateMachine.changeState(EShooterState.Retrieve);
+        this.changeState(EShooterState.Retrieve);
         this.returnFloaterToPool();
     }
 
@@ -593,12 +624,18 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         // TODO: Implement jump to cache slot logic
     }
 
+    private _tweenRetrieve: Tween<any>;
+
     public async retrieveToCacheSlot(): Promise<void>
     {
         const targetPosition = this._cacheSlotController.getNextEmptyPosition();
         if (!targetPosition) {
             this._levelController.lose();
             return;
+        }
+        if (this._tweenShuffle)
+        {
+            this._tweenShuffle.stop();
         }
         this.playWaterParticles();
         EventDispatcher.dispatch(EventName.PlaySFX, this.retrieveSound);
@@ -620,8 +657,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 }
             })
             .start();
-        
+        this._tweenRetrieve = tweenJump;
         await PromiseDelay.Wait(tweenJump.duration);
+
+        this._cacheSlotController.compactCache();
     }
 
     private resetRotation(): void 
@@ -681,19 +720,27 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         });
     }
 
-    private _tweenMoveToDest: any;
+    private _tweenShuffle: Tween<any>;
 
-    public shuffleToCache(pos: Vec3): void
+    public shuffleToCache(pos: Vec3, index: number): void
     {
         const distanceToTarget = Vec3.distance(this.node.worldPosition, pos);
-        if (distanceToTarget < 0.05)
+        if (distanceToTarget < 0.05 || index === this._cacheSlotIndex)
             return;
-        this._tweenMoveToDest?.stop();
+        if (this._tweenRetrieve && this._tweenRetrieve.running)
+        {
+            return;
+        }
+        if (this._tweenShuffle)
+        {
+            this._tweenShuffle.stop();
+        }
+        this._tweenShuffle?.stop();
         const jumpHeight = 1.5;
         const jumpDuration = 0.365;
         const startPos = this.node.worldPosition.clone();
         const tweenJump = {x : 0};
-        this._tweenMoveToDest = tween(tweenJump)
+        this._tweenShuffle = tween(tweenJump)
             .to(jumpDuration, { x: 1 }, { easing: easing.sineInOut,
                 onUpdate: (target: any, ratio: number) =>
                 {
@@ -714,6 +761,105 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public getLinkedWirePoint(): Node
     {
         return this.connections[ 0 ].node;
+    }
+
+    public changeState(stateName: EShooterState): void
+    {
+        this._stateMachine.changeState(stateName);
+    }
+
+    public tryCompleteShooter(): void
+    {
+        if (!this._firstChainShooter)
+        {
+            this.finishSelf();
+            return;
+        }
+
+        let curShooter: IShooterItem = this._firstChainShooter;
+        while (curShooter)
+        {
+            if (curShooter.getAmmoCount() > 0)
+            {
+                return;
+            }
+            curShooter = curShooter.getRightLinkedShooter();
+        }
+        curShooter = this._firstChainShooter;
+        while (curShooter)
+        {
+            curShooter.finishSelf();
+            curShooter = curShooter.getRightLinkedShooter();
+        }
+    }
+
+    public canJumpToConveyor(count: number): boolean
+    {
+        if (!this._firstChainShooter)
+        {
+            return this.canJumpToConveyorSelf();
+        }
+
+        let shooter: IShooterItem = this._firstChainShooter;
+        let c = 0;
+        while (shooter)
+        {
+            c++;
+            if (!shooter.canJumpToConveyorSelf())
+            {
+                return false;
+            }
+            shooter = shooter.getRightLinkedShooter();
+        }
+        if (c > count)
+            return false;
+        return true;
+
+    }
+
+    public getRightLinkedShooter(): IShooterItem | null
+    {
+        return this._rightLinkedShooter;
+    }
+
+
+    canJumpToConveyorSelf(): boolean
+    {
+        if (this._cacheSlotIndex >= 0)
+        {
+            if (this.isReadyToJump())
+                return true;
+            return false;
+        }
+        if (this.isAtTop() && this.isReadyToJump())
+            return true;
+        return false;
+    }
+
+
+    public isReadyToJump(): boolean
+    {
+        return this._stateMachine.currentState.name === EShooterState.Ready;
+    }
+
+    public shakeCharacter(duration: number, strength: number): void
+    {
+        const originalPosition = Vec3.ZERO
+        this.characterRoot.setPosition(Vec3.ZERO);
+        const tweenShake = tween(this.characterRoot)
+            .to(duration, { position: new Vec3(
+                originalPosition.x + (Math.random() * 2 - 1) * strength,
+                originalPosition.y + (Math.random() * 2 - 1) * strength,
+                originalPosition.z + (Math.random() * 2 - 1) * strength
+            ) }, { easing: easing.sineInOut })
+            .to(duration, { position: originalPosition }, { easing: easing.sineInOut })
+            .start();
+    }
+
+    public finishSelf(): void
+    {
+        this.changeState(EShooterState.Finish);
+        this.connectionRoot.active = false;
     }
 }
 

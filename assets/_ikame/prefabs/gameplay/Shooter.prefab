@@ -260,7 +260,7 @@
         "__id__": 21
       }
     ],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 32
@@ -1491,6 +1491,9 @@
     },
     "waterParticles": [],
     "fastSpeed": 8,
+    "connectionRoot": {
+      "__id__": 9
+    },
     "ammoLabel": {
       "__id__": 54
     },
@@ -2881,6 +2884,9 @@
       },
       {
         "__id__": 129
+      },
+      {
+        "__id__": 131
       }
     ],
     "nestedPrefabInstanceRoots": [
@@ -3067,6 +3073,28 @@
     "__type__": "cc.TargetInfo",
     "localID": [
       "3f0PgWskNMOqn5bqJ3bhlS"
+    ]
+  },
+  {
+    "__type__": "cc.TargetOverrideInfo",
+    "source": {
+      "__id__": 65
+    },
+    "sourceInfo": null,
+    "propertyPath": [
+      "connectionRoot"
+    ],
+    "target": {
+      "__id__": 3
+    },
+    "targetInfo": {
+      "__id__": 132
+    }
+  },
+  {
+    "__type__": "cc.TargetInfo",
+    "localID": [
+      "adT1OqcYVMsY5LWyq7DSDj"
     ]
   }
 ]

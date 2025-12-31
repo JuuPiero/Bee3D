@@ -1045,6 +1045,10 @@
     "floaterPool": {
       "__id__": 89
     },
+    "hitSound": {
+      "__uuid__": "d3a439fd-d343-4317-a0a0-f23a79675bd8",
+      "__expectedType__": "cc.AudioClip"
+    },
     "_id": "8apq26BJBAgYIk85YgRfPo"
   },
   {

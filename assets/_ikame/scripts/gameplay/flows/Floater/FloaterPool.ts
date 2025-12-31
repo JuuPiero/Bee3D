@@ -80,4 +80,9 @@ export class FloaterPool extends Component {
     {
         return !this._queue.isEmpty();
     }
+
+    public getAvailableCount(): number
+    {
+        return this._queue.size();
+    }
 }

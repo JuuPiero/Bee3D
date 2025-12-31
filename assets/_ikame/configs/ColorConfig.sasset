@@ -192,11 +192,11 @@
     "__type__": "ColorData",
     "colorEnum": 5,
     "pixelBlockMaterial": {
-      "__uuid__": "c9b05227-efc7-42de-b18c-28e8c070603c",
+      "__uuid__": "fca18a08-95e8-47a7-a7d8-f32afb09eb0f",
       "__expectedType__": "cc.Material"
     },
     "chracterMaterial": {
-      "__uuid__": "fca18a08-95e8-47a7-a7d8-f32afb09eb0f",
+      "__uuid__": "ed201a4b-9c29-4586-819d-1e4d97f6a3e5",
       "__expectedType__": "cc.Material"
     }
   },
@@ -304,7 +304,7 @@
       "__expectedType__": "cc.Material"
     },
     "chracterMaterial": {
-      "__uuid__": "a9dc90b9-fc85-4eaf-9b86-4994073bfe32",
+      "__uuid__": "1d69445c-8aa0-4c83-be33-04a54bf888e5",
       "__expectedType__": "cc.Material"
     }
   },
