@@ -15,7 +15,7 @@ export class LinkedConnection extends Component {
     private _dir = new Vec3();
     private _distance : number = 0;
 
-    protected update(dt: number): void
+    protected lateUpdate(dt: number): void
     {
         if (!this.targetNode)
             return;

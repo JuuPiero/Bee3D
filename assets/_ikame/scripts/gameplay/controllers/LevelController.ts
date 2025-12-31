@@ -1,4 +1,4 @@
-import { _decorator, Camera, CCBoolean, CCFloat, Color, Component, EventKeyboard, EventTouch, Input, input, instantiate, KeyCode, Node, PhysicsSystem, Prefab, Quat, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, Color, Component, EventKeyboard, EventTouch, Input, input, instantiate, KeyCode, Node, PhysicsSystem, Prefab, Quat, tween, Vec2, Vec3 } from 'cc';
 import { LevelData } from '../../configData/LevelData';
 import { EDITOR } from 'cc/env';
 import { PixelBlock } from '../flows/Block/PixelBlock';
@@ -94,6 +94,8 @@ export class LevelController extends Component implements ILevelController
     private _totalPixelsCount: number = 0;
 
     private _shooterMapByID: Map<number, IShooterItem> = new Map<number, ShooterItem>();
+
+    @property(AudioClip) private hitSound: AudioClip = null;
 
     protected _debugDrawSpline(): void
     {
@@ -264,7 +266,7 @@ export class LevelController extends Component implements ILevelController
         const hitResult = PhysicsSystem.instance.raycastClosestResult;
         const shooter = hitResult.collider.node.getComponent(ShooterItem);
         if (!shooter) return;
-        const canAdd = shooter.onTouchShooter();
+        const canAdd = shooter.onTouchShooter(this.floaterPool.getAvailableCount());
 
         if (canAdd)
         {
@@ -273,6 +275,12 @@ export class LevelController extends Component implements ILevelController
                 EventDispatcher.dispatch(EventName.ZeroRemainInQueue);
             }
         }
+        else
+        {
+            shooter.shakeCharacter(0.13, 0.1);
+            EventDispatcher.dispatch(EventName.PlaySFX, this.hitSound, 0.5);
+        }
+
     }
 
     public getCacheSlotController(): ICacheSlotController
@@ -356,6 +364,7 @@ export class LevelController extends Component implements ILevelController
 
     public linkShooters(): void 
     {
+        const firstChainShooter = this._shooterMapByID.get(this.levelData.connectedShooters[0].Shooters[0]);
         for (const linkedData of this.levelData.connectedShooters)
         {
             for (let i = 0; i < linkedData.Shooters.length; i++)
@@ -363,10 +372,7 @@ export class LevelController extends Component implements ILevelController
                 const mainShooter = this._shooterMapByID.get(linkedData.Shooters[i]);
                 const firstShooter = this._shooterMapByID.get(linkedData.Shooters[i - 1]);
                 const secondShooter = this._shooterMapByID.get(linkedData.Shooters[i + 1]);
-                if (firstShooter)
-                    mainShooter.setLinkedShooter( firstShooter );
-                if (secondShooter)
-                    mainShooter.setLinkedShooter( secondShooter );
+                mainShooter.setLinkedShooters(firstShooter, secondShooter, firstChainShooter);
             }
         }
     }

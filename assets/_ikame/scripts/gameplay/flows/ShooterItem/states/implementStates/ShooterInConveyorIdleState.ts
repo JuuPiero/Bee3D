@@ -25,14 +25,14 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
                 this.outOfAmmoRoutine();
             }
         }
-        if (this._shooter.getAmmoCount() > 0)
-            this._shooter.moveAlongConveyor(dt);
+        // if (this._shooter.getAmmoCount() > 0)
+        this._shooter.moveAlongConveyor(dt);
     }
 
     private async outOfAmmoRoutine()
     {
         await PromiseDelay.Wait(0.1);
-        this.stateMachine.changeState(EShooterState.Finish);
+        this._shooter.tryCompleteShooter();
     }
 
 }

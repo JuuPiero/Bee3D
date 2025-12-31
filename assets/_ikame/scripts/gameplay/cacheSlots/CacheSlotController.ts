@@ -85,6 +85,7 @@ export class CacheSlotController extends Component implements ICacheSlotControll
 
     public removeFromCache(shooter: IShooterItem): boolean
     {
+        console.log("Removing shooter from cache slot");
         const index = this._inSlotShooters.indexOf(shooter);
         shooter.setCacheSlotIndex(-1);
         if (index !== -1)
@@ -100,10 +101,13 @@ export class CacheSlotController extends Component implements ICacheSlotControll
     public compactCache(): void 
     {
         let index = 0;
+        console.log("Compacting cache slots", this._inSlotShooters.length);
         for (const shooter of this._inSlotShooters)
         {
             shooter.setCacheSlotIndex(index);
-            shooter.shuffleToCache(this._activeSlots[index].node.worldPosition);
+            console.log("Shuffling shooter to cache slot", index);
+            shooter.shuffleToCache(this._activeSlots[ index ].node.worldPosition);
+            console.log("Shooter shuffled to cache slot", this._activeSlots[ index ].node.uuid);
             index++;
         }
     }
