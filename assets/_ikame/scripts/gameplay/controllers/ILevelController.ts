@@ -4,6 +4,7 @@ import { ICacheSlotController } from "../cacheSlots/ICacheSlotController"
 import { PixelBlock } from "../flows/Block/PixelBlock"
 import { IGridTile } from "../flows/MapTiles/IGridTile"
 import { Node } from "cc"
+import { IShooterItem } from "../flows/ShooterItem/IShooterItem"
 
 export interface ILevelController
 {
@@ -21,6 +22,8 @@ export interface ILevelController
     getFloaterToStream(): Node 
     returnFloaterToPool(floater: Node): void
     getRemainCount(): number 
+
+    addToShooterMap(id: number, shooter: IShooterItem): void
 }
 
 

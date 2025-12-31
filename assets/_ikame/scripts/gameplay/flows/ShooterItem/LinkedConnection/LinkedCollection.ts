@@ -1,9 +1,8 @@
 import { _decorator, Component, Node, Vec3 } from 'cc';
 const { ccclass, property } = _decorator;
 
-@ccclass('LinkedCollection')
-export class LinkedCollection extends Component {
-    
+@ccclass('LinkedConnection')
+export class LinkedConnection extends Component {     
     @property(Node)
     public centerRotationNode: Node;
 
@@ -27,7 +26,7 @@ export class LinkedCollection extends Component {
         this.centerRotationNode.forward = this._dir;
 
         this._distance = Vec3.distance(this.centerRotationNode.worldPosition, this.targetNode.worldPosition) * 0.5;
-        this.wireNode.setWorldScale(1, 1, this._distance);
+        this.wireNode.setWorldScale(0.5, 0.5, this._distance);
     }
 
     public setTargetNode(target: Node): void

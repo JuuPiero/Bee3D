@@ -38,11 +38,23 @@ export class PixelData {
     public areaY: number = 1;
 }
 
+export class LinkedShooterData 
+{
+    @property(CCInteger)
+    Id: number = 0;
+    
+    @property([ CCInteger ])
+    Shooters: number[] = [];
+}
+
 
 @bh.createAssetMenu('LevelData', 'ScriptableAsset/LevelData')
 @bh.scriptable('LevelData')
 export class LevelData extends bh.ScriptableAsset 
 {
+    @property(CCInteger) 
+    public conveyorCapacity: number = 5;
+
     @property(CCInteger)
     public slotCount: number = 0;
 
@@ -61,6 +73,9 @@ export class LevelData extends bh.ScriptableAsset
     @property(JsonAsset)
     public levelJson: JsonAsset = null;
 
+    @property([ LinkedShooterData ])
+    public connectedShooters: LinkedShooterData[] = [];
+
     doStart(): LevelData 
     {
         this.parseData();
@@ -76,6 +91,7 @@ export class LevelData extends bh.ScriptableAsset
         this.heightMap = data.heightMap;
         this.shooterQueues = data.shooterQueues;
         this.pixels = data.pixels;
+        this.connectedShooters = data.connectedShooters;
 
         // Flip Y axis for pixels
         const flippedPixels: PixelData[] = [];

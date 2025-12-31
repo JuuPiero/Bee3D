@@ -25,6 +25,8 @@ import { EventDispatcher } from '../../../designPatterns/observer/EventDispatche
 import { EventName } from '../../../designPatterns/observer/EventName';
 import { Queue } from '../../../commons/Queue';
 import { EColor } from '../../../enums/EColor';
+import { LinkedConnection } from './LinkedConnection/LinkedCollection';
+import { PREVIEW } from 'cc/env';
 const { ccclass, property } = _decorator;
 
 const JUMP_DURATION = 0.5;
@@ -38,6 +40,11 @@ const JUMP_OFFSET_DURATION = 0.16
 @ccclass('ShooterItem')
 export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {
     
+    @property([ LinkedConnection ]) connections: LinkedConnection[] = [];
+
+    @property(CCFloat   )
+    public id : number = -1;
+
     static JumpToConveyorQueue: Queue<ShooterItem> = new Queue<ShooterItem>();
 
     @property(CCInteger) public colorID: number = -1;
@@ -48,8 +55,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     private _passedBlockCoords: Set<string> = new Set<string>();
 
-    @property(MeshRenderer)
-    private characterMesh: MeshRenderer = null;
+    @property([ MeshRenderer ])
+    private characterMeshs: MeshRenderer[] = [];
     
     @property(ColorConfig)
     public colorConfig: ColorConfig = null;
@@ -101,7 +108,16 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     waterParticles: ParticleSystem[] = [];
 
     @property(CCFloat)
-    private fastSpeed : number = 0;
+    private fastSpeed: number = 0;
+    
+    private _linkedShooter: IShooterItem[] = []
+
+    public setLinkedShooter(shooters: IShooterItem): void
+    {
+        this._linkedShooter.push(shooters);
+        this.connections[ this._linkedShooter.length - 1 ].setTargetNode(shooters.getLinkedWirePoint());
+        this.connections[ this._linkedShooter.length - 1 ].node.active = true;
+    }
 
     public reduceAmmoCount(amount: number): number
     {
@@ -406,6 +422,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public init(shooterData: Shooter, colorQueue: IColorQueue, levelController: ILevelController): void
     {
+        this.id = shooterData.id;
         this.spline = levelController.getSpline();
         this._cacheSlotController = levelController.getCacheSlotController();
         this.colorID = shooterData.material;
@@ -416,11 +433,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         if (this._ammoDisplayCount < 10) this._ammoDisplayCount = 10;
         this.ammoLabel.string = this._ammoDisplayCount.toString();
         const mat = this.colorConfig.getShooterColorById(shooterData.material);
-        // if (PREVIEW)
+        if (PREVIEW)
         {
             if (!mat) console.warn("Material not found for colorID:", EColor[shooterData.material]);
         }
-        this.characterMesh.setSharedMaterial(mat, 0);
+        this.characterMeshs.forEach(mesh => mesh.setSharedMaterial(mat, 0));
 
         this._stateMachine = new ShooterStateMachine(this);
         const map = new Map<EShooterState, ShooterStateBase>();
@@ -441,6 +458,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         map.set(EShooterState.Finish, this._finishState);
         this._stateMachine.init(EShooterState.Static, map);
         // Similarly initialize other states...
+
+        this._levelController.addToShooterMap(this.id, this);
     }
 
     protected update(deltaTime: number): void
@@ -690,6 +709,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public setCacheSlotIndex(index: number): void
     {
         this._cacheSlotIndex = index;
+    }
+
+    public getLinkedWirePoint(): Node
+    {
+        return this.connections[ 0 ].node;
     }
 }
 

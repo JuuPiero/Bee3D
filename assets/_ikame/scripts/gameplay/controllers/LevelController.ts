@@ -16,6 +16,7 @@ import { ICacheSlotController } from '../cacheSlots/ICacheSlotController';
 import { EventDispatcher } from '../../designPatterns/observer/EventDispatcher';
 import { EventName } from '../../designPatterns/observer/EventName';
 import { FloaterPool } from '../flows/Floater/FloaterPool';
+import { IShooterItem } from '../flows/ShooterItem/IShooterItem';
 const { ccclass, property } = _decorator;
 
 @ccclass('LevelController')
@@ -91,6 +92,8 @@ export class LevelController extends Component implements ILevelController
     protected floaterPool: FloaterPool = null;
 
     private _totalPixelsCount: number = 0;
+
+    private _shooterMapByID: Map<number, IShooterItem> = new Map<number, ShooterItem>();
 
     protected _debugDrawSpline(): void
     {
@@ -189,9 +192,11 @@ export class LevelController extends Component implements ILevelController
         this.colorQueueControllers.init(this.levelData.shooterQueues, this);
         this.cacheSlotController.init(this.levelData.slotCount);
         this._totalPixelsCount = this.levelData.pixels.length;
-        this.floaterPool.init(5);
+        this.floaterPool.init(this.levelData.conveyorCapacity);
 
         ShooterItem.JumpToConveyorQueue.clear();
+
+        this.linkShooters();
     }
 
     protected lateUpdate(dt: number): void
@@ -342,6 +347,28 @@ export class LevelController extends Component implements ILevelController
     public getRemainCount(): number 
     {
         return this.colorQueueControllers.getRemainCount();
+    }
+
+    public addToShooterMap(id: number, shooter: IShooterItem): void
+    {
+        this._shooterMapByID.set(id, shooter);
+    }
+
+    public linkShooters(): void 
+    {
+        for (const linkedData of this.levelData.connectedShooters)
+        {
+            for (let i = 0; i < linkedData.Shooters.length; i++)
+            {
+                const mainShooter = this._shooterMapByID.get(linkedData.Shooters[i]);
+                const firstShooter = this._shooterMapByID.get(linkedData.Shooters[i - 1]);
+                const secondShooter = this._shooterMapByID.get(linkedData.Shooters[i + 1]);
+                if (firstShooter)
+                    mainShooter.setLinkedShooter( firstShooter );
+                if (secondShooter)
+                    mainShooter.setLinkedShooter( secondShooter );
+            }
+        }
     }
 }
 

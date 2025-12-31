@@ -1,4 +1,4 @@
-import { Vec3 } from "cc";
+import { Vec3 , Node} from "cc";
 
 export interface IShooterItem {
     changeAnimation(animationName: string, force: boolean): void;
@@ -17,6 +17,9 @@ export interface IShooterItem {
 
     shuffleToCache(pos: Vec3): void
     setCacheSlotIndex(index: number): void
+
+    setLinkedShooter(shooters: IShooterItem)
+    getLinkedWirePoint(): Node
 }
 
 
