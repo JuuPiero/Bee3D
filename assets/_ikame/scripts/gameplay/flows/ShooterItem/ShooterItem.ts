@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, CCFloat, CCInteger, director, easing, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, Tween, tween, Vec3 } from 'cc';
+import { _decorator, AudioClip, CCFloat, CCInteger, director, easing, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, Tween, tween, Vec2, Vec3 } from 'cc';
 import { Utils } from '../../../utils/Utils';
 import { EDirection } from '../../../enums/EDirection';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
@@ -35,7 +35,7 @@ const RETREIVE_JUMP_DURATION = 0.32;
 const RIGHT_ROT = new Vec3(0, -90, 0);
 const LEFT_ROT = new Vec3(0, 90, 0);
 
-const JUMP_OFFSET_DURATION = 0.26
+const JUMP_OFFSET_DURATION = 0.23
 
 @ccclass('ShooterItem')
 export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {
@@ -522,7 +522,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         {
             return;
         }
-        const newJumpDuration = JUMP_DURATION + ShooterItem.JumpToConveyorQueue.size() * JUMP_OFFSET_DURATION;
+        const fromCache = this._cacheSlotIndex >= 0;
+        const newJumpDuration = JUMP_DURATION * (fromCache ? 0.5 : 1) + ShooterItem.JumpToConveyorQueue.size() * JUMP_OFFSET_DURATION;
         const scale = newJumpDuration / JUMP_DURATION;
 
         this.animator.getState(animationName).speed = animationName === ShooterAnimationName.Jump ? 1 / scale : 1;
@@ -722,8 +723,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public shuffleToCache(pos: Vec3, index: number): void
     {
-        const distanceToTarget = Vec3.distance(this.node.worldPosition, pos);
-        if (distanceToTarget < 0.05 || index === this._cacheSlotIndex)
+        const v2 = new Vec2(this.node.worldPosition.x, this.node.worldPosition.z);
+        const v2Target = new Vec2(pos.x, pos.z);
+        const distanceToTarget = Vec2.distance(v2, v2Target);
+        if (distanceToTarget < 0.1)
             return;
         if (this._tweenRetrieve && this._tweenRetrieve.running)
         {
@@ -735,7 +738,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         }
         this._tweenShuffle?.stop();
         const jumpHeight = 1.5;
-        const jumpDuration = 0.365;
+        const jumpDuration = 0.3;
         const startPos = this.node.worldPosition.clone();
         const tweenJump = {x : 0};
         this._tweenShuffle = tween(tweenJump)
