@@ -132,8 +132,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
         this._firstChainShooter = firstChainShooter;
         this._rightLinkedShooter = shooterRight;
-
-        console.log("First chain shooter set to:", this._firstChainShooter);
         if (this._firstChainShooter)
         {
             this.connectionRoot.active = true;
