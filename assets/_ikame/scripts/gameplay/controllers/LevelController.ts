@@ -364,6 +364,7 @@ export class LevelController extends Component implements ILevelController
 
     public linkShooters(): void 
     {
+        if (this.levelData.connectedShooters.length <= 0) return;
         const firstChainShooter = this._shooterMapByID.get(this.levelData.connectedShooters[0].Shooters[0]);
         for (const linkedData of this.levelData.connectedShooters)
         {

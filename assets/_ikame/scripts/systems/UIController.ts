@@ -1,4 +1,4 @@
-import { _decorator, Component, Node } from 'cc';
+import { _decorator, Camera, Component, EventKeyboard, Input, input, KeyCode, Node, sys } from 'cc';
 import { IdleScreen } from '../uis/screens/IdleScreen';
 import { GameplayScreen } from '../uis/screens/GameplayScreen';
 import { EndGameScreen } from '../uis/screens/EndGameScreen';
@@ -43,15 +43,36 @@ export class UIController extends Component {
     private stackStates: Stack<ScreenBase> = new Stack<ScreenBase>();
 
     public activeScreen: ScreenBase = null;
+
+    @property(Camera) public uiCamera: Camera = null;
     
     protected onLoad(): void {
         EventDispatcher.addListener(EventName.ShowScreen, this.onShowScreen, this);
         EventDispatcher.addListener(EventName.BackScreen, this.onBackScreen, this);
+
+        if (sys.os === sys.OS.WINDOWS)
+        {
+            input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
+        }
     }
 
     protected onDestroy(): void {
         EventDispatcher.removeListener(EventName.ShowScreen, this.onShowScreen, this);
         EventDispatcher.removeListener(EventName.BackScreen, this.onBackScreen, this);
+
+        if (sys.os === sys.OS.WINDOWS)
+        {
+            input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
+        }
+    }
+
+    private onKeyDown(event: EventKeyboard): void
+    {
+        if (event.keyCode === KeyCode.F12)
+        {
+            this.uiCamera.enabled = !this.uiCamera.enabled;
+            EventDispatcher.dispatch(EventName.ToggleBGM);
+        }
     }
 
     public async showScreen(screen: ScreenBase): Promise<void>

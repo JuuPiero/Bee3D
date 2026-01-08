@@ -657,7 +657,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             })
             .start();
         this._tweenRetrieve = tweenJump;
-        await PromiseDelay.Wait(tweenJump.duration);
+        await PromiseDelay.Wait(tweenJump.duration + 0.03);
 
         this._cacheSlotController.compactCache();
     }

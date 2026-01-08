@@ -18,6 +18,7 @@ export class AudioController extends Component {
     {
         EventDispatcher.addListener(EventName.PlaySFX, this.onPlaySFX, this);
         EventDispatcher.addListener(EventName.PlayBGM, this.onPlayBGM, this);
+        EventDispatcher.addListener(EventName.ToggleBGM, this.toggleBGM, this);
     }
 
     onPlaySFX(clip: AudioClip, vol: number = 1)
@@ -41,6 +42,17 @@ export class AudioController extends Component {
     {
         EventDispatcher.removeListener(EventName.PlaySFX, this.onPlaySFX, this);
         EventDispatcher.removeListener(EventName.PlayBGM, this.onPlayBGM, this);
+        EventDispatcher.removeListener(EventName.ToggleBGM, this.toggleBGM, this);
+    }
+
+    private toggleBGM()
+    {
+        if(this.bgm.playing){
+            this.bgm.stop();
+        }
+        else{
+            this.playBGM();
+        }
     }
 }
 

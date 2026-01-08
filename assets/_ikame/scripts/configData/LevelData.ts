@@ -2,6 +2,65 @@ import { _decorator, CCInteger, JsonAsset } from 'cc';
 import { bh } from 'db://scriptable-asset/scriptable_runtime';
 const { ccclass, property } = _decorator;
 
+/**
+ * Schema classes that match the structure of current level JSON files.
+ * These are used only for parsing JsonAsset -> LevelData runtime objects.
+ */
+export class LevelJsonShooter {
+    id?: number;
+    ammo?: number;
+    material?: number;
+    isLock?: boolean;
+}
+
+export class LevelJsonShooterQueue {
+    shooters?: LevelJsonShooter[];
+}
+
+export class LevelJsonQueueGroup {
+    shooterQueues?: LevelJsonShooterQueue[];
+}
+
+export class LevelJsonPixel {
+    x?: number;
+    y?: number;
+    material?: number;
+    areaX?: number;
+    areaY?: number;
+}
+
+export class LevelJsonPixelImageData {
+    width?: number;
+    height?: number;
+    physicalWidth?: number;
+    physicalHeight?: number;
+    pixels?: LevelJsonPixel[];
+}
+
+export class LevelJsonConnectedShooter {
+    Id?: number;
+    Shooters?: number[];
+}
+
+export class LevelJsonConnectedShooters {
+    Connections?: LevelJsonConnectedShooter[];
+}
+
+export class LevelJsonRoot {
+    QueueGroup?: LevelJsonQueueGroup;
+    SurpriseShooters?: { Shooters?: unknown[] };
+    ConnectedShooters?: LevelJsonConnectedShooters;
+    PixelImageData?: LevelJsonPixelImageData;
+
+    // Legacy/alternate shapes (keep optional)
+    slotCount?: number;
+    widthMap?: number;
+    heightMap?: number;
+    shooterQueues?: ShooterQueue[];
+    pixels?: PixelData[];
+    connectedShooters?: LinkedShooterData[];
+}
+
 @ccclass('Shooter')
 export class Shooter {
     @property(CCInteger)
@@ -85,25 +144,106 @@ export class LevelData extends bh.ScriptableAsset
 
     public parseData(): LevelData
     {   
-        const data = this.levelJson.json as LevelData;
-        this.slotCount = data.slotCount;
-        this.widthMap = data.widthMap;
-        this.heightMap = data.heightMap;
-        this.shooterQueues = data.shooterQueues;
-        this.pixels = data.pixels;
-        this.connectedShooters = data.connectedShooters;
+        if (!this.levelJson || !this.levelJson.json) {
+            console.warn('[LevelData] levelJson is null/empty, skip parseData()');
+            this.shooterQueues = [];
+            this.pixels = [];
+            this.connectedShooters = [];
+            this.slotCount = this.slotCount || 0;
+            return this;
+        }
+
+        const root = this.levelJson.json as unknown as LevelJsonRoot;
+
+        // Prefer current schema: PixelImageData.width/height
+        const widthFromJson = root.PixelImageData?.width;
+        const heightFromJson = root.PixelImageData?.height;
+        this.widthMap = (typeof widthFromJson === 'number' ? widthFromJson : root.widthMap) ?? this.widthMap;
+        this.heightMap = (typeof heightFromJson === 'number' ? heightFromJson : root.heightMap) ?? this.heightMap;
+
+        // slotCount is not present in this JSON example; keep safe fallback.
+        this.slotCount = (typeof root.slotCount === 'number' ? root.slotCount : this.slotCount) ?? 0;
+
+        // Parse shooterQueues
+        const shooterQueuesJson = root.QueueGroup?.shooterQueues;
+        if (Array.isArray(shooterQueuesJson)) {
+            const parsedQueues: ShooterQueue[] = [];
+            for (const q of shooterQueuesJson) {
+                const queue = new ShooterQueue();
+                queue.shooters = [];
+
+                const shootersJson = q?.shooters;
+                if (Array.isArray(shootersJson)) {
+                    for (const s of shootersJson) {
+                        const shooter = new Shooter();
+                        shooter.id = (s?.id ?? 0) as number;
+                        shooter.ammo = (s?.ammo ?? 0) as number;
+                        shooter.material = (s?.material ?? 0) as number;
+                        queue.shooters.push(shooter);
+                    }
+                }
+
+                parsedQueues.push(queue);
+            }
+            this.shooterQueues = parsedQueues;
+        } else if (Array.isArray(root.shooterQueues)) {
+            // Legacy shape support
+            this.shooterQueues = root.shooterQueues;
+        } else {
+            this.shooterQueues = [];
+        }
+
+        // Parse connectedShooters
+        const connectionsJson = root.ConnectedShooters?.Connections;
+        if (Array.isArray(connectionsJson)) {
+            const parsedConnections: LinkedShooterData[] = [];
+            for (const c of connectionsJson) {
+                const link = new LinkedShooterData();
+                link.Id = (c?.Id ?? 0) as number;
+                link.Shooters = (Array.isArray(c?.Shooters) ? (c!.Shooters as number[]) : []);
+                parsedConnections.push(link);
+            }
+            this.connectedShooters = parsedConnections;
+        } else if (Array.isArray(root.connectedShooters)) {
+            // Legacy shape support
+            this.connectedShooters = root.connectedShooters;
+        } else {
+            this.connectedShooters = [];
+        }
+
+        // Parse pixels
+        const pixelsJson = root.PixelImageData?.pixels;
+        if (Array.isArray(pixelsJson)) {
+            const parsedPixels: PixelData[] = [];
+            for (const p of pixelsJson) {
+                const pixel = new PixelData();
+                pixel.x = (p?.x ?? 0) as number;
+                pixel.y = (p?.y ?? 0) as number;
+                pixel.material = (p?.material ?? 0) as number;
+                pixel.areaX = (p?.areaX ?? 1) as number;
+                pixel.areaY = (p?.areaY ?? 1) as number;
+                parsedPixels.push(pixel);
+            }
+            this.pixels = parsedPixels;
+        } else if (Array.isArray(root.pixels)) {
+            // Legacy shape support
+            this.pixels = root.pixels;
+        } else {
+            this.pixels = [];
+        }
 
         // Flip Y axis for pixels
         const flippedPixels: PixelData[] = [];
         for (const pixel of this.pixels) {
             const flippedPixel = new PixelData();
+            const areaY = pixel.areaY ?? 1;
             flippedPixel.x = pixel.x;
-            flippedPixel.y = this.heightMap - pixel.y - pixel.areaY;
+            flippedPixel.y = this.heightMap - pixel.y - areaY;
             flippedPixel.material = pixel.material;
-            flippedPixel.areaX = pixel.areaX;
-            flippedPixel.areaY = pixel.areaY;
+            flippedPixel.areaX = pixel.areaX ?? 1;
+            flippedPixel.areaY = areaY;
             flippedPixels.push(flippedPixel);
-        }   
+        }
 
         this.pixels = flippedPixels;
 
