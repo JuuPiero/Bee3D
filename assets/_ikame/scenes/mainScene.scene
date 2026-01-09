@@ -3085,10 +3085,6 @@
     "pixelBlockHolder": {
       "__id__": 86
     },
-    "levelData": {
-      "__uuid__": "3c2a18a1-2d35-4d09-a391-347a474b32ff",
-      "__expectedType__": "ec5e8rUXbdEPamn6LkyATNv"
-    },
     "maxX": 2.43,
     "minX": -2.43,
     "maxZ": 1.5,
@@ -3097,6 +3093,10 @@
       "__id__": 16
     },
     "debugDrawMapBorder": true,
+    "levelJsonAsset": {
+      "__uuid__": "0005c799-585e-4992-8e39-338c2585f31b",
+      "__expectedType__": "cc.JsonAsset"
+    },
     "colorQueueControllers": {
       "__id__": 88
     },

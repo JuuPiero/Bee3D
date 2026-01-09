@@ -4,6 +4,10 @@
 
   /* Add your custom configuration here. */
   "compilerOptions": {
-    "strict": false
+    "lib": ["ES7", "es2017","DOM"],
+    "strict": false,
+    "types": ["node"],
+    "typeRoots": ["./node_modules/@types"],
+    "moduleResolution": "node"
   }
 }

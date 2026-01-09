@@ -1,7 +1,4 @@
-import { _decorator, CCInteger, JsonAsset } from 'cc';
-import { bh } from 'db://scriptable-asset/scriptable_runtime';
-const { ccclass, property } = _decorator;
-
+import { _decorator, JsonAsset } from 'cc';
 /**
  * Schema classes that match the structure of current level JSON files.
  * These are used only for parsing JsonAsset -> LevelData runtime objects.
@@ -61,66 +58,45 @@ export class LevelJsonRoot {
     connectedShooters?: LinkedShooterData[];
 }
 
-@ccclass('Shooter')
 export class Shooter {
-    @property(CCInteger)
     public id: number = 0;
 
-    @property(CCInteger)
     public ammo: number = 0;
 
-    @property(CCInteger)
     public material: number = 0;
 }
 
-@ccclass('ShooterQueue')
 export class ShooterQueue {
-    @property([Shooter])
     public shooters: Shooter[] = [];
 }
 
-@ccclass('PixelData')
 export class PixelData {
-    @property(CCInteger)
     public x: number = 0;
 
-    @property(CCInteger)
     public y: number = 0;
 
-    @property(CCInteger)
     public material: number = 0;
 
-    @property(CCInteger)
     public areaX: number = 1;
 
-    @property(CCInteger)
     public areaY: number = 1;
 }
 
 export class LinkedShooterData 
 {
-    @property(CCInteger)
     Id: number = 0;
     
-    @property([ CCInteger ])
     Shooters: number[] = [];
 }
 
-
-@bh.createAssetMenu('LevelData', 'ScriptableAsset/LevelData')
-@bh.scriptable('LevelData')
-export class LevelData extends bh.ScriptableAsset 
+export class LevelData 
 {
-    @property(CCInteger) 
     public conveyorCapacity: number = 5;
 
-    @property(CCInteger)
-    public slotCount: number = 0;
+    public slotCount: number = 4;
 
-    @property(CCInteger)
     public widthMap: number = 10;
 
-    @property(CCInteger)
     public heightMap: number = 10;
 
     // @property([ShooterQueue])
@@ -129,31 +105,49 @@ export class LevelData extends bh.ScriptableAsset
     // @property([PixelData])
     public pixels: PixelData[] = [];
 
-    @property(JsonAsset)
-    public levelJson: JsonAsset = null;
+    public levelJson: string = null;
 
-    @property([ LinkedShooterData ])
     public connectedShooters: LinkedShooterData[] = [];
 
-    doStart(): LevelData 
+    constructor(jsonText: string)
     {
+        this.levelJson = jsonText;
         this.parseData();
         this.correctLevelData();
-        return this;
+    }
+
+    private collectAllColors(
+        pixelCountByColor: Map<number, number>,
+        bulletCountByColor: Map<number, number>
+    ): number[] {
+        const seen: Record<string, true> = Object.create(null);
+        const allColors: number[] = [];
+
+        const addColor = (color: number) => {
+            const key = String(color);
+            if (seen[key]) return;
+            seen[key] = true;
+            allColors.push(color);
+        };
+
+        // Avoid relying on iterator/spread/Set iteration (can differ in older build targets)
+        pixelCountByColor.forEach((_v, k) => addColor(k));
+        bulletCountByColor.forEach((_v, k) => addColor(k));
+
+        return allColors;
     }
 
     public parseData(): LevelData
     {   
-        if (!this.levelJson || !this.levelJson.json) {
+        if (!this.levelJson) {
             console.warn('[LevelData] levelJson is null/empty, skip parseData()');
             this.shooterQueues = [];
             this.pixels = [];
             this.connectedShooters = [];
-            this.slotCount = this.slotCount || 0;
             return this;
         }
 
-        const root = this.levelJson.json as unknown as LevelJsonRoot;
+        const root = JSON.parse(this.levelJson) as LevelJsonRoot;
 
         // Prefer current schema: PixelImageData.width/height
         const widthFromJson = root.PixelImageData?.width;
@@ -162,7 +156,7 @@ export class LevelData extends bh.ScriptableAsset
         this.heightMap = (typeof heightFromJson === 'number' ? heightFromJson : root.heightMap) ?? this.heightMap;
 
         // slotCount is not present in this JSON example; keep safe fallback.
-        this.slotCount = (typeof root.slotCount === 'number' ? root.slotCount : this.slotCount) ?? 0;
+        this.slotCount = (typeof root.slotCount === 'number' ? root.slotCount : this.slotCount) ?? this.slotCount;
 
         // Parse shooterQueues
         const shooterQueuesJson = root.QueueGroup?.shooterQueues;
@@ -284,13 +278,14 @@ export class LevelData extends bh.ScriptableAsset
 
         // Compare and log results
         console.log("===== VERIFY LEVEL DATA =====");
-        
-        // Get all colors that appear
-        const allColors = new Set<number>([...pixelCountByColor.keys(), ...bulletCountByColor.keys()]);
+
+        // Get all colors that appear (works the same in preview + HTML build)
+        const allColors = this.collectAllColors(pixelCountByColor, bulletCountByColor);
         
         let hasError = false;
-        
-        for (const color of allColors) {
+
+        for (let i = 0; i < allColors.length; i++) {
+            const color = allColors[i];
             const pixelCount = pixelCountByColor.get(color) || 0;
             const bulletCount = bulletCountByColor.get(color) || 0;
             
@@ -337,15 +332,21 @@ export class LevelData extends bh.ScriptableAsset
             }
         }
 
-        // Get all colors that appear
-        const allColors = new Set<number>([...pixelCountByColor.keys(), ...bulletCountByColor.keys()]);
+        // Get all colors that appear (works the same in preview + HTML build)
+        const allColors = this.collectAllColors(pixelCountByColor, bulletCountByColor);
+        console.log("===== CORRECT LEVEL DATA =====");
+        console.log(`Colors to check: ${allColors.join(", ")}`);
 
-        for (const color of allColors) {
+        for (let i = 0; i < allColors.length; i++) {
+            const color = allColors[i];
             const pixelCount = pixelCountByColor.get(color) || 0;
             let bulletCount = bulletCountByColor.get(color) || 0;
             const diff = pixelCount - bulletCount;
-            if (diff === 0) continue; // Already matched
-
+            if (diff === 0)
+            {
+                console.log(`Color ${color}: ✓ Match (${pixelCount} pixels = ${bulletCount} bullets)`);
+                continue; // Already matched
+            }
             // Get all shooters of this color
             const shooters: Shooter[] = [];
             for (const queue of this.shooterQueues) {
@@ -355,7 +356,10 @@ export class LevelData extends bh.ScriptableAsset
                     }
                 }
             }
-            if (shooters.length === 0) continue; // No shooter for this color
+            if (shooters.length === 0) {
+                console.log(`Color ${color}: No shooters available.`);
+                continue; // No shooter for this color
+            }
 
             if (diff > 0) {
                 // Not enough bullets, add to the last shooter

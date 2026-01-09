@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, Color, Component, EventKeyboard, EventTouch, Input, input, instantiate, KeyCode, Node, PhysicsSystem, Prefab, Quat, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, Color, Component, EventKeyboard, EventTouch, Input, input, instantiate, JsonAsset, KeyCode, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
 import { LevelData } from '../../configData/LevelData';
 import { EDITOR } from 'cc/env';
 import { PixelBlock } from '../flows/Block/PixelBlock';
@@ -29,9 +29,7 @@ export class LevelController extends Component implements ILevelController
     public pixelBlockPrefab: Prefab = null;
     @property({ type: Node, group: 'Pixel Map' })
     public pixelBlockHolder: Node = null;
-    @property({ type: LevelData, group: 'Pixel Map' })
     public levelData: LevelData = null;
-
 
     @property({ type: CCFloat, group: 'MapBorder' })
     public maxX: number = 1;
@@ -48,6 +46,9 @@ export class LevelController extends Component implements ILevelController
 
     @property({ type: CCBoolean, group: 'Debug' })
     public debugDrawMapBorder: boolean = false;
+
+    @property({ type: JsonAsset , group: 'LevelData' })
+    public levelJsonAsset: JsonAsset
 
     public get WidthMap(): number
     {
@@ -145,7 +146,8 @@ export class LevelController extends Component implements ILevelController
         this._isFinished = false;
 
         //#region Spawn Pixel Blocks
-        this.levelData.doStart();
+        var textJson = JSON.stringify(this.levelJsonAsset.json);
+        this.levelData = new LevelData(textJson);
         
         this.pixelBlockHolder.setPosition(this.CenterMap);
         const scaleHorizontal = this.WidthMap / this.levelData.widthMap;
