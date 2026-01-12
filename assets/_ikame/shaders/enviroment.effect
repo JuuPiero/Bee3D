@@ -140,8 +140,6 @@ CCProgram shadow-caster-fs %{
 }%
 
 
-
-
 CCProgram surface-vertex-silhouette-edge %{
   uniform OutlineVert {
   vec4 outlineParams; // x: line width, y: depth hack

@@ -13,9 +13,22 @@
     {
       "USE_INSTANCING": true
     },
-    {}
+    {},
+    {
+      "USE_OUTLINE_PASS": true,
+      "USE_INSTANCING": true
+    }
   ],
   "_states": [
+    {
+      "rasterizerState": {},
+      "depthStencilState": {},
+      "blendState": {
+        "targets": [
+          {}
+        ]
+      }
+    },
     {
       "rasterizerState": {},
       "depthStencilState": {},
@@ -42,6 +55,9 @@
         "__expectedType__": "cc.Texture2D"
       }
     },
-    {}
+    {},
+    {
+      "lineWidth": 26.4
+    }
   ]
 }
