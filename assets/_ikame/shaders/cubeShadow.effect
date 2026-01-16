@@ -1,17 +1,15 @@
-// FakeShadow Shader - Converted from Unity to Cocos Creator 3.8.7
-// Effect Syntax Guide: https://docs.cocos.com/creator/manual/zh/shader/index.html
+// FakeShadow Shader - Simplified for Cocos Creator 3.8.7
 
 CCEffect %{
   techniques:
   - name: transparent
     passes:
-    - vert: fakeshadow-vs
-      frag: fakeshadow-fs
+    - vert: fakeshadow-vs:vert
+      frag: fakeshadow-fs:frag
       properties: &props
-        mainTexture:              { value: white, target: mainTex, editor: { displayName: "Shadow Texture", parent: USE_TEXTURE } }
-        color:                    { value: [0.5, 0.5, 0.5, 1.0],editor: { type: color }}
-        colorDropShadow:          { value: [0.0, 0.0, 0.0, 1.0], editor: { type: color }}
-      embeddedMacros: { USE_TEXTURE: true }
+        mainTexture:     { value: white, editor: { displayName: "Shadow Texture" } }
+        color:           { value: [0.5, 0.5, 0.5, 1.0], editor: { type: color } }
+        colorDropShadow: { value: [0.0, 0.0, 0.0, 1.0], editor: { type: color } }
       depthStencilState:
         depthTest: true
         depthWrite: false
@@ -26,133 +24,76 @@ CCEffect %{
         cullMode: back
 }%
 
-
-CCProgram shared-ubos %{
-  uniform Constants {
-    vec4 color;
-    vec4 colorDropShadow;
-  };
-}%
-
-CCProgram macro-remapping %{
-  // ui displayed macros
-  #pragma define-meta USE_TEXTURE
-  #define CC_USE_TEXTURE USE_TEXTURE
-}%
-
-
-
-
 CCProgram fakeshadow-vs %{
   precision highp float;
-  #include <builtin/uniforms/cc-global>
-  #include <builtin/uniforms/cc-local>
-  #include <shared-ubos>
 
-  in vec3 a_position;
-  in vec2 a_texCoord;
+  #include <legacy/input>
+  #include <builtin/uniforms/cc-global>
+  #include <legacy/decode-base>
+  #include <legacy/local-batch>
 
   out vec2 v_uv;
 
-  // Per-instance shadow colors to keep batching when values differ
-  #if USE_INSTANCING
-    #pragma format(RGBA8)
-    in vec4 a_instanced_color;
-    #pragma format(RGBA8)
-    in vec4 a_instanced_colorDropShadow;
-    in float a_instanced_enable; // 0: use uniforms, 1: use instanced
-    out vec4 v_i_color;
-    out vec4 v_i_colorDropShadow;
-    out float v_i_enable;
-  #endif
-
-  // Compute scale from world matrix columns (x and z axes)
-  vec2 getObjectScaleXZ() {
-    vec3 col0 = vec3(cc_matWorld[0][0], cc_matWorld[1][0], cc_matWorld[2][0]);
-    vec3 col2 = vec3(cc_matWorld[0][2], cc_matWorld[1][2], cc_matWorld[2][2]);
-    float sx = length(col0);
-    float sz = length(col2);
-    return vec2(sx, sz);
+  vec2 getObjectScaleXZ(mat4 m) {
+    vec3 col0 = vec3(m[0].x, m[1].x, m[2].x);
+    vec3 col2 = vec3(m[0].z, m[1].z, m[2].z);
+    return vec2(length(col0), length(col2));
   }
 
-  void main () {
-    vec2 objScale = getObjectScaleXZ();
+  vec4 vert () {
+    vec4 position;
+    CCVertInput(position);
 
-    vec3 p = a_position;
-    // Normalize xz by their respective scales
+    mat4 matWorld, matWorldIT;
+    CCGetWorldMatrixFull(matWorld, matWorldIT);
+
+    vec2 objScale = max(getObjectScaleXZ(matWorld), vec2(1e-6));
+
+    vec3 p = position.xyz;
     p.x /= objScale.x;
     p.z /= objScale.y;
 
-    if (min(objScale.x, objScale.y) == objScale.x) {
-      // Use x scale
+    if (objScale.x <= objScale.y) {
       p.x *= objScale.x;
       p.z *= objScale.x;
-      if (a_position.y > 0.0) {
+      if (position.y > 0.0) {
         p.y += (objScale.y - objScale.x) / (objScale.y * 2.0);
       } else {
         p.y -= (objScale.y - objScale.x) / (objScale.y * 2.0);
       }
     } else {
-      // Use z scale
       p.x *= objScale.y;
       p.z *= objScale.y;
-      if (a_position.x > 0.0) {
+      if (position.x > 0.0) {
         p.x += (objScale.x - objScale.y) / (objScale.x * 2.0);
       } else {
         p.x -= (objScale.x - objScale.y) / (objScale.x * 2.0);
       }
     }
 
-    vec4 pos = vec4(p, 1.0);
-    gl_Position = cc_matViewProj * cc_matWorld * pos;
+    vec4 pos = position;
+    pos.xyz = p;
     v_uv = a_texCoord;
 
-    #if USE_INSTANCING
-      v_i_color = a_instanced_color;
-      v_i_colorDropShadow = a_instanced_colorDropShadow;
-      v_i_enable = a_instanced_enable;
-    #endif
+    return cc_matProj * (cc_matView * matWorld) * pos;
   }
 }%
 
 CCProgram fakeshadow-fs %{
   precision highp float;
-  #include <builtin/uniforms/cc-global>
-  #include <macro-remapping>
-  #include <shared-ubos>
 
   in vec2 v_uv;
+  uniform sampler2D mainTexture;
 
-  // Per-instance inputs
-  #if USE_INSTANCING
-    in vec4 v_i_color;
-    in vec4 v_i_colorDropShadow;
-    in float v_i_enable;
-  #endif
+  uniform Constants {
+    vec4 color;
+    vec4 colorDropShadow;
+  };
 
-  #if USE_TEXTURE
-    uniform sampler2D mainTex;
-  #endif
-
-  layout(location = 0) out vec4 fragColor;
-
-  void main () {
-    vec2 mask = vec2(1.0, 1.0);
-    #if USE_TEXTURE
-      mask = texture(mainTex, v_uv).xy;
-    #endif
-
-    vec4 _color = color;
-    vec4 _drop  = colorDropShadow;
-    #if USE_INSTANCING
-      if (v_i_enable > 0.5) {
-        _color = v_i_color;
-        _drop  = v_i_colorDropShadow;
-      }
-    #endif
-
-    float a = mask.x * _drop.a;
-    vec3 rgb = mix(_drop.rgb, _color.rgb, mask.y);
-    fragColor = vec4(rgb, a);
+  vec4 frag () {
+    vec2 mask = texture(mainTexture, v_uv).xy;
+    float a = mask.x * colorDropShadow.a;
+    vec3 rgb = mix(colorDropShadow.rgb, color.rgb, mask.y);
+    return vec4(rgb, a);
   }
 }%

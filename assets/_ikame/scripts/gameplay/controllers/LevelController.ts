@@ -17,6 +17,7 @@ import { EventDispatcher } from '../../designPatterns/observer/EventDispatcher';
 import { EventName } from '../../designPatterns/observer/EventName';
 import { FloaterPool } from '../flows/Floater/FloaterPool';
 import { IShooterItem } from '../flows/ShooterItem/IShooterItem';
+import { BulletPooling } from '../../pooling/BulletPooling';
 const { ccclass, property } = _decorator;
 
 @ccclass('LevelController')
@@ -49,6 +50,8 @@ export class LevelController extends Component implements ILevelController
 
     @property({ type: JsonAsset , group: 'LevelData' })
     public levelJsonAsset: JsonAsset
+
+    @property(BulletPooling) public bulletPool: BulletPooling;
 
     public get WidthMap(): number
     {
@@ -186,7 +189,7 @@ export class LevelController extends Component implements ILevelController
             pixelNode.parent = this.pixelBlockHolder;
             pixelNode.setPosition(pixelData.x + offsetX, 0, pixelData.y + offsetZ);
             const pixelBlockComp = pixelNode.getComponent(PixelBlock);
-            pixelBlockComp.init(pixelData.material , this);
+            pixelBlockComp.init(pixelData.material , this, this.bulletPool);
             const key = Utils.generateKeyFromCoord(pixelData.x, pixelData.y);
             const gridTile = this._gridMap.get(key);
             gridTile.setPixelBlock(pixelBlockComp);

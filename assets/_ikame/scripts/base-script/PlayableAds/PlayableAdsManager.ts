@@ -85,7 +85,7 @@ export class PlayableAdsManager extends SingletonInSceneComponent {
         {
             this.firstClicked = true
             EventDispatcher.dispatch(EventName.PlayBGM);
-            TrackingManager.TrackEvent(ETrackingEvent.FIRST_CLICK)
+            // TrackingManager.TrackEvent(ETrackingEvent.FIRST_CLICK)
         }
     }
     countTimeTracking : number = 3;
@@ -101,13 +101,13 @@ export class PlayableAdsManager extends SingletonInSceneComponent {
     }
     ClickOpenStore()
     {
-        TrackingManager.TrackEvent(ETrackingEvent.CLICK_CONVERTION);
+        TrackingManager.TrackEvent(ETrackingEvent.CTA_CLICKED);
         super_html_playable.download();
         super_html_playable.game_end();
     }
 
     ForceOpenStore(){
-        TrackingManager.TrackEvent(ETrackingEvent.FORCE_CONVERTION);
+        TrackingManager.TrackEvent(ETrackingEvent.CTA_CLICKED);
         super_html_playable.download();
         super_html_playable.game_end();
     }

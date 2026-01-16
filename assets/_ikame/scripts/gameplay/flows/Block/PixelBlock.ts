@@ -1,12 +1,14 @@
-import { _decorator, Camera, CCBoolean, CCInteger, Node, Component, director, MeshRenderer, Vec3, tween, Scene, easing } from 'cc';
+import { _decorator, Camera, CCBoolean, CCInteger, Node, Component, director, MeshRenderer, Vec3, tween, Scene, easing, ParticleSystem, game } from 'cc';
 import { ColorConfig } from '../../../configData/ColorConfig';
 import { EDITOR } from 'cc/env';
 import { IPixelBlock } from './IPixelBlock';
 import { IGridTile } from '../MapTiles/IGridTile';
 import { ILevelController } from '../../controllers/ILevelController';
+import { BulletPooling } from '../../../pooling/BulletPooling';
 const { ccclass, property } = _decorator;
 
-const BULLET_SCALE = 0.03;
+
+const BULLET_SPEED = 7.8;
 
 @ccclass('PixelBlock')
 export class PixelBlock extends Component implements IPixelBlock
@@ -37,18 +39,20 @@ export class PixelBlock extends Component implements IPixelBlock
 
     private _level: ILevelController = null;
 
-    @property(Node) bulletNode : Node = null;
+    private _bulletPool: BulletPooling;
+
+    private bulletNode: Node = null;
+
     @property(Node) public particleNode: Node = null;
     @property(Node) public cubeRoot: Node = null;
 
-    init(colorID: number, level: ILevelController): void 
+    init(colorID: number, level: ILevelController, bulletPool: BulletPooling): void 
     {
         const color = this.colorData.getPixelBlockMaterialById(colorID);
         this.meshRenderer.setSharedMaterial( color, 0);
         this.colorID = colorID;
         this._level = level;
-    
-        this.bulletNode.active = false;
+        this._bulletPool = bulletPool;    
     }
 
     getWorldPosition(): Vec3
@@ -94,27 +98,45 @@ export class PixelBlock extends Component implements IPixelBlock
         this._gridTile.removePixelBlock();
         this._level.checkWinCondition();
 
-        this.bulletNode.active = true;
+        this.bulletNode = this._bulletPool.getBullet();
+        const particles = this.bulletNode.getComponentsInChildren(ParticleSystem)
+        particles.forEach(p =>
+        {
+            p.stop();
+            p.clear();
+            p.play();
+        });
+    
         this.bulletNode.setWorldPosition(barrolPosition);
-        this.bulletNode.setWorldScale(BULLET_SCALE, BULLET_SCALE, BULLET_SCALE);
         const targetPos = this.node.getWorldPosition();
         targetPos.y = barrolPosition.y;
+
+        const distance = barrolPosition.subtract(targetPos).length();
+        const travelTime = (distance / BULLET_SPEED);
+
         tween(this.bulletNode)
-            .to(0.1, { worldPosition: targetPos})
+            .to(travelTime, { worldPosition: targetPos})
             .call(() => {
                 this.bulletNode.active = false;
                 // this.node.active = false;
             })
             .start();
         tween(this.cubeRoot)
-            .delay(0.05)
+            .delay(travelTime)
             .call(() => {
                 this.particleNode.active = true;
             })
             .to(0.12, { scale: new Vec3(1, 3.5, 1) }, { easing: easing.backOut })
-            .to(0.1, { scale: new Vec3(1, 0, 1) }, { easing: easing.smooth })
-            .call(() => {
-                this.node.active = false;
+            .to(0.13, { scale: new Vec3(1, 0, 1) }, { easing: easing.smooth })
+            .to(0.05, { scale: new Vec3(0, 0, 0) }, { easing: easing.smooth })
+            .call(() =>
+            {
+                particles.forEach(p =>
+                {
+                    p.stop();
+                    p.clear();
+                });
+                this._bulletPool.returnBullet(this.bulletNode);
             })
             .start();
         

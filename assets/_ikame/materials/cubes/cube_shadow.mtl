@@ -11,8 +11,7 @@
   "_techIdx": 0,
   "_defines": [
     {
-      "USE_INSTANCING": true,
-      "USE_TEXTURE": true
+      "USE_INSTANCING": true
     }
   ],
   "_states": [
@@ -44,7 +43,7 @@
         "r": 39,
         "g": 39,
         "b": 39,
-        "a": 219
+        "a": 255
       }
     }
   ]
