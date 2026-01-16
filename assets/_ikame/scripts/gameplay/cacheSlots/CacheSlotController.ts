@@ -12,7 +12,7 @@ export class CacheSlotController extends Component implements ICacheSlotControll
     private _cacheSlots: CacheSlot[] = [];
     private _activeSlots: CacheSlot[] = [];
 
-    private _inSlotShooters: IShooterItem[] = [];
+    private _inSlotShooters: Set<IShooterItem> = new Set<IShooterItem>();
     private _maxSlotCount: number = 0;
 
 
@@ -23,6 +23,8 @@ export class CacheSlotController extends Component implements ICacheSlotControll
 
     init(slotCount : number): void
     {
+        this._inSlotShooters.clear();
+
         this._maxSlotCount = slotCount;
         this._activeSlots = [];
         for (let i = 0; i < this._cacheSlots.length; i++) 
@@ -75,22 +77,19 @@ export class CacheSlotController extends Component implements ICacheSlotControll
 
     public addToCache(shooter: IShooterItem): boolean
     {
-        if (this._inSlotShooters.length >= this._maxSlotCount)
+        if (this._inSlotShooters.size >= this._maxSlotCount)
             return false;
 
-        this._inSlotShooters.push(shooter);
-        this.compactCache();
+        this._inSlotShooters.add(shooter);
         return true;
     }
 
     public removeFromCache(shooter: IShooterItem): boolean
     {
-        const index = this._inSlotShooters.indexOf(shooter);
         shooter.setCacheSlotIndex(-1);
-        if (index !== -1)
+        if (this._inSlotShooters.has(shooter))
         {
-            this._inSlotShooters.splice(index, 1);
-            this.compactCache();
+            this._inSlotShooters.delete(shooter);
             return true;
         }
         return false;
@@ -120,7 +119,7 @@ export class CacheSlotController extends Component implements ICacheSlotControll
 
     public getNextEmptyPosition(): Vec3 | null
     {
-        const filledCount = this._inSlotShooters.length;
+        const filledCount = this._inSlotShooters.size;
         if (filledCount >= this._activeSlots.length)
             return null;
         return this._activeSlots[filledCount].node.worldPosition;

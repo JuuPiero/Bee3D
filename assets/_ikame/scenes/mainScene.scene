@@ -1074,8 +1074,8 @@
     "pixelBlockHolder": {
       "__id__": 27
     },
-    "maxX": 2.43,
-    "minX": -2.43,
+    "maxX": 2.35,
+    "minX": -2.35,
     "maxZ": 1.1,
     "minZ": -4.6,
     "cameraMain": {
@@ -1083,7 +1083,7 @@
     },
     "debugDrawMapBorder": true,
     "levelJsonAsset": {
-      "__uuid__": "0005c799-585e-4992-8e39-338c2585f31b",
+      "__uuid__": "ca3bf6b6-941c-424f-bae9-d3f57571f867",
       "__expectedType__": "cc.JsonAsset"
     },
     "bulletPool": {

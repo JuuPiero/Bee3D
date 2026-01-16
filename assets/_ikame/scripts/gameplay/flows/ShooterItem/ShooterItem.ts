@@ -674,6 +674,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public async finishAnimation(): Promise<void> 
     {
+        this._cacheSlotController.removeFromCache(this);
         this.returnFloaterToPool();
         this.playWaterParticles();
         const isRight = this.node.worldPositionX > 0;

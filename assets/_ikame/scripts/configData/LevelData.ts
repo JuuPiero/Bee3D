@@ -93,7 +93,7 @@ export class LevelData
 {
     public conveyorCapacity: number = 5;
 
-    public slotCount: number = 4;
+    public slotCount: number = 5;
 
     public widthMap: number = 10;
 
