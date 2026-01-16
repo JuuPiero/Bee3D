@@ -6966,9 +6966,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 255,
-      "g": 255,
-      "b": 255,
+      "r": 0,
+      "g": 0,
+      "b": 0,
       "a": 255
     },
     "_string": "No timer. No rush. Just pure fun!",
@@ -7083,9 +7083,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 9,
-      "g": 30,
-      "b": 126,
+      "r": 236,
+      "g": 150,
+      "b": 82,
       "a": 255
     },
     "_spriteFrame": {
