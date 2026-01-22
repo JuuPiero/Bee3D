@@ -307,7 +307,9 @@ export class LevelController extends Component implements ILevelController
         if (this._totalPixelsCount <= 0)
         {
             this._isFinished = true;
-            EventDispatcher.dispatch(EventName.EndGame, true, true);
+            this.scheduleOnce(() => {
+                EventDispatcher.dispatch(EventName.EndGame, true, true);
+            }, 0.5);
         }
     }
 
