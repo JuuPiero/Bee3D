@@ -42,16 +42,16 @@
     {
       "_Color": {
         "__type__": "cc.Color",
-        "r": 198,
-        "g": 75,
-        "b": 233,
+        "r": 248,
+        "g": 241,
+        "b": 134,
         "a": 255
       },
       "_ColorShadow": {
         "__type__": "cc.Color",
-        "r": 123,
-        "g": 43,
-        "b": 139,
+        "r": 116,
+        "g": 106,
+        "b": 70,
         "a": 255
       },
       "_Matcap": {
@@ -63,8 +63,8 @@
         "__expectedType__": "cc.Texture2D"
       },
       "_FlipZ": 0,
-      "_Glossiness": 0.6,
-      "_SpecularIntensity": 0.15
+      "_Glossiness": 0.5,
+      "_SpecularIntensity": 0.35
     },
     {
       "lineWidth": 35

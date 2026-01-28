@@ -40,6 +40,8 @@ export enum EColor {
     Id38 = 38,
     Id39 = 39,
     Id40 = 40,
+    Id1005=1005,
+    Id1001=1001
 }
 
 
