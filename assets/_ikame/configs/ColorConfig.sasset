@@ -125,6 +125,12 @@
       },
       {
         "__id__": 40
+      },
+      {
+        "__id__": 41
+      },
+      {
+        "__id__": 42
       }
     ]
   },
@@ -605,6 +611,30 @@
     },
     "chracterMaterial": {
       "__uuid__": "08cb3f7b-3ce8-45ad-9934-161ed67e1fa1",
+      "__expectedType__": "cc.Material"
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1005,
+    "pixelBlockMaterial": {
+      "__uuid__": "a614bfa0-a2b1-48bd-82aa-94751f07a108",
+      "__expectedType__": "cc.Material"
+    },
+    "chracterMaterial": {
+      "__uuid__": "99537b7a-ad89-4556-a74e-563424f1580a",
+      "__expectedType__": "cc.Material"
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1001,
+    "pixelBlockMaterial": {
+      "__uuid__": "7714131a-1014-4216-bfab-0d49181997e0",
+      "__expectedType__": "cc.Material"
+    },
+    "chracterMaterial": {
+      "__uuid__": "7027ba52-3baf-4ba0-9d57-710923adf858",
       "__expectedType__": "cc.Material"
     }
   }
