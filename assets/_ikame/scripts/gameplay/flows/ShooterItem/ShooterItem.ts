@@ -217,12 +217,12 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private shotTargetsBottom(): number 
     {
         const z = this._levelController.getLevelHeight() - 1;
-        let x = this._levelController.getLevelWidth() - 1;
-        while (x >= 0)
+        let x = 0;
+        while (x < this._levelController.getLevelWidth())
         {
             if (this.hasPassedBlock(x, z))
             {
-                x--;
+                x++;
                 continue;
             }
 
@@ -235,7 +235,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
             if (protentialTileTarget.getWorldPosX() > this.node.worldPositionX)
             {
-                x--;
+                x++;
                 continue;
             }
 
@@ -258,7 +258,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             if (!targetBlock || targetBlock.getColorID() !== this.colorID)
             {
                 this.markBlockAsPassed(x, z);
-                x--;
+                x++;
                 continue;
             }
             
@@ -269,20 +269,25 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             const canBeTargeted = targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
             if (canBeTargeted) {
                 this._targetCount++;
+                this.reduceAmmoCount(1);
+                if (this._ammoCount <= 0)   
+                {
+                    break;
+                }
             }
-            x--;
+            x++;
         }
     }
 
     private shotTargetsTop(): number 
     {
         const z = 0;
-        let x = 0;
-        while (x < this._levelController.getLevelWidth() )
+        let x = this._levelController.getLevelWidth() - 1;
+        while (x >= 0)
         {
             if (this.hasPassedBlock(x, z))
             {
-                x++;
+                x--;
                 continue;
             }
             let protentialTileTarget = this._levelController.getTileAtCoord(x, z);
@@ -294,7 +299,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
             if (protentialTileTarget.getWorldPosX() < this.node.worldPositionX)
             {
-                x++;
+                x--;
                 continue;
             }
 
@@ -318,26 +323,31 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             const targetBlock = protentialTileTarget.getPixelBlock();
             if (!targetBlock || targetBlock.getColorID() !== this.colorID)
             {
-                x++;
+                x--;
                 continue;
             }
             const canBeTargeted = targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
             if (canBeTargeted) {
                 this._targetCount++;
+                this.reduceAmmoCount(1);
+                if (this._ammoCount <= 0)   
+                {
+                    break;
+                }
             }
-            x++;
+            x--;
         }
     }
 
     private shotTargetsLeft(): number 
     {
         const x = 0;
-        let z = this._levelController.getLevelHeight() - 1;
-        while (z >= 0)
+        let z = 0;
+        while (z < this._levelController.getLevelHeight())
         {
             if (this.hasPassedBlock(x, z))
             {
-                z--;
+                z++;
                 continue;
             }
             let protentialTileTarget = this._levelController.getTileAtCoord(x, z);
@@ -349,7 +359,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
             if (protentialTileTarget.getWorldPosZ() > this.node.worldPositionZ)
             {
-                z--;
+                z++;
                 continue;
             }
 
@@ -373,26 +383,31 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             const targetBlock = protentialTileTarget.getPixelBlock();
             if (!targetBlock || targetBlock.getColorID() !== this.colorID)
             {
-                z--;
+                z++;
                 continue;
             }
             const canBeTargeted = targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
             if (canBeTargeted) {
                 this._targetCount++;
+                this.reduceAmmoCount(1);
+                if (this._ammoCount <= 0)   
+                {
+                    break;
+                }
             }
-            z--;
+            z++;
         }
     }
 
     private shotTargetsRight(): number 
     {
         const x = this._levelController.getLevelWidth() - 1;
-        let z = 0;
-        while (z >= 0 && z < this._levelController.getLevelHeight())
+        let z = this._levelController.getLevelHeight() - 1;
+        while (z >= 0)
         {
             if (this.hasPassedBlock(x, z))
             {
-                z++;
+                z--;
                 continue;
             }
             let protentialTileTarget = this._levelController.getTileAtCoord(x, z);
@@ -404,7 +419,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
             if (protentialTileTarget.getWorldPosZ() < this.node.worldPositionZ)
             {
-                z++;
+                z--;
                 continue;
             }
 
@@ -428,14 +443,19 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             const targetBlock = protentialTileTarget.getPixelBlock();
             if (!targetBlock || targetBlock.getColorID() !== this.colorID)
             {
-                z++;
+                z--;
                 continue;
             }
             const canBeTargeted = targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
             if (canBeTargeted) {
                 this._targetCount++;
+                this.reduceAmmoCount(1);
+                if (this._ammoCount <= 0)
+                {
+                    break;
+                }
             }
-            z++;
+            z--;
         }
     }
 

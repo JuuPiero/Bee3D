@@ -18,7 +18,7 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
         if (targetCount > 0)
         {
             this._shooter.changeAnimation(ShooterAnimationName.Attack, true);
-            this._shooter.reduceAmmoCount(targetCount);
+            // this._shooter.reduceAmmoCount(targetCount);
             this._shooter.shootSoundEffect();
             if (this._shooter.getAmmoCount() <= 0)
             {
