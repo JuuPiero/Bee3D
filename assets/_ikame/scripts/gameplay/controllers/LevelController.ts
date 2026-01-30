@@ -134,7 +134,29 @@ export class LevelController extends Component implements ILevelController
     {
         if (event.keyCode === KeyCode.KEY_Q)
         {
-            this.levelData.verifyData();
+            // this.levelData.verifyData();
+
+            let blockRemain = 0;
+            for (const [ key, tile ] of this._gridMap)
+            {
+                const pixelBlock = tile.getPixelBlock();
+                if (pixelBlock)
+                {
+                    blockRemain++;
+                }
+            }
+
+            let bulletCount = 0;
+            for (const [ id, shooter ] of this._shooterMapByID)
+            {
+                if (shooter)
+                    bulletCount += shooter.getAmmoCount();
+            }
+
+            console.log(`Level Verification:
+            Total Blocks on Map: ${blockRemain}
+            Total Bullets in Shooters: ${bulletCount}
+            `);
         }
     }
 
