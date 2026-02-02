@@ -34,27 +34,50 @@ export class Conveyor extends SplineSmooth
 
     public getNextEmpty(): Floater | null 
     {
+        // We want the empty slot closest to 0 (consider wrap-around),
+        // prefer small positive progress near 0 over values near 1,
+        // and tie-break by the lowest slot (largest z).
         let best: Floater | null = null;
-        let bestProgress = -1;
-        let bestZ = -Infinity;
+        let bestDistance = Infinity; // circular distance to 0: min(p, 1 - p)
+        let bestProgress = Infinity; // when distance ties, prefer smaller p (just > 0)
+        let bestZ = -Infinity; // final tie-break: highest z (lowest slot)
 
         for (let i = 0; i < this.floaters.length; i++)
         {
             const floater = this.floaters[i];
             if (floater.isTaken()) continue;
 
-            const p = floater.progress % 1; // prefer closer to 0 after loop => maximize progress
+            const p = ((floater.progress % 1) + 1) % 1; // normalize to [0,1)
             const z = floater.node.worldPosition.z;
+            const dist = Math.min(p, 1 - p); // closeness to 0 on a circle
 
-            if (p > bestProgress || (p === bestProgress && z > bestZ))
+            if (
+                dist < bestDistance ||
+                (dist === bestDistance && p < bestProgress) ||
+                (dist === bestDistance && p === bestProgress && z > bestZ)
+            )
             {
                 best = floater;
+                bestDistance = dist;
                 bestProgress = p;
                 bestZ = z;
             }
         }
 
-        return best
+        return best;
+    }
+
+    public isFullSlot(): boolean
+    {
+        for (let i = 0; i < this.floaters.length; i++)
+        {
+            const floater = this.floaters[i];
+            if (!floater.isTaken())
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
 }

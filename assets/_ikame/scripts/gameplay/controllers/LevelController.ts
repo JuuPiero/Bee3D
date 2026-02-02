@@ -92,8 +92,8 @@ export class LevelController extends Component implements ILevelController
     @property({ type: Conveyor, group: 'Controllers' })
     protected conveyor: Conveyor = null;
 
-    @property({ type: CacheSlotController, group: 'Controllers' })
-    protected cacheSlotController: CacheSlotController = null;
+    // @property({ type: CacheSlotController, group: 'Controllers' })
+    // protected cacheSlotController: CacheSlotController = null;
 
     @property({ type: FloaterPool, group: 'Controllers' })
     protected floaterPool: FloaterPool = null;
@@ -230,7 +230,6 @@ export class LevelController extends Component implements ILevelController
         //#endregion
 
         this.colorQueueControllers.init(this.levelData.shooterQueues, this);
-        this.cacheSlotController.init(this.levelData.slotCount);
         this._totalPixelsCount = this.levelData.pixels.length;
         this.floaterPool.init(this.levelData.conveyorCapacity);
 
@@ -295,7 +294,9 @@ export class LevelController extends Component implements ILevelController
 
     private onTouchStart(event: EventTouch): void
     {
-        if (this._isFinished || !this.floaterPool.isCanGetFloater()) return;
+        if (this._isFinished) return;
+
+
 
         event.getLocation(this._screenPos);
         const ray = this.cameraMain.screenPointToRay(this._screenPos.x, this._screenPos.y);
@@ -304,8 +305,15 @@ export class LevelController extends Component implements ILevelController
         const hitResult = PhysicsSystem.instance.raycastClosestResult;
         const shooter = hitResult.collider.node.getComponent(ShooterItem);
         if (!shooter) return;
-        const canAdd = shooter.onTouchShooter(this.floaterPool.getAvailableCount());
 
+        if (this.conveyor.getNextEmpty() === null)
+        {
+            shooter.shakeCharacter(0.13, 0.1);
+            EventDispatcher.dispatch(EventName.PlaySFX, this.hitSound, 0.5);
+            return;
+        }
+
+        const canAdd = shooter.onTouchShooter(this.floaterPool.getAvailableCount())
         if (canAdd)
         {
             if (this.isFinalStepSureWin())
@@ -323,7 +331,7 @@ export class LevelController extends Component implements ILevelController
 
     public getCacheSlotController(): ICacheSlotController
     {
-        return this.cacheSlotController;
+        return null
     }
 
     lose(): void

@@ -52,7 +52,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     private _levelController: ILevelController = null;
     private _colorQueue: IColorQueue = null;
-    private _cacheSlotController: ICacheSlotController;
+    // private _cacheSlotController: ICacheSlotController;
 
     private _passedBlockCoords: Set<string> = new Set<string>();
 
@@ -464,7 +464,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         this.id = shooterData.id;
         this.spline = levelController.getSpline();
-        this._cacheSlotController = levelController.getCacheSlotController();
         this.colorID = shooterData.material;
         this._colorQueue = colorQueue;
         this._levelController = levelController;
@@ -568,7 +567,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         try
         {
-            this._cacheSlotController.removeFromCache(this);
             const inQueueCount = ShooterItem.JumpToConveyorQueue.size();
             ShooterItem.JumpToConveyorQueue.enqueue(this);
             EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
@@ -659,11 +657,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public async retrieveToCacheSlot(): Promise<void>
     {
-        const targetPosition = this._cacheSlotController.getNextEmptyPosition();
-        if (!targetPosition) {
-            this._levelController.lose();
-            return;
-        }
+        // if (!targetPosition) {
+        //     this._levelController.lose();
+        //     return;
+        // }
         if (this._tweenShuffle)
         {
             this._tweenShuffle.stop();
@@ -671,7 +668,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this.playWaterParticles();
         EventDispatcher.dispatch(EventName.PlaySFX, this.retrieveSound);
         this.resetRotation();
-        this._cacheSlotController.addToCache(this);
+        // this._cacheSlotController.addToCache(this);
         // Jump to target slot using tween with sine-based height
         const startPosition = this.node.worldPosition.clone();
         const jumpHeight = 2; // Adjust this value for desired arc height
@@ -680,7 +677,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             .to(RETREIVE_JUMP_DURATION, { progress: 1 }, {
                 onUpdate: (target: any, ratio: number) =>
                 {
-                    Vec3.lerp(this._lerpPos, startPosition, targetPosition, target.progress);
+                    // Vec3.lerp(this._lerpPos, startPosition, targetPosition, target.progress);
                     // Add height using sine wave for smooth arc
                     const heightOffset = Math.sin(target.progress * Math.PI) * jumpHeight;
                     this._lerpPos.y += heightOffset;
@@ -691,7 +688,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this._tweenRetrieve = tweenJump;
         await PromiseDelay.Wait(tweenJump.duration + 0.03);
 
-        this._cacheSlotController.compactCache();
+        // this._cacheSlotController.compactCache();
     }
 
     private resetRotation(): void 
@@ -706,7 +703,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public async finishAnimation(): Promise<void> 
     {
-        this._cacheSlotController.removeFromCache(this);
+        // this._cacheSlotController.removeFromCache(this);
         this.returnFloaterToPool();
         this.playWaterParticles();
         const isRight = this.node.worldPositionX > 0;
