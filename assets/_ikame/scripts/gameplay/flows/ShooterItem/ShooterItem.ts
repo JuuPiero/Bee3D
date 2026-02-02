@@ -27,6 +27,7 @@ import { Queue } from '../../../commons/Queue';
 import { EColor } from '../../../enums/EColor';
 import { LinkedConnection } from './LinkedConnection/LinkedCollection';
 import { PREVIEW } from 'cc/env';
+import { Floater } from '../Floater/Floater';
 const { ccclass, property } = _decorator;
 
 const JUMP_DURATION = 0.45;
@@ -87,7 +88,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     private _targetCount: number = 0;
 
-    private _floaterNode: Node = null;
+    private _floater: Floater = null;
     
     @property(Node) private firePointNode: Node = null;
 
@@ -571,27 +572,36 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             const inQueueCount = ShooterItem.JumpToConveyorQueue.size();
             ShooterItem.JumpToConveyorQueue.enqueue(this);
             EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
-            this._floaterNode = this._levelController.getFloaterToStream();
+            // this._floaterNode = this._levelController.getFloaterToStream();
+            this._floater = this._levelController.getBestFloaterSlot();
+            this._floater.setShooter(this);
             this.progress = 0;
             this._cacheSlotIndex = -1;
             const scene = director.getScene();
             this.node.setParent(scene, true);
             this._colorQueue.removeShooter(this);
-            this.spline.getPercentageTransform(0, this._jumpToPosition, this._jumpToQuat);
             this.node.getWorldPosition(this._startJumpPosition);
             const tweenObj = { progress: 0 }
             const tweenJump = tween(tweenObj)
                 .to(JUMP_DURATION + (inQueueCount * JUMP_OFFSET_DURATION), { progress: 1 }, {
                     onUpdate: (target: any, ratio: number) =>
                     {
+                        this.spline.getPercentageTransform(this._floater.progress, this._jumpToPosition, this._jumpToQuat);
                         Vec3.lerp(this._lerpPos, this._startJumpPosition, this._jumpToPosition, target.progress)
                         this.node.setWorldPosition(this._lerpPos);
+                    }
+                    ,
+                    onComplete: () =>
+                    {
+                        this.spline.getPercentageTransform(this._floater.progress, this._jumpToPosition, this._jumpToQuat);
+                        this.node.setWorldPosition(this._jumpToPosition);
                     }
                 })
                 .start();
             await PromiseDelay.Wait(tweenJump.duration);
             ShooterItem.JumpToConveyorQueue.dequeue();
             this.playWaterParticles();
+            this._floater.onCompleteLoopAction = this.onCompleteLoop.bind(this);
         }
         catch (error)
         {
@@ -602,9 +612,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public moveAlongConveyor(dt: number): void
     {
-        this.updatePosition(dt);
-        if (this._floaterNode)
-            this._floaterNode.setWorldPosition(this.node.getWorldPosition());
+        // this.updatePosition(dt);
+        // if (this._floaterNode)
+        //     this._floaterNode.setWorldPosition(this.node.getWorldPosition());
+
+        this.setProgress(this._floater.progress);
     }
 
     public faceTheMapDirection(): void
@@ -614,27 +626,22 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public onCompleteLoop(): void
     {
-        if (this.loopAround()) return;
-        this.changeState(EShooterState.Retrieve);
-        this.returnFloaterToPool();
+        this.loopAround();
     }
 
-    public loopAround(): boolean
+    public loopAround(): void
     {
-        if (!this._levelController.isFinalStepSureWin())
-            return false;
         this.clearPassedBlocks();
         this.setProgress(0);
-        return true;
     }
 
     private returnFloaterToPool(): void
     {
-        if (this._floaterNode)
-        {
-            this._levelController.returnFloaterToPool(this._floaterNode);
-            this._floaterNode = null;
-        }
+        const scene = director.getScene();
+        this.node.setParent(scene, true);
+        this._floater.onCompleteLoopAction = null;
+        this._floater.setShooter(null);
+        this._floater = null;
     }
 
     setCacheSlot(slotIndex: number, isJump: boolean): void
@@ -959,6 +966,208 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this.changeState(EShooterState.Finish);
         this.connectionRoot.active = false;
         this._levelController.removeShooterCount();
+    }
+
+    public markPassedBlocks(): void
+    {
+        const edge = this._levelController.getShooterEdge(this.node.worldPosition.x, this.node.worldPosition.z);
+        switch (edge)
+        {
+            case EDirection.BOTTOM:
+            {
+                const z = this._levelController.getLevelHeight() - 1;
+                let x = 0;
+                while (x < this._levelController.getLevelWidth())
+                {
+                    if (this.hasPassedBlock(x, z))
+                    {
+                        x++;
+                        continue;
+                    }
+
+                    let protentialTileTarget = this._levelController.getTileAtCoord(x, z);
+                    if (!protentialTileTarget)
+                    {
+                        console.error("No tile found at coord:", x, z);
+                        return;
+                    }
+
+                    if (protentialTileTarget.getWorldPosX() > this.node.worldPositionX)
+                    {
+                        x++;
+                        continue;
+                    }
+
+                    if (!protentialTileTarget.isContainBlock())
+                    {
+                        // Dig Upwards
+                        let upLinkedTile = protentialTileTarget.getTopLinkedTile();
+                        while (upLinkedTile)
+                        {
+                            if (upLinkedTile.isContainBlock() || upLinkedTile.isMatchingColorID(this.colorID))
+                            {
+                                protentialTileTarget = upLinkedTile;
+                                break;
+                            }
+                            upLinkedTile = upLinkedTile.getTopLinkedTile();
+                        }
+                    }
+
+                    // Always mark the edge tile
+                    this.markBlockAsPassed(x, z);
+
+                    // If a valid matching block exists deeper, also mark that tile
+                    const targetBlock = protentialTileTarget.getPixelBlock();
+                    if (targetBlock && targetBlock.getColorID() === this.colorID)
+                    {
+                        this.markBlockAsPassed(protentialTileTarget.getCoordX(), protentialTileTarget.getCoordZ());
+                    }
+                    x++;
+                }
+                break;
+            }
+
+            case EDirection.TOP:
+            {
+                const z = 0;
+                let x = this._levelController.getLevelWidth() - 1;
+                while (x >= 0)
+                {
+                    if (this.hasPassedBlock(x, z))
+                    {
+                        x--;
+                        continue;
+                    }
+                    let protentialTileTarget = this._levelController.getTileAtCoord(x, z);
+                    if (!protentialTileTarget)
+                    {
+                        console.error("No tile found at coord:", x, z);
+                        return;
+                    }
+
+                    if (protentialTileTarget.getWorldPosX() < this.node.worldPositionX)
+                    {
+                        x--;
+                        continue;
+                    }
+
+                    // Mark the edge tile
+                    this.markBlockAsPassed(x, z);
+
+                    if (!protentialTileTarget.isContainBlock())
+                    {
+                        // Dig Downwards from top
+                        let downLinkedTile = protentialTileTarget.getBottomLinkedTile();
+                        while (downLinkedTile)
+                        {
+                            if (downLinkedTile.isContainBlock() || downLinkedTile.isMatchingColorID(this.colorID))
+                            {
+                                protentialTileTarget = downLinkedTile;
+                                break;
+                            }
+                            downLinkedTile = downLinkedTile.getBottomLinkedTile();
+                        }
+                    }
+                    // (Top) Keep logic similar to shooting: do not mark the dug tile
+                    x--;
+                }
+                break;
+            }
+
+            case EDirection.LEFT:
+            {
+                const x = 0;
+                let z = 0;
+                while (z < this._levelController.getLevelHeight())
+                {
+                    if (this.hasPassedBlock(x, z))
+                    {
+                        z++;
+                        continue;
+                    }
+                    let protentialTileTarget = this._levelController.getTileAtCoord(x, z);
+                    if (!protentialTileTarget)
+                    {
+                        console.error("No tile found at coord:", x, z);
+                        return;
+                    }
+
+                    if (protentialTileTarget.getWorldPosZ() > this.node.worldPositionZ)
+                    {
+                        z++;
+                        continue;
+                    }
+
+                    // Mark the edge tile
+                    this.markBlockAsPassed(x, z);
+
+                    if (!protentialTileTarget.isContainBlock())
+                    {
+                        // Dig Rightwards from left edge
+                        let rightLinkedTile = protentialTileTarget.getRightLinkedTile();
+                        while (rightLinkedTile)
+                        {
+                            if (rightLinkedTile.isContainBlock() || rightLinkedTile.isMatchingColorID(this.colorID))
+                            {
+                                protentialTileTarget = rightLinkedTile;
+                                break;
+                            }
+                            rightLinkedTile = rightLinkedTile.getRightLinkedTile();
+                        }
+                    }
+                    // (Left) Keep logic similar to shooting: do not mark the dug tile
+                    z++;
+                }
+                break;
+            }
+
+            case EDirection.RIGHT:
+            {
+                const x = this._levelController.getLevelWidth() - 1;
+                let z = this._levelController.getLevelHeight() - 1;
+                while (z >= 0)
+                {
+                    if (this.hasPassedBlock(x, z))
+                    {
+                        z--;
+                        continue;
+                    }
+                    let protentialTileTarget = this._levelController.getTileAtCoord(x, z);
+                    if (!protentialTileTarget)
+                    {
+                        console.error("No tile found at coord:", x, z);
+                        return;
+                    }
+
+                    if (protentialTileTarget.getWorldPosZ() < this.node.worldPositionZ)
+                    {
+                        z--;
+                        continue;
+                    }
+
+                    // Mark the edge tile
+                    this.markBlockAsPassed(x, z);
+
+                    if (!protentialTileTarget.isContainBlock())
+                    {
+                        // Dig Leftwards from right edge
+                        let leftLinkedTile = protentialTileTarget.getLeftLinkedTile();
+                        while (leftLinkedTile)
+                        {
+                            if (leftLinkedTile.isContainBlock() || leftLinkedTile.isMatchingColorID(this.colorID))
+                            {
+                                protentialTileTarget = leftLinkedTile;
+                                break;
+                            }
+                            leftLinkedTile = leftLinkedTile.getLeftLinkedTile();
+                        }
+                    }
+                    // (Right) Keep logic similar to shooting: do not mark the dug tile
+                    z--;
+                }
+                break;
+            }
+        }
     }
 }
 

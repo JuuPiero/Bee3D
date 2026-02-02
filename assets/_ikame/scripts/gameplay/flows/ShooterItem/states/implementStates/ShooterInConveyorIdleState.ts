@@ -10,6 +10,7 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
     {
         this._shooter.faceTheMapDirection();    
         this._shooter.clearPassedBlocks();
+        this._shooter.markPassedBlocks();
     }
 
     public onUpdate(dt: number): void

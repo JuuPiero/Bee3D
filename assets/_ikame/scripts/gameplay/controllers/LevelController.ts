@@ -18,6 +18,7 @@ import { EventName } from '../../designPatterns/observer/EventName';
 import { FloaterPool } from '../flows/Floater/FloaterPool';
 import { IShooterItem } from '../flows/ShooterItem/IShooterItem';
 import { BulletPooling } from '../../pooling/BulletPooling';
+import { Floater } from '../flows/Floater/Floater';
 const { ccclass, property } = _decorator;
 
 @ccclass('LevelController')
@@ -173,7 +174,7 @@ export class LevelController extends Component implements ILevelController
     public spawnLevel(): void 
     {
         this._isFinished = false;
-
+        this.conveyor.init();
         //#region Spawn Pixel Blocks
         var textJson = JSON.stringify(this.levelJsonAsset.json);
         this.levelData = new LevelData(textJson);
@@ -229,6 +230,7 @@ export class LevelController extends Component implements ILevelController
 
         ShooterItem.JumpToConveyorQueue.clear();
         this.linkShooters();
+
     }
 
     protected lateUpdate(dt: number): void
@@ -428,6 +430,12 @@ export class LevelController extends Component implements ILevelController
     public isFinalStepSureWin(): boolean
     {
         return this.getShooterCount() <= this.levelData.conveyorCapacity;
+    }
+
+    
+    public getBestFloaterSlot(): Floater 
+    {
+        return this.conveyor.getNextEmpty();
     }
 }
 

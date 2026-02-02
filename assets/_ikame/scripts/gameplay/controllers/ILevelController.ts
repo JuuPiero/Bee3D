@@ -5,6 +5,7 @@ import { PixelBlock } from "../flows/Block/PixelBlock"
 import { IGridTile } from "../flows/MapTiles/IGridTile"
 import { Node } from "cc"
 import { IShooterItem } from "../flows/ShooterItem/IShooterItem"
+import { Floater } from "../flows/Floater/Floater"
 
 export interface ILevelController
 {
@@ -27,6 +28,8 @@ export interface ILevelController
     removeShooterCount(): void
     getShooterCount(): number
     isFinalStepSureWin(): boolean
+
+    getBestFloaterSlot(): Floater 
 }
 
 

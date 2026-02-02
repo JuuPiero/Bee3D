@@ -1,5 +1,6 @@
 import { _decorator, CCBoolean, CCFloat, Component, Node } from 'cc';
 import { SplineFollower } from './SplineFollower';
+import { Floater } from '../gameplay/flows/Floater/Floater';
 const { ccclass, property } = _decorator;
 
 const FIXED_PATH_LENGTH = 1;
@@ -13,6 +14,8 @@ export class SplineFollowerSpeed extends SplineFollower {
 
     private _oldProgress: number = 0;
 
+    public onCompleteLoopAction: Function;
+
     protected onLoad(): void
     {
         this._oldProgress = this.progress;
@@ -20,6 +23,7 @@ export class SplineFollowerSpeed extends SplineFollower {
 
     protected update(deltaTime: number) 
     {
+        if (!this.spline) return;
         this.updatePosition(deltaTime);
     }
 
@@ -52,7 +56,20 @@ export class SplineFollowerSpeed extends SplineFollower {
 
     public onCompleteLoop(): void
     {
+        if (this.onCompleteLoopAction)
+        {
+            this.onCompleteLoopAction();
+        }
+    }
 
+    public setSpeed(newSpeed: number): void
+    {
+        this.speed = newSpeed;
+    }
+
+    public setLooping(isLooping: boolean): void
+    {
+        this.isLooping = isLooping;
     }
 }
 

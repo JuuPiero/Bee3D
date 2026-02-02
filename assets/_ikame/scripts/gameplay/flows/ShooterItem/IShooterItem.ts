@@ -35,6 +35,8 @@ export interface IShooterItem {
     finishSelf(): void 
 
     shuffleToCacheUpdate(dt: number, pos: Vec3, index: number): void
+
+    markPassedBlocks(): void
 }
 
 
