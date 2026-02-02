@@ -612,10 +612,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public moveAlongConveyor(dt: number): void
     {
-        // this.updatePosition(dt);
-        // if (this._floaterNode)
-        //     this._floaterNode.setWorldPosition(this.node.getWorldPosition());
-
         this.setProgress(this._floater.progress);
     }
 
@@ -627,6 +623,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public onCompleteLoop(): void
     {
         this.loopAround();
+        this._levelController.checkLose ();
     }
 
     public loopAround(): void
@@ -1168,6 +1165,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 break;
             }
         }
+    }
+
+    public getColorID(): number
+    {
+        return this.colorID;
     }
 }
 

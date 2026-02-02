@@ -30,6 +30,9 @@ export interface ILevelController
     isFinalStepSureWin(): boolean
 
     getBestFloaterSlot(): Floater 
+
+    doUpdate(dt: number): void
+    checkLose(): void
 }
 
 

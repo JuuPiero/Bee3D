@@ -96,15 +96,15 @@ export class CacheSlotController extends Component implements ICacheSlotControll
     }
     
 
-    protected update(dt: number): void
-    {
-        let index = 0;
-        for (const shooter of this._inSlotShooters)
-        {
-            shooter.shuffleToCacheUpdate(dt, this._activeSlots[ index ].node.worldPosition, index);
-            index++;
-        }
-    }
+    // protected update(dt: number): void
+    // {
+    //     let index = 0;
+    //     for (const shooter of this._inSlotShooters)
+    //     {
+    //         shooter.shuffleToCacheUpdate(dt, this._activeSlots[ index ].node.worldPosition, index);
+    //         index++;
+    //     }
+    // }
 
     public compactCache(): void 
     {
