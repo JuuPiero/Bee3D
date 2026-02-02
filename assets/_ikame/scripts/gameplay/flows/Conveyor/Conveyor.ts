@@ -9,12 +9,6 @@ const { ccclass, property } = _decorator;
 export class Conveyor extends SplineSmooth 
 {
     @property([ Floater ]) floaters: Floater[] = [];
-    @property
-    
-    protected onLoad(): void
-    {
-
-    }
 
     public init(speed: number = 5.6): void 
     {
