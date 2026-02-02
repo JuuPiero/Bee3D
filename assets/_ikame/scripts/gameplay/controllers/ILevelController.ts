@@ -22,8 +22,11 @@ export interface ILevelController
     getFloaterToStream(): Node 
     returnFloaterToPool(floater: Node): void
     getRemainCount(): number 
-
     addToShooterMap(id: number, shooter: IShooterItem): void
+    addShooterCount(): void
+    removeShooterCount(): void
+    getShooterCount(): number
+    isFinalStepSureWin(): boolean
 }
 
 

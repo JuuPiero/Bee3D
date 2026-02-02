@@ -165,7 +165,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     protected start(): void
     {
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
-        EventDispatcher.addListener(EventName.ZeroRemainInQueue, this.speedUp, this);
+        EventDispatcher.addListener(EventName.SureWinFinalStep, this.speedUp, this);
     }
 
     private speedUp(): void
@@ -175,7 +175,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     protected onDestroy(): void
     {
-        EventDispatcher.addListener(EventName.ZeroRemainInQueue, this.speedUp, this);
+        EventDispatcher.addListener(EventName.SureWinFinalStep, this.speedUp, this);
         input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
     }
 
@@ -499,6 +499,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         // Similarly initialize other states...
 
         this._levelController.addToShooterMap(this.id, this);
+
+        this._levelController.addShooterCount();
     }
 
     protected update(deltaTime: number): void
@@ -590,10 +592,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             await PromiseDelay.Wait(tweenJump.duration);
             ShooterItem.JumpToConveyorQueue.dequeue();
             this.playWaterParticles();
-
-            const remainCount = this._levelController.getRemainCount();
-            if (remainCount <= 0)
-                EventDispatcher
         }
         catch (error)
         {
@@ -616,8 +614,18 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public onCompleteLoop(): void
     {
+        if (this.loopAround()) return;
         this.changeState(EShooterState.Retrieve);
         this.returnFloaterToPool();
+    }
+
+    public loopAround(): boolean
+    {
+        if (!this._levelController.isFinalStepSureWin())
+            return false;
+        this.clearPassedBlocks();
+        this.setProgress(0);
+        return true;
     }
 
     private returnFloaterToPool(): void
@@ -950,6 +958,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         this.changeState(EShooterState.Finish);
         this.connectionRoot.active = false;
+        this._levelController.removeShooterCount();
     }
 }
 

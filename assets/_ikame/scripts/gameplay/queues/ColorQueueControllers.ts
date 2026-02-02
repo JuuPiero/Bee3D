@@ -45,7 +45,7 @@ export class ColorQueueControllers extends Component implements IColorQueueContr
         }
     }
 
-    getRemainCount(): number 
+    getRemainInQueueCount(): number 
     {
         let count = 0;
         for (let i = 0; i < this._activeQueues.length; i++)

@@ -53,6 +53,8 @@ export class LevelController extends Component implements ILevelController
 
     @property(BulletPooling) public bulletPool: BulletPooling;
 
+    private _shooterCount : number = 0;
+
     public get WidthMap(): number
     {
         return this.maxX - this.minX;
@@ -100,6 +102,8 @@ export class LevelController extends Component implements ILevelController
     private _shooterMapByID: Map<number, IShooterItem> = new Map<number, ShooterItem>();
 
     @property(AudioClip) private hitSound: AudioClip = null;
+
+    private
 
     protected _debugDrawSpline(): void
     {
@@ -224,7 +228,6 @@ export class LevelController extends Component implements ILevelController
         this.floaterPool.init(this.levelData.conveyorCapacity);
 
         ShooterItem.JumpToConveyorQueue.clear();
-
         this.linkShooters();
     }
 
@@ -297,9 +300,9 @@ export class LevelController extends Component implements ILevelController
 
         if (canAdd)
         {
-            if (this.colorQueueControllers.getRemainCount() <= 0)
+            if (this.isFinalStepSureWin())
             {
-                EventDispatcher.dispatch(EventName.ZeroRemainInQueue);
+                EventDispatcher.dispatch(EventName.SureWinFinalStep);
             }
         }
         else
@@ -383,7 +386,7 @@ export class LevelController extends Component implements ILevelController
 
     public getRemainCount(): number 
     {
-        return this.colorQueueControllers.getRemainCount();
+        return this.colorQueueControllers.getRemainInQueueCount();
     }
 
     public addToShooterMap(id: number, shooter: IShooterItem): void
@@ -405,6 +408,26 @@ export class LevelController extends Component implements ILevelController
                 mainShooter.setLinkedShooters(firstShooter, secondShooter, firstChainShooter);
             }
         }
+    }
+
+    public addShooterCount(): void
+    {
+        this._shooterCount += 1;
+    }
+
+    public removeShooterCount(): void
+    {
+        this._shooterCount -= 1;
+    }
+
+    public getShooterCount(): number
+    {
+        return this._shooterCount;
+    }
+
+    public isFinalStepSureWin(): boolean
+    {
+        return this.getShooterCount() <= this.levelData.conveyorCapacity;
     }
 }
 

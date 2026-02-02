@@ -10,7 +10,7 @@ export class EventName
     public static readonly AddIQ: string = 'AddIQ';
     public static readonly ChangeGameState: string = 'ChangeGameState';
 
-    public static readonly ZeroRemainInQueue: string = 'ZeroRemainInQueue';
+    public static readonly SureWinFinalStep: string = 'ZeroRemainInQueue';
 
     public static readonly ToggleBGM : string = 'StopBGM';
 }
