@@ -2,6 +2,9 @@ import { _decorator, Node } from 'cc';
 import { SplineSmooth } from '../../../splines/SplineSmooth';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
 import { Floater } from '../Floater/Floater';
+import { EventDispatcher } from '../../../designPatterns/observer/EventDispatcher';
+import { EventName } from '../../../designPatterns/observer/EventName';
+import { CapacityBar } from '../../../uis/CapacityBar';
 
 const { ccclass, property } = _decorator;
 
@@ -9,10 +12,32 @@ const { ccclass, property } = _decorator;
 export class Conveyor extends SplineSmooth 
 {
     @property([ Floater ]) floaters: Floater[] = [];
+    @property(CapacityBar) capacityBar: CapacityBar = null;
+
+    private _inConveyCount: number = 0;
+
+    protected start(): void
+    {
+        super.start();
+        EventDispatcher.addListener(EventName.ShooterInConvey, this.onShooterInConvey, this);
+        this.floaters = this.node.getComponentsInChildren(Floater);
+        this.capacityBar.setProgress(0, this.floaters.length);
+    }
+
+    protected onDestroy(): void
+    {
+        EventDispatcher.removeListener(EventName.ShooterInConvey, this.onShooterInConvey, this);
+    }
+
+    public onShooterInConvey(inConvey: boolean): void
+    {
+        this._inConveyCount += inConvey ? 1 : -1;
+        this._inConveyCount = Math.max(0, this._inConveyCount);
+        this.capacityBar.setProgress(this._inConveyCount , this.floaters.length);
+    }
 
     public init(speed: number = 5.6): void 
     {
-        this.floaters = this.node.getComponentsInChildren(Floater);
         console.log(`Conveyor: Loaded with ${this.floaters.length} floaters.`);
         for (let i = 0; i < this.floaters.length; i++)
         {
@@ -41,9 +66,13 @@ export class Conveyor extends SplineSmooth
             const floater = this.floaters[i];
             if (floater.isTaken()) continue;
 
+            // Skip any invalid progress to avoid NaN comparisons
+            if (!Number.isFinite(floater.progress)) continue;
+
             const p = ((floater.progress % 1) + 1) % 1; // normalize to [0,1)
             const z = floater.node.worldPosition.z;
             const dist = Math.min(p, 1 - p); // closeness to 0 on a circle
+            if (!Number.isFinite(dist)) continue;
 
             if (
                 dist < bestDistance ||

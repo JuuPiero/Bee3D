@@ -572,6 +572,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
             // this._floaterNode = this._levelController.getFloaterToStream();
             this._floater = this._levelController.getBestFloaterSlot();
+            EventDispatcher.dispatch(EventName.ShooterInConvey, true);
             this._floater.setShooter(this);
             this.progress = 0;
             this._cacheSlotIndex = -1;
@@ -637,6 +638,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this._floater.onCompleteLoopAction = null;
         this._floater.setShooter(null);
         this._floater = null;
+        EventDispatcher.dispatch(EventName.ShooterInConvey, false);
     }
 
     setCacheSlot(slotIndex: number, isJump: boolean): void

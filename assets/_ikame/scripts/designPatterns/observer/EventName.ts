@@ -12,5 +12,7 @@ export class EventName
 
     public static readonly SureWinFinalStep: string = 'ZeroRemainInQueue';
 
-    public static readonly ToggleBGM : string = 'StopBGM';
+    public static readonly ToggleBGM: string = 'StopBGM';
+    
+    public static readonly ShooterInConvey : string = 'ShooterInConvey';
 }
