@@ -99,7 +99,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": -808.2169999999999,
+      "y": -834.499,
       "z": 0
     },
     "_lrot": {
@@ -285,7 +285,7 @@
     "_left": 0,
     "_right": 0,
     "_top": 0,
-    "_bottom": 96.28200000000018,
+    "_bottom": 70,
     "_horizontalCenter": 0,
     "_verticalCenter": 0,
     "_isAbsLeft": true,
@@ -378,6 +378,9 @@
     },
     "opacity": {
       "__id__": 15
+    },
+    "playButton": {
+      "__id__": 10
     },
     "_id": ""
   },
