@@ -19,6 +19,7 @@ import { FloaterPool } from '../flows/Floater/FloaterPool';
 import { IShooterItem } from '../flows/ShooterItem/IShooterItem';
 import { BulletPooling } from '../../pooling/BulletPooling';
 import { Floater } from '../flows/Floater/Floater';
+import { ETrackingEvent, TrackingManager } from '../../base-script/PlayableAds/Tracking/TrackingManager';
 const { ccclass, property } = _decorator;
 
 @ccclass('LevelController')
@@ -98,13 +99,16 @@ export class LevelController extends Component implements ILevelController
     @property({ type: FloaterPool, group: 'Controllers' })
     protected floaterPool: FloaterPool = null;
 
-    private _totalPixelsCount: number = 0;
+    private _pixelCount: number = 0;
+    private _totalPixelCount: number = 0;
 
     private _shooterMapByID: Map<number, IShooterItem> = new Map<number, ShooterItem>();
 
     @property(AudioClip) private hitSound: AudioClip = null;
 
-    private
+    private _is25Completed: boolean = false;
+    private _is50Completed: boolean = false;
+    private _is75Completed: boolean = false;
 
     protected _debugDrawSpline(): void
     {
@@ -230,12 +234,17 @@ export class LevelController extends Component implements ILevelController
         //#endregion
 
         this.colorQueueControllers.init(this.levelData.shooterQueues, this);
-        this._totalPixelsCount = this.levelData.pixels.length;
+        this._pixelCount = this.levelData.pixels.length;
+        this._totalPixelCount = this._pixelCount;
         this.floaterPool.init(this.levelData.conveyorCapacity);
 
         ShooterItem.JumpToConveyorQueue.clear();
         this.linkShooters();
 
+
+        this._is25Completed = false;
+        this._is50Completed = false;
+        this._is75Completed = false;
     }
 
     protected lateUpdate(dt: number): void
@@ -344,8 +353,9 @@ export class LevelController extends Component implements ILevelController
     checkWinCondition(): void 
     {
         if (this._isFinished) return;
-        this._totalPixelsCount--;
-        if (this._totalPixelsCount <= 0)
+        this._pixelCount--;
+        this.trackLevelProgress();
+        if (this._pixelCount <= 0)
         {
             this._isFinished = true;
             this.scheduleOnce(() => {
@@ -539,6 +549,26 @@ export class LevelController extends Component implements ILevelController
             this.lose();
         }
 
+    }
+
+    public trackLevelProgress(): void
+    {
+        const progress = (this._totalPixelCount - this._pixelCount) / this._totalPixelCount * 100;
+        if (!this._is25Completed && progress >= 25)
+        {
+            this._is25Completed = true;
+            TrackingManager.TrackEvent(ETrackingEvent.CHALLENGE_PASS_25);
+        }
+        if (!this._is50Completed && progress >= 50)
+        {
+            this._is50Completed = true;
+            TrackingManager.TrackEvent(ETrackingEvent.CHALLENGE_PASS_50);
+        }
+        if (!this._is75Completed && progress >= 75)
+        {
+            this._is75Completed = true;
+            TrackingManager.TrackEvent(ETrackingEvent.CHALLENGE_PASS_75);
+        }
     }
 }
 

@@ -33,6 +33,8 @@ export interface ILevelController
 
     doUpdate(dt: number): void
     checkLose(): void
+
+    trackLevelProgress(): void
 }
 
 
