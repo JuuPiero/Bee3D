@@ -228,5 +228,11 @@
         }
       }
     }
-  }
+  },
+  "macroCustom": [
+    {
+      "key": "TO_STORE_AFTER_PLAYNOW",
+      "value": false
+    }
+  ]
 }
