@@ -22,10 +22,21 @@ export class Conveyor extends SplineSmooth
         EventDispatcher.addListener(EventName.ShooterInConvey, this.onShooterInConvey, this);
         this.floaters = this.node.getComponentsInChildren(Floater);
         this.capacityBar.setProgress(0, this.floaters.length);
+        EventDispatcher.addListener(EventName.SureWinFinalStep, this.speedUp, this);
+    }
+
+    private speedUp(): void
+    {
+        for (let i = 0; i < this.floaters.length; i++)
+        {
+            const floater = this.floaters[i];
+            floater.setSpeed(9.2);
+        }
     }
 
     protected onDestroy(): void
     {
+        EventDispatcher.removeListener(EventName.SureWinFinalStep, this.speedUp, this);
         EventDispatcher.removeListener(EventName.ShooterInConvey, this.onShooterInConvey, this);
     }
 

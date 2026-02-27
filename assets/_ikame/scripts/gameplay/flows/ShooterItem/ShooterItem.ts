@@ -38,6 +38,8 @@ const LEFT_ROT = new Vec3(0, 90, 0);
 
 const JUMP_OFFSET_DURATION = 0.23
 
+const IN_CONVEYOR_SIZE = new Vec3(0.75, 0.75, 0.75);
+
 @ccclass('ShooterItem')
 export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {
     
@@ -581,6 +583,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             this._colorQueue.removeShooter(this);
             this.node.getWorldPosition(this._startJumpPosition);
             const tweenObj = { progress: 0 }
+            const size = new Vec3();
             const tweenJump = tween(tweenObj)
                 .to(JUMP_DURATION + (inQueueCount * JUMP_OFFSET_DURATION), { progress: 1 }, {
                     onUpdate: (target: any, ratio: number) =>
@@ -588,6 +591,9 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                         this.spline.getPercentageTransform(this._floater.progress, this._jumpToPosition, this._jumpToQuat);
                         Vec3.lerp(this._lerpPos, this._startJumpPosition, this._jumpToPosition, target.progress)
                         this.node.setWorldPosition(this._lerpPos);
+
+                        Vec3.lerp(size, Vec3.ONE, IN_CONVEYOR_SIZE, target.progress);
+                        this.node.setScale(size);
                     }
                     ,
                     onComplete: () =>
@@ -675,6 +681,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         const startPosition = this.node.worldPosition.clone();
         const jumpHeight = 2; // Adjust this value for desired arc height
         const tweenObj = { progress: 0 };
+        const size = new Vec3();
         const tweenJump = tween(tweenObj)
             .to(RETREIVE_JUMP_DURATION, { progress: 1 }, {
                 onUpdate: (target: any, ratio: number) =>
@@ -684,6 +691,9 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                     const heightOffset = Math.sin(target.progress * Math.PI) * jumpHeight;
                     this._lerpPos.y += heightOffset;
                     this.node.setWorldPosition(this._lerpPos);
+
+                    Vec3.lerp(size, Vec3.ONE, IN_CONVEYOR_SIZE, 1 - target.progress);
+                    this.node.setScale(size);
                 }
             })
             .start();

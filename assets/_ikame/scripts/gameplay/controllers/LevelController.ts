@@ -328,6 +328,7 @@ export class LevelController extends Component implements ILevelController
             if (this.isFinalStepSureWin())
             {
                 EventDispatcher.dispatch(EventName.SureWinFinalStep);
+                console.log("Final step, sure win!");
             }
         }
         else
@@ -453,7 +454,7 @@ export class LevelController extends Component implements ILevelController
 
     public isFinalStepSureWin(): boolean
     {
-        return this.getShooterCount() <= this.levelData.conveyorCapacity;
+        return this.getShooterCount() <= this.conveyor.floaters.length;
     }
 
     

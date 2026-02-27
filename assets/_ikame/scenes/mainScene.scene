@@ -800,7 +800,7 @@
       "__type__": "cc.Vec3",
       "x": 0,
       "y": -0.2,
-      "z": -1.941
+      "z": -1.832
     },
     "_lrot": {
       "__type__": "cc.Quat",
@@ -845,7 +845,7 @@
       "__type__": "cc.Vec3",
       "x": 0,
       "y": 0,
-      "z": 0
+      "z": -0.036
     },
     "_lrot": {
       "__type__": "cc.Quat",
@@ -891,7 +891,7 @@
       "__id__": 23
     },
     "_mesh": {
-      "__uuid__": "4ddec6c8-ea04-409a-84a8-757cb06a75d3@e85fe",
+      "__uuid__": "25c94411-201f-4c96-b2b8-43a8e20a878e@e85fe",
       "__expectedType__": "cc.Mesh"
     },
     "_shadowCastingMode": 0,
@@ -991,7 +991,7 @@
       "__id__": 26
     },
     "_mesh": {
-      "__uuid__": "723f06e8-60e9-4a7e-babb-71ed15a464a4@a62a7",
+      "__uuid__": "bf186a4b-8dab-430e-964d-163f2d5fd668@a62a7",
       "__expectedType__": "cc.Mesh"
     },
     "_shadowCastingMode": 0,
@@ -3338,51 +3338,27 @@
     "positions": [
       {
         "__type__": "cc.Vec3",
-        "x": -2.4,
+        "x": -3.2,
         "y": 0,
-        "z": 1.9
+        "z": 2.2
       },
       {
         "__type__": "cc.Vec3",
-        "x": 3.3,
+        "x": 3.2,
         "y": 0,
-        "z": 1.9
+        "z": 2.1
       },
       {
         "__type__": "cc.Vec3",
-        "x": 3.3,
+        "x": 3.2,
         "y": 0,
-        "z": 0.8
-      },
-      {
-        "__type__": "cc.Vec3",
-        "x": 3.3,
-        "y": 0,
-        "z": -6.1
-      },
-      {
-        "__type__": "cc.Vec3",
-        "x": 2.4,
-        "y": 0,
-        "z": -6.1
-      },
-      {
-        "__type__": "cc.Vec3",
-        "x": -3.1,
-        "y": 0,
-        "z": -6.1
+        "z": -5.8
       },
       {
         "__type__": "cc.Vec3",
         "x": -3.2,
         "y": 0,
-        "z": -5.2
-      },
-      {
-        "__type__": "cc.Vec3",
-        "x": -3.2,
-        "y": 0,
-        "z": 1.9
+        "z": -5.8
       }
     ],
     "splineType": 3,
@@ -3393,7 +3369,38 @@
     "bevelWidth": 1.6,
     "curveSegments": 20,
     "catmullRomAlpha": 0.5,
-    "floaters": [],
+    "floaters": [
+      {
+        "__id__": 49
+      },
+      {
+        "__id__": 54
+      },
+      {
+        "__id__": 59
+      },
+      {
+        "__id__": 64
+      },
+      {
+        "__id__": 69
+      },
+      {
+        "__id__": 74
+      },
+      {
+        "__id__": 79
+      },
+      {
+        "__id__": 84
+      },
+      {
+        "__id__": 89
+      },
+      {
+        "__id__": 94
+      }
+    ],
     "capacityBar": {
       "__id__": 44
     },
@@ -3506,16 +3513,16 @@
     "pixelBlockHolder": {
       "__id__": 97
     },
-    "maxX": 2.35,
-    "minX": -2.35,
-    "maxZ": 1.1,
-    "minZ": -4.6,
+    "maxX": 2.64,
+    "minX": -2.64,
+    "maxZ": 1.3,
+    "minZ": -4.9,
     "cameraMain": {
       "__id__": 18
     },
     "debugDrawMapBorder": true,
     "levelJsonAsset": {
-      "__uuid__": "aff447e5-8a89-4684-9cae-05c1962aa703",
+      "__uuid__": "e4a20e3e-3539-4c02-a6e1-4938b9b3ad61",
       "__expectedType__": "cc.JsonAsset"
     },
     "bulletPool": {
@@ -9116,7 +9123,7 @@
     "_priority": 1073741824,
     "_fov": 45,
     "_fovAxis": 0,
-    "_orthoHeight": 960,
+    "_orthoHeight": 959.9999999999999,
     "_near": 1,
     "_far": 2000,
     "_color": {
@@ -9291,9 +9298,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 255,
-      "g": 255,
-      "b": 255,
+      "r": 0,
+      "g": 44,
+      "b": 80,
       "a": 255
     },
     "_string": "No timer. No rush. Just pure fun!",
@@ -9408,9 +9415,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 14,
-      "g": 66,
-      "b": 145,
+      "r": 198,
+      "g": 220,
+      "b": 255,
       "a": 255
     },
     "_spriteFrame": {

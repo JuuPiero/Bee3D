@@ -4,6 +4,7 @@ import { IShooterItem } from '../ShooterItem/IShooterItem';
 const { ccclass, property } = _decorator;
         
 const upPosition = new Vec3(0, 0.1, 0);
+const OUT_SCALE = new Vec3(.76, .76, .76);
 
 @ccclass('Floater')
 export class Floater extends SplineFollowerSpeed {
@@ -46,7 +47,7 @@ export class Floater extends SplineFollowerSpeed {
         root.setPosition(Vec3.ZERO);
 
         const t1 = tween(root)
-            .to(0.5, { scale: Vec3.ONE }, { easing: easing.backOut })
+            .to(0.5, { scale: OUT_SCALE }, { easing: easing.backOut })
         const t2 = tween(root)
             .to(0.3, { position: upPosition }, { easing: easing.quadOut })
             .to(0.2, { position: Vec3.ZERO }, { easing: easing.quadIn });

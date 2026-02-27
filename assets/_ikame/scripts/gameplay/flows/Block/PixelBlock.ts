@@ -8,7 +8,7 @@ import { BulletPooling } from '../../../pooling/BulletPooling';
 const { ccclass, property } = _decorator;
 
 
-const BULLET_SPEED = 8.8;
+const BULLET_SPEED = 16.8;
 
 @ccclass('PixelBlock')
 export class PixelBlock extends Component implements IPixelBlock
