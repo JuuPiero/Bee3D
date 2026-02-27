@@ -4,6 +4,7 @@ import { EGameState } from './EGameState';
 import { IChangeState } from '../../designPatterns/stateMachine/BaseStateMachine';
 import { PromiseDelay } from '../../commons/PromiseDelay';
 import { ILevelController } from '../../gameplay/controllers/ILevelController';
+import { ETrackingEvent, TrackingManager } from '../../base-script/PlayableAds/Tracking/TrackingManager';
 
 export class GameStartState extends GameStateBase {
     
@@ -25,9 +26,13 @@ export class GameStartState extends GameStateBase {
     {
         try
         {
+            TrackingManager.TrackEvent(ETrackingEvent.LOADING);
             this.levelController.clearLevel();
-            await PromiseDelay.Wait(1.5);
+            this.levelController.scaleLevel();
+            TrackingManager.TrackEvent(ETrackingEvent.LOADED);
+            TrackingManager.TrackEvent(ETrackingEvent.DISPLAYED);
             this.levelController.spawnLevel();
+            await PromiseDelay.Wait(1.5);
             this.stateMachine.changeState(EGameState.Idle);
         }
         catch (error)

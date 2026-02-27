@@ -35,6 +35,10 @@ export interface ILevelController
     checkLose(): void
 
     trackLevelProgress(): void
+
+    scaleLevel(): void
+
+    getResetProgress(): number
 }
 
 

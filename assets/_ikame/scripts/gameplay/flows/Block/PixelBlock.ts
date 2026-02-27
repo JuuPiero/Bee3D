@@ -7,8 +7,10 @@ import { ILevelController } from '../../controllers/ILevelController';
 import { BulletPooling } from '../../../pooling/BulletPooling';
 const { ccclass, property } = _decorator;
 
+const OUT_SCALE = new Vec3(1.1, 3, 1.1);
 
-const BULLET_SPEED = 16.8;
+const BULLET_SPEED = 19.8;
+const LOWER_SCALE = new Vec3(1, 0.5, 1);
 
 @ccclass('PixelBlock')
 export class PixelBlock extends Component implements IPixelBlock
@@ -98,6 +100,8 @@ export class PixelBlock extends Component implements IPixelBlock
         this._gridTile.removePixelBlock();
         this._level.checkWinCondition();
 
+        // this.node.active = false; // Hide the block immediately
+
         this.bulletNode = this._bulletPool.getBullet();
         const particles = this.bulletNode.getComponentsInChildren(ParticleSystem)
         particles.forEach(p =>
@@ -120,15 +124,15 @@ export class PixelBlock extends Component implements IPixelBlock
                 this.bulletNode.active = false;
                 // this.node.active = false;
             })
-            .start();
+        .start();
         tween(this.cubeRoot)
-            .delay(travelTime)
+           .delay(travelTime - (travelTime * 0.3))
             .call(() => {
                 this.particleNode.active = true;
             })
-            .to(0.12, { scale: new Vec3(1, 3.5, 1) }, { easing: easing.backOut })
-            .to(0.13, { scale: new Vec3(1, 0, 1) }, { easing: easing.smooth })
-            .to(0.05, { scale: new Vec3(0, 0, 0) }, { easing: easing.smooth })
+            .to(0.12, { scale: OUT_SCALE }, { easing: easing.backOut })
+            .to(0.1, { scale: LOWER_SCALE }, { easing: easing.quadIn })
+            .to(0.1, { scale: Vec3.ZERO }, { easing: easing.smooth })
             .call(() =>
             {
                 particles.forEach(p =>
@@ -139,7 +143,6 @@ export class PixelBlock extends Component implements IPixelBlock
                 this._bulletPool.returnBullet(this.bulletNode);
             })
             .start();
-        
         return true;
     }
 

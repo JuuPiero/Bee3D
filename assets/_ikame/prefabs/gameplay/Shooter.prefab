@@ -2974,6 +2974,9 @@
     },
     "waterParticles": [],
     "fastSpeed": 8,
+    "hitCollider": {
+      "__id__": 112
+    },
     "connectionRoot": {
       "__id__": 50
     },
@@ -2999,7 +3002,7 @@
       "__id__": 113
     },
     "_material": null,
-    "_isTrigger": false,
+    "_isTrigger": true,
     "_center": {
       "__type__": "cc.Vec3",
       "x": 0,

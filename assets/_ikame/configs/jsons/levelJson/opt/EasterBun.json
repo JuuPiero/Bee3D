@@ -238,12 +238,6 @@
                         "ammo": 100,
                         "material": 18,
                         "isLock": false
-                    },
-                    {
-                        "id": 40,
-                        "ammo": 100,
-                        "material": 18,
-                        "isLock": false
                     }
                 ]
             }

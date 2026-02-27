@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, CCFloat, CCInteger, director, easing, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, Tween, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, AudioClip, CCFloat, CCInteger, Collider, director, easing, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, Tween, tween, Vec2, Vec3 } from 'cc';
 import { Utils } from '../../../utils/Utils';
 import { EDirection } from '../../../enums/EDirection';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
@@ -57,6 +57,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     // private _cacheSlotController: ICacheSlotController;
 
     private _passedBlockCoords: Set<string> = new Set<string>();
+    private _hasPassedResetProgress: boolean = false;
 
     @property([ MeshRenderer ])
     private characterMeshs: MeshRenderer[] = [];
@@ -116,6 +117,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private _firstChainShooter: IShooterItem = null;
     private _rightLinkedShooter: IShooterItem | null = null;
 
+    @property(Collider) private hitCollider: Collider = null;
+
     @property(Node)
     private connectionRoot: Node = null;
 
@@ -167,6 +170,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     protected start(): void
     {
+        this.hitCollider.on('onTriggerEnter', this.onTriggerEnter, this);
+
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         EventDispatcher.addListener(EventName.SureWinFinalStep, this.speedUp, this);
     }
@@ -180,6 +185,14 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         EventDispatcher.addListener(EventName.SureWinFinalStep, this.speedUp, this);
         input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
+
+        this.hitCollider.off('onTriggerEnter', this.onTriggerEnter, this);
+    }
+
+    private onTriggerEnter(event: any): void
+    {
+        console.log("ShooterItem: Trigger entered by");
+        this.clearPassedBlocks();
     }
 
     private onKeyDown(event: EventKeyboard): void
@@ -588,18 +601,12 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 .to(JUMP_DURATION + (inQueueCount * JUMP_OFFSET_DURATION), { progress: 1 }, {
                     onUpdate: (target: any, ratio: number) =>
                     {
-                        this.spline.getPercentageTransform(this._floater.progress, this._jumpToPosition, this._jumpToQuat);
+                        this._floater.node.getWorldPosition(this._jumpToPosition);
                         Vec3.lerp(this._lerpPos, this._startJumpPosition, this._jumpToPosition, target.progress)
                         this.node.setWorldPosition(this._lerpPos);
 
                         Vec3.lerp(size, Vec3.ONE, IN_CONVEYOR_SIZE, target.progress);
                         this.node.setScale(size);
-                    }
-                    ,
-                    onComplete: () =>
-                    {
-                        this.spline.getPercentageTransform(this._floater.progress, this._jumpToPosition, this._jumpToQuat);
-                        this.node.setWorldPosition(this._jumpToPosition);
                     }
                 })
                 .start();
@@ -617,7 +624,23 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public moveAlongConveyor(dt: number): void
     {
-        this.setProgress(this._floater.progress);
+        this.node.setWorldPosition(this._floater.node.worldPosition);
+        this.node.setWorldRotation(this._floater.node.worldRotation);
+        
+        const resetProgress = this._levelController.getResetProgress();
+        
+        // Reset flag when progress loops back
+        if (this.progress < resetProgress)
+        {
+            this._hasPassedResetProgress = false;
+        }
+        
+        // Only trigger once when passing resetProgress
+        if (this.progress >= resetProgress && !this._hasPassedResetProgress)
+        {
+            this._hasPassedResetProgress = true;
+            this.clearPassedBlocks();
+        }
     }
 
     public faceTheMapDirection(): void
@@ -627,15 +650,15 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public onCompleteLoop(): void
     {
-        this.loopAround();
+        // this.loopAround();
         this._levelController.checkLose ();
     }
 
-    public loopAround(): void
-    {
-        this.clearPassedBlocks();
-        this.setProgress(0);
-    }
+    // public loopAround(): void
+    // {
+    //     this.clearPassedBlocks();
+    //     this.setProgress(0);
+    // }
 
     private returnFloaterToPool(): void
     {

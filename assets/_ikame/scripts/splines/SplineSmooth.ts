@@ -1,5 +1,5 @@
-import { _decorator, Camera, CCBoolean, Color, Component, director, Enum, geometry, Graphics, Node, Quat, Vec2, Vec3 } from 'cc';
-import { EDITOR } from 'cc/env';
+import { _decorator, Camera, CCBoolean, CCFloat, Color, Component, director, Enum, geometry, Graphics, Node, Quat, Vec2, Vec3 } from 'cc';
+import { EDITOR, PREVIEW } from 'cc/env';
 const { ccclass, property } = _decorator;
 
 enum ESplineType {
@@ -14,6 +14,9 @@ export class SplineSmooth extends Component {
     
     @property({ type: [Vec3] })
     positions: Vec3[] = [];
+
+    @property(CCFloat) public resetProgress: number = 0.05;
+
 
     _camera: Camera | null = null;
 
@@ -64,7 +67,7 @@ export class SplineSmooth extends Component {
     {
         this.setPositions(this.positions);
 
-        if (EDITOR)
+        if (this.debugDraw && (EDITOR || PREVIEW))
         {
             const cameraNode = director.getScene().getChildByName('Main Camera');
             this._camera = cameraNode ? cameraNode.getComponent(Camera) : null;
@@ -533,22 +536,24 @@ export class SplineSmooth extends Component {
 
     protected lateUpdate(dt: number): void
     {
-        if (EDITOR)
             this._debugDrawSpline();
     }
 
 
     protected spline: geometry.Spline | null = null;
+    private _reset: Vec3 = new Vec3(0, 0, 0);
+    private _quaternion: Quat = new Quat();
 
     protected _debugDrawSpline(): void
     {
-        if (!EDITOR || !this.debugDraw)
+        if ((EDITOR || PREVIEW ) && this.debugDraw)
         {
-            return;
+            this.spline = new geometry.Spline();
+            this.spline.setModeAndKnots(geometry.SplineMode.LINEAR, this._smoothPath);
+            this._camera?.camera.geometryRenderer.addSpline(this.spline, Color.YELLOW);
+            this.getPercentageTransform(this.resetProgress, this._reset, this._quaternion);
+            this._camera?.camera.geometryRenderer.addSphere(this._reset, 0.1, Color.GREEN);
         }
-        this.spline = new geometry.Spline();
-        this.spline.setModeAndKnots(geometry.SplineMode.LINEAR, this._smoothPath);
-        this._camera?.camera.geometryRenderer.addSpline(this.spline, Color.YELLOW);
     }
 }
 

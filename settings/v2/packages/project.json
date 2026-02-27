@@ -11,8 +11,15 @@
   "custom_joint_texture_layouts": [],
   "physics": {
     "collisionMatrix": {
-      "0": 0
-    }
+      "0": 2,
+      "1": 1
+    },
+    "collisionGroups": [
+      {
+        "index": 1,
+        "name": "RESET"
+      }
+    ]
   },
   "layer": [
     {

@@ -5,6 +5,7 @@ import { EventName } from '../../designPatterns/observer/EventName';
 import { EGameState } from '../../designPatterns/stateMachine/EGameState';
 import { EventDispatcher } from '../../designPatterns/observer/EventDispatcher';
 import { LevelController } from '../../gameplay/controllers/LevelController';
+import { ETrackingEvent, TrackingManager } from '../../base-script/PlayableAds/Tracking/TrackingManager';
 
 const { ccclass, property } = _decorator;
 

@@ -20,6 +20,7 @@ import { IShooterItem } from '../flows/ShooterItem/IShooterItem';
 import { BulletPooling } from '../../pooling/BulletPooling';
 import { Floater } from '../flows/Floater/Floater';
 import { ETrackingEvent, TrackingManager } from '../../base-script/PlayableAds/Tracking/TrackingManager';
+import { LevelScaler } from '../LevelScaler';
 const { ccclass, property } = _decorator;
 
 @ccclass('LevelController')
@@ -34,14 +35,15 @@ export class LevelController extends Component implements ILevelController
     public pixelBlockHolder: Node = null;
     public levelData: LevelData = null;
 
-    @property({ type: CCFloat, group: 'MapBorder' })
-    public maxX: number = 1;
-    @property({ type: CCFloat, group: 'MapBorder' })
-    public minX: number = -1;
-    @property({ type: CCFloat, group: 'MapBorder' })
-    public maxZ: number = 1;
-    @property({ type: CCFloat, group: 'MapBorder' })
-    public minZ: number = -1;
+    @property({ type: Node, group: 'MapBorder' })
+    public topLeft: Node = null;
+    @property({ type: Node, group: 'MapBorder' })
+    public botRight: Node = null;
+
+    public get maxX(): number { return this.botRight.worldPosition.x; }
+    public get minX(): number { return this.topLeft.worldPosition.x; }
+    public get maxZ(): number { return this.botRight.worldPosition.z; }
+    public get minZ(): number { return this.topLeft.worldPosition.z; }
 
     private _centerMap: Vec3 = undefined;
     @property({ type: Camera })
@@ -54,6 +56,8 @@ export class LevelController extends Component implements ILevelController
     public levelJsonAsset: JsonAsset
 
     @property(BulletPooling) public bulletPool: BulletPooling;
+
+    @property(LevelScaler) public levelScaler: LevelScaler;
 
     private _shooterCount : number = 0;
 
@@ -570,6 +574,17 @@ export class LevelController extends Component implements ILevelController
             this._is75Completed = true;
             TrackingManager.TrackEvent(ETrackingEvent.CHALLENGE_PASS_75);
         }
+    }
+
+    public scaleLevel(): void
+    {
+        this.levelScaler.scaleToFitScreen();
+        this.colorQueueControllers.node.setWorldPosition(this.levelScaler.lowerPoint.worldPosition);
+    }
+
+    public getResetProgress(): number
+    {
+        return this.conveyor.resetProgress;
     }
 }
 

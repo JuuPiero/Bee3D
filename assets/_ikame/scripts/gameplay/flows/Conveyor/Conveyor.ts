@@ -1,4 +1,4 @@
-import { _decorator, Node } from 'cc';
+import { _decorator, Camera, CCFloat, Node, UITransform } from 'cc';
 import { SplineSmooth } from '../../../splines/SplineSmooth';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
 import { Floater } from '../Floater/Floater';
@@ -8,6 +8,8 @@ import { CapacityBar } from '../../../uis/CapacityBar';
 
 const { ccclass, property } = _decorator;
 
+const CONVEY_SIZE = 6.6;
+
 @ccclass('Conveyor')
 export class Conveyor extends SplineSmooth 
 {
@@ -15,6 +17,8 @@ export class Conveyor extends SplineSmooth
     @property(CapacityBar) capacityBar: CapacityBar = null;
 
     private _inConveyCount: number = 0;
+
+    @property(CCFloat) public resetProgress: number = 0.05;
 
     protected start(): void
     {
