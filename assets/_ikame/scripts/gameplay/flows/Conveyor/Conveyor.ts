@@ -18,7 +18,6 @@ export class Conveyor extends SplineSmooth
 
     private _inConveyCount: number = 0;
 
-    @property(CCFloat) public resetProgress: number = 0.05;
 
     protected start(): void
     {

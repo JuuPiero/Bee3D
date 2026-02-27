@@ -68,7 +68,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     @property(Node)
     public characterRoot : Node = null;
 
-    private _ammoCount: number = 0;
+    @property({ type: CCInteger, readonly: true })
+    private ammoCount: number = 0;
     private _ammoDisplayCount: number = 0;
     private _cacheSlotIndex: number = -1;
 
@@ -146,10 +147,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public reduceAmmoCount(amount: number): number
     {
-        this._ammoCount = Math.max(0, this._ammoCount - amount);
-        const count = this._ammoDisplayCount < this._ammoCount ? this._ammoDisplayCount : this._ammoCount;
+        this.ammoCount = Math.max(0, this.ammoCount - amount);
+        const count = this._ammoDisplayCount < this.ammoCount ? this._ammoDisplayCount : this.ammoCount;
         this.ammoLabel.string = count.toString();
-        return this._ammoCount;
+        return this.ammoCount;
     }
     
     @property(Label) private ammoLabel: Label = null;
@@ -206,7 +207,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public tryShootTargets(): number
     {
-        if (this._ammoCount <= 0)
+        if (this.ammoCount <= 0)
         {
             return 0;
         }
@@ -286,7 +287,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             if (canBeTargeted) {
                 this._targetCount++;
                 this.reduceAmmoCount(1);
-                if (this._ammoCount <= 0)   
+                if (this.ammoCount <= 0)   
                 {
                     break;
                 }
@@ -346,7 +347,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             if (canBeTargeted) {
                 this._targetCount++;
                 this.reduceAmmoCount(1);
-                if (this._ammoCount <= 0)   
+                if (this.ammoCount <= 0)   
                 {
                     break;
                 }
@@ -406,7 +407,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             if (canBeTargeted) {
                 this._targetCount++;
                 this.reduceAmmoCount(1);
-                if (this._ammoCount <= 0)   
+                if (this.ammoCount <= 0)   
                 {
                     break;
                 }
@@ -466,7 +467,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             if (canBeTargeted) {
                 this._targetCount++;
                 this.reduceAmmoCount(1);
-                if (this._ammoCount <= 0)
+                if (this.ammoCount <= 0)
                 {
                     break;
                 }
@@ -482,8 +483,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this.colorID = shooterData.material;
         this._colorQueue = colorQueue;
         this._levelController = levelController;
-        this._ammoCount = shooterData.ammo;
-        this._ammoDisplayCount = this._ammoCount - this._ammoCount % 10;
+        this.ammoCount = shooterData.ammo;
+        this._ammoDisplayCount = this.ammoCount - this.ammoCount % 10;
         if (this._ammoDisplayCount < 10) this._ammoDisplayCount = 10;
         this.ammoLabel.string = this._ammoDisplayCount.toString();
         const mat = this.colorConfig.getShooterColorById(shooterData.material);
@@ -733,7 +734,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     getAmmoCount(): number
     {
-        return this._ammoCount;
+        return this.ammoCount;
     }
 
     public async finishAnimation(): Promise<void> 

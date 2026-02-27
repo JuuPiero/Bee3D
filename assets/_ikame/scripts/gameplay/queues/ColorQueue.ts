@@ -29,7 +29,8 @@ export class ColorQueue extends Component implements IColorQueue {
         this._shooterQueue.clear();
         for (let i = 0; i < shooters.length; i++)
         {
-            const shooterData = shooters[i];
+            const shooterData = shooters[ i ];
+            if (shooterData.ammo <= 0) continue;
             const shooterNode = instantiate(this.shooterPrefab);
             const shooterComp = shooterNode.getComponent(ShooterItem);
             this.node.addChild(shooterNode);
