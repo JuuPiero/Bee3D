@@ -44,9 +44,7 @@
       "_MatCap": {
         "__uuid__": "eaf4be1d-659a-46d5-9eba-f34922ad8190@6c48a",
         "__expectedType__": "cc.Texture2D"
-      },
-      "_Glossiness": 0,
-      "_SpecularIntensity": 0
+      }
     }
   ]
 }
