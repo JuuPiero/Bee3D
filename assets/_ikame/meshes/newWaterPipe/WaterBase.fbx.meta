@@ -1,0 +1,96 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "1d48052f-e760-4d3d-a4df-e9244222211f",
+  "files": [],
+  "subMetas": {
+    "a62a7": {
+      "importer": "gltf-mesh",
+      "uuid": "1d48052f-e760-4d3d-a4df-e9244222211f@a62a7",
+      "displayName": "",
+      "id": "a62a7",
+      "name": "WaterBase.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 864
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "89a26": {
+      "importer": "gltf-material",
+      "uuid": "1d48052f-e760-4d3d-a4df-e9244222211f@89a26",
+      "displayName": "",
+      "id": "89a26",
+      "name": "Atlas.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "3e9ca": {
+      "importer": "gltf-scene",
+      "uuid": "1d48052f-e760-4d3d-a4df-e9244222211f@3e9ca",
+      "displayName": "",
+      "id": "3e9ca",
+      "name": "WaterBase.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "1d48052f-e760-4d3d-a4df-e9244222211f@a62a7"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [
+        "1d48052f-e760-4d3d-a4df-e9244222211f@89a26"
+      ],
+      "scenes": [
+        "1d48052f-e760-4d3d-a4df-e9244222211f@3e9ca"
+      ]
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "8a5986d4-a9c6-4b49-b9d1-89006250870f",
+  "files": [],
+  "subMetas": {
+    "a62a7": {
+      "importer": "gltf-mesh",
+      "uuid": "8a5986d4-a9c6-4b49-b9d1-89006250870f@a62a7",
+      "displayName": "",
+      "id": "a62a7",
+      "name": "WaterBase.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 864
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "89a26": {
+      "importer": "gltf-material",
+      "uuid": "8a5986d4-a9c6-4b49-b9d1-89006250870f@89a26",
+      "displayName": "",
+      "id": "89a26",
+      "name": "Atlas.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "5c326": {
+      "importer": "gltf-scene",
+      "uuid": "8a5986d4-a9c6-4b49-b9d1-89006250870f@5c326",
+      "displayName": "",
+      "id": "5c326",
+      "name": "WaterBase1.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "8a5986d4-a9c6-4b49-b9d1-89006250870f@a62a7"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [
+        "8a5986d4-a9c6-4b49-b9d1-89006250870f@89a26"
+      ],
+      "scenes": [
+        "8a5986d4-a9c6-4b49-b9d1-89006250870f@5c326"
+      ]
+    }
+  }
+}

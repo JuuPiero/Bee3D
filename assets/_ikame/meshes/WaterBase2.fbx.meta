@@ -1,0 +1,126 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "e0940d6e-0a40-4d8c-a080-20f7c9152541",
+  "files": [],
+  "subMetas": {
+    "a62a7": {
+      "importer": "gltf-mesh",
+      "uuid": "e0940d6e-0a40-4d8c-a080-20f7c9152541@a62a7",
+      "displayName": "",
+      "id": "a62a7",
+      "name": "WaterBase.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 864
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "7d6ab": {
+      "importer": "texture",
+      "uuid": "e0940d6e-0a40-4d8c-a080-20f7c9152541@7d6ab",
+      "displayName": "",
+      "id": "7d6ab",
+      "name": "base_color_texture.texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": false,
+        "imageUuidOrDatabaseUri": "db://assets/_ikame/meshes/sha_00000.png"
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "89a26": {
+      "importer": "gltf-material",
+      "uuid": "e0940d6e-0a40-4d8c-a080-20f7c9152541@89a26",
+      "displayName": "",
+      "id": "89a26",
+      "name": "Atlas.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "8151c": {
+      "importer": "gltf-scene",
+      "uuid": "e0940d6e-0a40-4d8c-a080-20f7c9152541@8151c",
+      "displayName": "",
+      "id": "8151c",
+      "name": "WaterBase2.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [
+      {
+        "name": "base_color_texture",
+        "uri": "db://assets/_ikame/meshes/sha_00000.png"
+      }
+    ],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "e0940d6e-0a40-4d8c-a080-20f7c9152541@a62a7"
+      ],
+      "skeletons": [],
+      "textures": [
+        "e0940d6e-0a40-4d8c-a080-20f7c9152541@7d6ab"
+      ],
+      "materials": [
+        "e0940d6e-0a40-4d8c-a080-20f7c9152541@89a26"
+      ],
+      "scenes": [
+        "e0940d6e-0a40-4d8c-a080-20f7c9152541@8151c"
+      ]
+    }
+  }
+}
