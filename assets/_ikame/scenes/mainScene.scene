@@ -4047,9 +4047,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 0,
-      "g": 44,
-      "b": 80,
+      "r": 177,
+      "g": 95,
+      "b": 19,
       "a": 255
     },
     "_string": "No timer. No rush. Just pure fun!",
@@ -4164,9 +4164,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 198,
-      "g": 220,
-      "b": 255,
+      "r": 242,
+      "g": 178,
+      "b": 126,
       "a": 255
     },
     "_spriteFrame": {
@@ -4585,7 +4585,7 @@
     },
     "debugDrawMapBorder": true,
     "levelJsonAsset": {
-      "__uuid__": "2bb9fca3-da9a-47ff-aaa4-faae84ab8ad1",
+      "__uuid__": "a92bdbc7-7c26-4c92-adf3-34fc8d0eeff1",
       "__expectedType__": "cc.JsonAsset"
     },
     "bulletPool": {
