@@ -15,7 +15,6 @@
     },
     {},
     {
-      "USE_OUTLINE_PASS": true,
       "USE_INSTANCING": true
     }
   ],
