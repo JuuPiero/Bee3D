@@ -8,5 +8,6 @@ export interface IPixelBlock {
     getUid(): string;
     markForDestroy(barrolPosition: Vec3): boolean;
     isMarkedForDestroy(): boolean;
+    moveBlockDown(): void;
 }
 

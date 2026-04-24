@@ -39,6 +39,7 @@ export interface ILevelController
     scaleLevel(): void
 
     getResetProgress(): number
+    dropColumn(x: number): void
 }
 
 

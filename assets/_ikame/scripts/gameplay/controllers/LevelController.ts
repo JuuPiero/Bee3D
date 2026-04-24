@@ -23,6 +23,8 @@ import { ETrackingEvent, TrackingManager } from '../../base-script/PlayableAds/T
 import { LevelScaler } from '../LevelScaler';
 const { ccclass, property } = _decorator;
 
+const PIXEL_BLOCK_SIZE = 1;
+
 @ccclass('LevelController')
 export class LevelController extends Component implements ILevelController
 {    
@@ -199,8 +201,8 @@ export class LevelController extends Component implements ILevelController
         const mapScale = Math.min(scaleHorizontal, scaleVertical);
         this.pixelBlockHolder.setScale(mapScale, mapScale, mapScale);
         
-        const offsetX = -this.levelData.widthMap / 2 + 0.5;
-        const offsetZ = -this.levelData.heightMap / 2 + 0.5;
+        const offsetX = (-this.levelData.widthMap / 2) +  (PIXEL_BLOCK_SIZE / 2);
+        const offsetZ = (-this.levelData.heightMap / 2) + (PIXEL_BLOCK_SIZE / 2);
         
         for (let i = 0; i < this.levelData.widthMap; i++)
         {
@@ -331,7 +333,6 @@ export class LevelController extends Component implements ILevelController
             if (this.isFinalStepSureWin())
             {
                 EventDispatcher.dispatch(EventName.SureWinFinalStep);
-                console.log("Final step, sure win!");
             }
         }
         else
@@ -542,6 +543,20 @@ export class LevelController extends Component implements ILevelController
     public getResetProgress(): number
     {
         return this.conveyor.resetProgress;
+    }
+
+    public dropColumn(x: number): void
+    {
+        let i = this.getLevelHeight() - 1;
+        while (i >= 0)
+        {
+            const tile = this.getTileAtCoord(x, i);
+            if (tile && tile.isContainBlock())
+            {
+                tile.getPixelBlock().moveBlockDown();
+            }
+            i--;
+        }
     }
 }
 

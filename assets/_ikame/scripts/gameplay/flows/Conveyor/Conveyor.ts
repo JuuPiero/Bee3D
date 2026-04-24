@@ -18,6 +18,8 @@ export class Conveyor extends SplineSmooth
 
     private _inConveyCount: number = 0;
 
+    @property(CCFloat) speed: number = 5.6;
+    @property(CCFloat) speedFast = 9.2;
 
     protected start(): void
     {
@@ -33,7 +35,7 @@ export class Conveyor extends SplineSmooth
         for (let i = 0; i < this.floaters.length; i++)
         {
             const floater = this.floaters[i];
-            floater.setSpeed(9.2);
+            floater.setSpeed(this.speedFast);
         }
     }
 
@@ -50,14 +52,13 @@ export class Conveyor extends SplineSmooth
         this.capacityBar.setProgress(this._inConveyCount , this.floaters.length);
     }
 
-    public init(speed: number = 5.6): void 
+    public init(): void 
     {
-        console.log(`Conveyor: Loaded with ${this.floaters.length} floaters.`);
         for (let i = 0; i < this.floaters.length; i++)
         {
             const floater = this.floaters[i];
             floater.spline = this;
-            floater.setSpeed(speed);
+            floater.setSpeed(this.speed);
             floater.setLooping(true);
 
             floater.setProgress(i / this.floaters.length);

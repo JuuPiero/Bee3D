@@ -2913,7 +2913,7 @@
     "spline": null,
     "progress": 0,
     "updateRotation": true,
-    "speed": 1,
+    "speed": 0.003,
     "isLooping": false,
     "connections": [
       {
@@ -2974,7 +2974,7 @@
       "__expectedType__": "cc.AudioClip"
     },
     "waterParticles": [],
-    "fastSpeed": 2,
+    "fastSpeed": 1,
     "hitCollider": {
       "__id__": 112
     },

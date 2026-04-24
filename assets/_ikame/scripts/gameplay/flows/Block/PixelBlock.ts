@@ -1,4 +1,4 @@
-import { _decorator, Camera, CCBoolean, CCInteger, Node, Component, director, MeshRenderer, Vec3, tween, Scene, easing, ParticleSystem, game } from 'cc';
+import { _decorator, Camera, CCBoolean, CCInteger, Node, Component, director, MeshRenderer, Vec3, tween, Scene, easing, ParticleSystem, game, Tween } from 'cc';
 import { ColorConfig } from '../../../configData/ColorConfig';
 import { EDITOR } from 'cc/env';
 import { IPixelBlock } from './IPixelBlock';
@@ -9,8 +9,10 @@ const { ccclass, property } = _decorator;
 
 const OUT_SCALE = new Vec3(1.1, 3, 1.1);
 
-const BULLET_SPEED = 19.8;
+const BULLET_SPEED = 9.8;
 const LOWER_SCALE = new Vec3(1, 0.5, 1);
+
+const Z_SPEED = 2.0;
 
 @ccclass('PixelBlock')
 export class PixelBlock extends Component implements IPixelBlock
@@ -48,13 +50,15 @@ export class PixelBlock extends Component implements IPixelBlock
     @property(Node) public particleNode: Node = null;
     @property(Node) public cubeRoot: Node = null;
 
+    private _underTile : IGridTile = null;
+
     init(colorID: number, level: ILevelController, bulletPool: BulletPooling): void 
     {
         const color = this.colorData.getPixelBlockMaterialById(colorID);
         this.meshRenderer.setSharedMaterial( color, 0);
         this.colorID = colorID;
         this._level = level;
-        this._bulletPool = bulletPool;    
+        this._bulletPool = bulletPool;   
     }
 
     getWorldPosition(): Vec3
@@ -132,6 +136,9 @@ export class PixelBlock extends Component implements IPixelBlock
             })
             .to(0.12, { scale: OUT_SCALE }, { easing: easing.backOut })
             .to(0.1, { scale: LOWER_SCALE }, { easing: easing.quadIn })
+            .call(() => {
+                this._level.dropColumn(this.coordX);
+            })
             .to(0.1, { scale: Vec3.ZERO }, { easing: easing.smooth })
             .call(() =>
             {
@@ -149,6 +156,29 @@ export class PixelBlock extends Component implements IPixelBlock
     public isMarkedForDestroy(): boolean
     {
         return this._isMarkedForDestroy;
+    }
+
+    private _gravityTween : Tween<Node> = null;
+    private _targetPosition: Vec3 = new Vec3();
+
+    public moveBlockDown(): void
+    {
+        if (!this._underTile)
+        {
+            this._underTile = this._gridTile;
+        }
+        this._underTile = this._underTile.getBottomLinkedTile();
+
+        if (!this._underTile) return;
+
+        const duration = Math.abs(this.node.worldPositionZ - this._underTile.getWorldPosZ()) / Z_SPEED;
+        if (this._gravityTween)        {
+            this._gravityTween.stop();
+        }
+        this._targetPosition.set(this._underTile.getWorldPosX(), 0, this._underTile.getWorldPosZ());
+        this._gravityTween = tween(this.node)
+            .to(duration, { worldPosition: this._targetPosition }, { easing: easing.linear })
+        this._gravityTween.start();
     }
 }
 
