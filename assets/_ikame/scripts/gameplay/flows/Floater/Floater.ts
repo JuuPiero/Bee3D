@@ -19,14 +19,6 @@ export class Floater extends SplineFollowerSpeed {
     public setShooter(shooter: IShooterItem): void
     {
         this._shooter = shooter;
-        if (this._shooter)
-        {
-            this.popupAnim();
-        }
-        else 
-        {
-            this.shrinkAnim();
-        }
     }
 
     public getShooter(): IShooterItem

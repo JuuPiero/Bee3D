@@ -1,0 +1,268 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "8f05d320-4052-4bb4-9ed9-8af3f488b223",
+  "files": [],
+  "subMetas": {
+    "429c9": {
+      "importer": "gltf-mesh",
+      "uuid": "8f05d320-4052-4bb4-9ed9-8af3f488b223@429c9",
+      "displayName": "",
+      "id": "429c9",
+      "name": "Belt.001.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 878
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "e0c89": {
+      "importer": "gltf-mesh",
+      "uuid": "8f05d320-4052-4bb4-9ed9-8af3f488b223@e0c89",
+      "displayName": "",
+      "id": "e0c89",
+      "name": "Conveyor Belt.mesh",
+      "userData": {
+        "gltfIndex": 1,
+        "triangleCount": 30
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "4f979": {
+      "importer": "gltf-mesh",
+      "uuid": "8f05d320-4052-4bb4-9ed9-8af3f488b223@4f979",
+      "displayName": "",
+      "id": "4f979",
+      "name": "Screen.001.mesh",
+      "userData": {
+        "gltfIndex": 2,
+        "triangleCount": 236
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "1256d": {
+      "importer": "gltf-mesh",
+      "uuid": "8f05d320-4052-4bb4-9ed9-8af3f488b223@1256d",
+      "displayName": "",
+      "id": "1256d",
+      "name": "Screen_02.001.mesh",
+      "userData": {
+        "gltfIndex": 3,
+        "triangleCount": 142
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "48b02": {
+      "importer": "gltf-embeded-image",
+      "uuid": "8f05d320-4052-4bb4-9ed9-8af3f488b223@48b02",
+      "displayName": "",
+      "id": "48b02",
+      "name": "base_color_texture.image",
+      "userData": {
+        "gltfIndex": 0,
+        "fixAlphaTransparencyArtifacts": true,
+        "hasAlpha": true,
+        "type": "texture"
+      },
+      "ver": "1.0.3",
+      "imported": true,
+      "files": [
+        ".json",
+        ".png"
+      ],
+      "subMetas": {}
+    },
+    "7c09f": {
+      "importer": "gltf-embeded-image",
+      "uuid": "8f05d320-4052-4bb4-9ed9-8af3f488b223@7c09f",
+      "displayName": "",
+      "id": "7c09f",
+      "name": "alpha_texture.image",
+      "userData": {
+        "gltfIndex": 1,
+        "fixAlphaTransparencyArtifacts": true,
+        "hasAlpha": true,
+        "type": "texture"
+      },
+      "ver": "1.0.3",
+      "imported": true,
+      "files": [
+        ".json",
+        ".png"
+      ],
+      "subMetas": {}
+    },
+    "7d6ab": {
+      "importer": "texture",
+      "uuid": "8f05d320-4052-4bb4-9ed9-8af3f488b223@7d6ab",
+      "displayName": "",
+      "id": "7d6ab",
+      "name": "base_color_texture.texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "8f05d320-4052-4bb4-9ed9-8af3f488b223@48b02"
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "43a9c": {
+      "importer": "texture",
+      "uuid": "8f05d320-4052-4bb4-9ed9-8af3f488b223@43a9c",
+      "displayName": "",
+      "id": "43a9c",
+      "name": "alpha_texture.texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "8f05d320-4052-4bb4-9ed9-8af3f488b223@7c09f"
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "6a8f9": {
+      "importer": "gltf-material",
+      "uuid": "8f05d320-4052-4bb4-9ed9-8af3f488b223@6a8f9",
+      "displayName": "",
+      "id": "6a8f9",
+      "name": "Unlit.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "1a9ee": {
+      "importer": "gltf-material",
+      "uuid": "8f05d320-4052-4bb4-9ed9-8af3f488b223@1a9ee",
+      "displayName": "",
+      "id": "1a9ee",
+      "name": "FakeShadow.material",
+      "userData": {
+        "gltfIndex": 1
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "0b946": {
+      "importer": "gltf-scene",
+      "uuid": "8f05d320-4052-4bb4-9ed9-8af3f488b223@0b946",
+      "displayName": "",
+      "id": "0b946",
+      "name": "Belt.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [
+      {
+        "name": "base_color_texture",
+        "uri": "8f05d320-4052-4bb4-9ed9-8af3f488b223@48b02"
+      },
+      {
+        "name": "alpha_texture",
+        "uri": "8f05d320-4052-4bb4-9ed9-8af3f488b223@7c09f"
+      }
+    ],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "8f05d320-4052-4bb4-9ed9-8af3f488b223@429c9",
+        "8f05d320-4052-4bb4-9ed9-8af3f488b223@e0c89",
+        "8f05d320-4052-4bb4-9ed9-8af3f488b223@4f979",
+        "8f05d320-4052-4bb4-9ed9-8af3f488b223@1256d"
+      ],
+      "skeletons": [],
+      "textures": [
+        "8f05d320-4052-4bb4-9ed9-8af3f488b223@7d6ab",
+        "8f05d320-4052-4bb4-9ed9-8af3f488b223@43a9c"
+      ],
+      "materials": [
+        "8f05d320-4052-4bb4-9ed9-8af3f488b223@6a8f9",
+        "8f05d320-4052-4bb4-9ed9-8af3f488b223@1a9ee"
+      ],
+      "scenes": [
+        "8f05d320-4052-4bb4-9ed9-8af3f488b223@0b946"
+      ]
+    }
+  }
+}

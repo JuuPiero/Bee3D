@@ -161,26 +161,6 @@
       ],
       "subMetas": {}
     },
-    "fd73d": {
-      "importer": "gltf-embeded-image",
-      "uuid": "09efeddb-627d-4421-a5af-346c912264c2@fd73d",
-      "displayName": "",
-      "id": "fd73d",
-      "name": "DiffuseColor_Texture.image",
-      "userData": {
-        "gltfIndex": 0,
-        "fixAlphaTransparencyArtifacts": true,
-        "hasAlpha": true,
-        "type": "texture"
-      },
-      "ver": "1.0.3",
-      "imported": true,
-      "files": [
-        ".json",
-        ".png"
-      ],
-      "subMetas": {}
-    },
     "4f17a": {
       "importer": "texture",
       "uuid": "09efeddb-627d-4421-a5af-346c912264c2@4f17a",
@@ -194,8 +174,8 @@
         "magfilter": "linear",
         "mipfilter": "none",
         "anisotropy": 0,
-        "isUuid": true,
-        "imageUuidOrDatabaseUri": "09efeddb-627d-4421-a5af-346c912264c2@fd73d"
+        "isUuid": false,
+        "imageUuidOrDatabaseUri": "db://assets/_ikame/textures/Character.png"
       },
       "ver": "1.0.22",
       "imported": true,
@@ -241,7 +221,7 @@
     "imageMetas": [
       {
         "name": "DiffuseColor_Texture",
-        "uri": "09efeddb-627d-4421-a5af-346c912264c2@fd73d"
+        "uri": "db://assets/_ikame/textures/Character.png"
       }
     ],
     "fbx": {

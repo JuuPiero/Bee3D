@@ -242,7 +242,6 @@ export class LevelController extends Component implements ILevelController
         this._totalPixelCount = this._pixelCount;
         this.floaterPool.init(this.levelData.conveyorCapacity);
 
-        ShooterItem.JumpToConveyorQueue.clear();
         this.linkShooters();
 
 

@@ -48,7 +48,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     @property(CCFloat   )
     public id : number = -1;
 
-    static JumpToConveyorQueue: Queue<ShooterItem> = new Queue<ShooterItem>();
 
     @property(CCInteger) public colorID: number = -1;
 
@@ -560,11 +559,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         {
             return;
         }
-        const fromCache = this._cacheSlotIndex >= 0;
-        const newJumpDuration = JUMP_DURATION * (fromCache ? 0.5 : 1) + ShooterItem.JumpToConveyorQueue.size() * JUMP_OFFSET_DURATION;
-        const scale = newJumpDuration / JUMP_DURATION;
-
-        this.animator.getState(animationName).speed = animationName === ShooterAnimationName.Jump ? 1 / scale : 1;
         this.animator.play(animationName);
         this._curAnimationName = animationName;
     }
@@ -583,8 +577,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         try
         {
-            const inQueueCount = ShooterItem.JumpToConveyorQueue.size();
-            ShooterItem.JumpToConveyorQueue.enqueue(this);
             EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
             // this._floaterNode = this._levelController.getFloaterToStream();
             this._floater = this._levelController.getBestFloaterSlot();
@@ -599,7 +591,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             const tweenObj = { progress: 0 }
             const size = new Vec3();
             const tweenJump = tween(tweenObj)
-                .to(JUMP_DURATION + (inQueueCount * JUMP_OFFSET_DURATION), { progress: 1 }, {
+                .to(JUMP_DURATION, { progress: 1 }, {
                     onUpdate: (target: any, ratio: number) =>
                     {
                         this._floater.node.getWorldPosition(this._jumpToPosition);
@@ -612,7 +604,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 })
                 .start();
             await PromiseDelay.Wait(tweenJump.duration);
-            ShooterItem.JumpToConveyorQueue.dequeue();
             this.playWaterParticles();
             this._floater.onCompleteLoopAction = this.onCompleteLoop.bind(this);
         }
@@ -653,6 +644,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         // this.loopAround();
         this._levelController.checkLose ();
+        this.clearPassedBlocks();
     }
 
     // public loopAround(): void
