@@ -472,20 +472,6 @@ export class LevelController extends Component implements ILevelController
         const width = this.getLevelWidth();
         const height = this.getLevelHeight();
 
-        // From TOP edge (z = 0), scan downward
-        for (let x = 0; x < width; x++)
-        {
-            let tile: IGridTile | null = this.getTileAtCoord(x, 0);
-            while (tile && !tile.isContainBlock())
-            {
-                tile = tile.getBottomLinkedTile();
-            }
-            if (tile && tile.isContainBlock())
-            {
-                colors.add(tile.getOccupyingColorID());
-            }
-        }
-
         // From BOTTOM edge (z = height - 1), scan upward
         for (let x = 0; x < width; x++)
         {
@@ -493,34 +479,6 @@ export class LevelController extends Component implements ILevelController
             while (tile && !tile.isContainBlock())
             {
                 tile = tile.getTopLinkedTile();
-            }
-            if (tile && tile.isContainBlock())
-            {
-                colors.add(tile.getOccupyingColorID());
-            }
-        }
-
-        // From LEFT edge (x = 0), scan rightwards
-        for (let z = 0; z < height; z++)
-        {
-            let tile: IGridTile | null = this.getTileAtCoord(0, z);
-            while (tile && !tile.isContainBlock())
-            {
-                tile = tile.getRightLinkedTile();
-            }
-            if (tile && tile.isContainBlock())
-            {
-                colors.add(tile.getOccupyingColorID());
-            }
-        }
-
-        // From RIGHT edge (x = width - 1), scan leftwards
-        for (let z = 0; z < height; z++)
-        {
-            let tile: IGridTile | null = this.getTileAtCoord(width - 1, z);
-            while (tile && !tile.isContainBlock())
-            {
-                tile = tile.getLeftLinkedTile();
             }
             if (tile && tile.isContainBlock())
             {
