@@ -135,7 +135,13 @@
           "from": 0.07621440605901594,
           "to": 0.8666666746139526
         },
-        "events": []
+        "events": [],
+        "speed": 1.3,
+        "embeddedPlayers": [],
+        "editorExtras": {
+          "embeddedPlayerGroups": []
+        },
+        "auxiliaryCurves": {}
       },
       "ver": "1.0.17",
       "imported": true,
@@ -294,7 +300,8 @@
             "from": 0.07621440605901594,
             "to": 0.8666666746139526,
             "wrapMode": 1,
-            "previousId": "8304d"
+            "previousId": "8304d",
+            "speed": 1.3
           }
         ]
       }

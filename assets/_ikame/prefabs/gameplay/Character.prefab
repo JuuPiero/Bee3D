@@ -1415,10 +1415,7 @@
         "__expectedType__": "cc.AnimationClip"
       }
     ],
-    "_defaultClip": {
-      "__uuid__": "09efeddb-627d-4421-a5af-346c912264c2@8a5ac",
-      "__expectedType__": "cc.AnimationClip"
-    },
+    "_defaultClip": null,
     "_useBakedAnimation": true,
     "_sockets": [],
     "_id": ""
@@ -1436,6 +1433,7 @@
       "__id__": 0
     },
     "fileId": "119m/BASxMIKaAc8JCuyOR",
+    "instance": null,
     "targetOverrides": null
   }
 ]

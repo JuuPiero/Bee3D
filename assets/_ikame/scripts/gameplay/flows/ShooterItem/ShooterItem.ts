@@ -30,7 +30,7 @@ import { PREVIEW } from 'cc/env';
 import { Floater } from '../Floater/Floater';
 const { ccclass, property } = _decorator;
 
-const JUMP_DURATION = 0.45;
+const JUMP_DURATION = 0.3;
 const RETREIVE_JUMP_DURATION = 0.32;
 
 const RIGHT_ROT = new Vec3(0, -90, 0);
