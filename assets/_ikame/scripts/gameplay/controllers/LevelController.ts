@@ -21,6 +21,7 @@ import { BulletPooling } from '../../pooling/BulletPooling';
 import { Floater } from '../flows/Floater/Floater';
 import { ETrackingEvent, TrackingManager } from '../../base-script/PlayableAds/Tracking/TrackingManager';
 import { LevelScaler } from '../LevelScaler';
+import { IPixelBlock } from '../flows/Block/IPixelBlock';
 const { ccclass, property } = _decorator;
 
 const PIXEL_BLOCK_SIZE = 1;
@@ -557,6 +558,64 @@ export class LevelController extends Component implements ILevelController
             }
             i--;
         }
+    }
+
+    public findTargetPixels(max: number, out : IPixelBlock[] = []): IPixelBlock[]
+    {
+        if (max <= 0)
+        {
+            out.length = 0;
+            return out;
+        }
+
+        const targets: IPixelBlock[] = out;
+        const addedTargets = new Set<string>();
+        const width = this.getLevelWidth();
+        const height = this.getLevelHeight();
+
+        const tryAddTargetAt = (x: number, startZ: number): void =>
+        {
+            let tile = this.getTileAtCoord(x, startZ);
+            while (tile && !tile.isContainBlock())
+            {
+                tile = tile.getTopLinkedTile();
+            }
+
+            if (!tile || !tile.isContainBlock())
+            {
+                return;
+            }
+
+            const pixelBlock = tile.getPixelBlock();
+            const uid = pixelBlock.getUid();
+            if (addedTargets.has(uid))
+            {
+                return;
+            }
+
+            addedTargets.add(uid);
+            targets.push(pixelBlock);
+        };
+
+        for (let z = height - 1; z >= 0 && targets.length < max; z--)
+        {
+            const isLeftToRight = (height - 1 - z) % 2 === 0;
+            if (isLeftToRight)
+            {
+                for (let x = 0; x < width && targets.length < max; x++)
+                {
+                    tryAddTargetAt(x, z);
+                }
+                continue;
+            }
+
+            for (let x = width - 1; x >= 0 && targets.length < max; x--)
+            {
+                tryAddTargetAt(x, z);
+            }
+        }
+
+        return targets;
     }
 }
 

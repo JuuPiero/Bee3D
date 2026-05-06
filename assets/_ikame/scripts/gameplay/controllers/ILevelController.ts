@@ -6,6 +6,7 @@ import { IGridTile } from "../flows/MapTiles/IGridTile"
 import { Node } from "cc"
 import { IShooterItem } from "../flows/ShooterItem/IShooterItem"
 import { Floater } from "../flows/Floater/Floater"
+import { IPixelBlock } from "../flows/Block/IPixelBlock"
 
 export interface ILevelController
 {
@@ -40,6 +41,8 @@ export interface ILevelController
 
     getResetProgress(): number
     dropColumn(x: number): void
+
+    findTargetPixels(max: number, out : IPixelBlock[]): IPixelBlock[]
 }
 
 

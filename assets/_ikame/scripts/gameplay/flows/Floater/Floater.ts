@@ -1,5 +1,4 @@
 import { _decorator, Component, easing, Node, tween, Tween, Vec3 } from 'cc';
-import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
 import { IShooterItem } from '../ShooterItem/IShooterItem';
 const { ccclass, property } = _decorator;
         
@@ -7,7 +6,7 @@ const upPosition = new Vec3(0, 0.1, 0);
 const OUT_SCALE = new Vec3(.76, .76, .76);
 
 @ccclass('Floater')
-export class Floater extends SplineFollowerSpeed {
+export class Floater extends Component {
 
     private _shooter: IShooterItem = null;
 

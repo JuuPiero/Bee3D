@@ -19,15 +19,14 @@ import { ShooterStateBase } from './states/ShooterStateBase';
 import { IShooterItem } from './IShooterItem';
 import { PromiseDelay } from '../../../commons/PromiseDelay';
 import { ShooterRetriveState } from './states/implementStates/ShooterRetriveState';
-import { ICacheSlotController } from '../../cacheSlots/ICacheSlotController';
 import { ShooterAnimationName } from './states/ShooterAnimationName';
 import { EventDispatcher } from '../../../designPatterns/observer/EventDispatcher';
 import { EventName } from '../../../designPatterns/observer/EventName';
-import { Queue } from '../../../commons/Queue';
 import { EColor } from '../../../enums/EColor';
 import { LinkedConnection } from './LinkedConnection/LinkedCollection';
 import { PREVIEW } from 'cc/env';
 import { Floater } from '../Floater/Floater';
+import { IPixelBlock } from '../Block/IPixelBlock';
 const { ccclass, property } = _decorator;
 
 const JUMP_DURATION = 0.3;
@@ -38,7 +37,7 @@ const LEFT_ROT = new Vec3(0, 90, 0);
 
 const JUMP_OFFSET_DURATION = 0.23
 
-const IN_CONVEYOR_SIZE = new Vec3(0.75, 0.75, 0.75);
+const IN_CONVEYOR_SIZE = Vec3.ONE;
 
 @ccclass('ShooterItem')
 export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {
@@ -90,6 +89,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private _lerpPos = new Vec3();
 
     private _targetCount: number = 0;
+    private _targets: IPixelBlock[] = [];
 
     private _floater: Floater = null;
     
@@ -211,268 +211,15 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             return 0;
         }
         this._targetCount = 0;
-        const edge = this._levelController.getShooterEdge(this.node.worldPosition.x, this.node.worldPosition.z);
-        switch (edge)
-        {
-            case EDirection.BOTTOM:
-                this.shotTargetsBottom();
-                break;
-            case EDirection.TOP:
-                this.shotTargetsTop();
-                break;
-            case EDirection.LEFT:
-                this.shotTargetsLeft();
-                break;
-            case EDirection.RIGHT:
-                this.shotTargetsRight();
-                break;
-        }
+        // this.shotTargetsBottom();
         return this._targetCount;
     }
 
-    private shotTargetsBottom(): number 
+    public findTargets(): IPixelBlock[]
     {
-        const z = this._levelController.getLevelHeight() - 1;
-        let x = 0;
-        while (x < this._levelController.getLevelWidth())
-        {
-            if (this.hasPassedBlock(x, z))
-            {
-                x++;
-                continue;
-            }
-
-            let protentialTileTarget = this._levelController.getTileAtCoord(x, z);
-            if (!protentialTileTarget)
-            {  
-                console.error("No tile found at coord:", x, z);
-                return;
-            }
-
-            if (protentialTileTarget.getWorldPosX() > this.node.worldPositionX)
-            {
-                x++;
-                continue;
-            }
-
-            if (!protentialTileTarget.isContainBlock())
-            {
-                // Dig Upwards
-                let upLinkedTile = protentialTileTarget.getTopLinkedTile();
-                while (upLinkedTile)
-                {
-                    if (upLinkedTile.isContainBlock() || upLinkedTile.isMatchingColorID(this.colorID))
-                    {
-                        protentialTileTarget = upLinkedTile;
-                        break;
-                    }
-                    upLinkedTile = upLinkedTile.getTopLinkedTile();
-                }
-            }
-
-            const targetBlock = protentialTileTarget.getPixelBlock();
-            if (!targetBlock || targetBlock.getColorID() !== this.colorID)
-            {
-                this.markBlockAsPassed(x, z);
-                x++;
-                continue;
-            }
-            
-            // Đánh dấu cả tile gốc và tile chứa block thực sự
-            this.markBlockAsPassed(x, z);
-            this.markBlockAsPassed(protentialTileTarget.getCoordX(), protentialTileTarget.getCoordZ());
-            
-            const canBeTargeted = targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
-            if (canBeTargeted) {
-                this._targetCount++;
-                this.reduceAmmoCount(1);
-                if (this.ammoCount <= 0)   
-                {
-                    break;
-                }
-            }
-            x++;
-        }
-    }
-
-    private shotTargetsTop(): number 
-    {
-        const z = 0;
-        let x = this._levelController.getLevelWidth() - 1;
-        while (x >= 0)
-        {
-            if (this.hasPassedBlock(x, z))
-            {
-                x--;
-                continue;
-            }
-            let protentialTileTarget = this._levelController.getTileAtCoord(x, z);
-            if (!protentialTileTarget)
-            {
-                console.error("No tile found at coord:", x, z);
-                return;
-            }
-
-            if (protentialTileTarget.getWorldPosX() < this.node.worldPositionX)
-            {
-                x--;
-                continue;
-            }
-
-            this.markBlockAsPassed(x, z);
-
-            if (!protentialTileTarget.isContainBlock())
-            {
-                // Dig Downwards from top
-                let downLinkedTile = protentialTileTarget.getBottomLinkedTile();
-                while (downLinkedTile)
-                {
-                    if (downLinkedTile.isContainBlock() || downLinkedTile.isMatchingColorID(this.colorID))
-                    {
-                        protentialTileTarget = downLinkedTile;
-                        break;
-                    }
-                    downLinkedTile = downLinkedTile.getBottomLinkedTile();
-                }
-            }
-
-            const targetBlock = protentialTileTarget.getPixelBlock();
-            if (!targetBlock || targetBlock.getColorID() !== this.colorID)
-            {
-                x--;
-                continue;
-            }
-            const canBeTargeted = targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
-            if (canBeTargeted) {
-                this._targetCount++;
-                this.reduceAmmoCount(1);
-                if (this.ammoCount <= 0)   
-                {
-                    break;
-                }
-            }
-            x--;
-        }
-    }
-
-    private shotTargetsLeft(): number 
-    {
-        const x = 0;
-        let z = 0;
-        while (z < this._levelController.getLevelHeight())
-        {
-            if (this.hasPassedBlock(x, z))
-            {
-                z++;
-                continue;
-            }
-            let protentialTileTarget = this._levelController.getTileAtCoord(x, z);
-            if (!protentialTileTarget)
-            {
-                console.error("No tile found at coord:", x, z);
-                return;
-            }
-
-            if (protentialTileTarget.getWorldPosZ() > this.node.worldPositionZ)
-            {
-                z++;
-                continue;
-            }
-
-            this.markBlockAsPassed(x, z);
-
-            if (!protentialTileTarget.isContainBlock())
-            {
-                // Dig Rightwards from left edge
-                let rightLinkedTile = protentialTileTarget.getRightLinkedTile();
-                while (rightLinkedTile)
-                {
-                    if (rightLinkedTile.isContainBlock() || rightLinkedTile.isMatchingColorID(this.colorID))
-                    {
-                        protentialTileTarget = rightLinkedTile;
-                        break;
-                    }
-                    rightLinkedTile = rightLinkedTile.getRightLinkedTile();
-                }
-            }
-
-            const targetBlock = protentialTileTarget.getPixelBlock();
-            if (!targetBlock || targetBlock.getColorID() !== this.colorID)
-            {
-                z++;
-                continue;
-            }
-            const canBeTargeted = targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
-            if (canBeTargeted) {
-                this._targetCount++;
-                this.reduceAmmoCount(1);
-                if (this.ammoCount <= 0)   
-                {
-                    break;
-                }
-            }
-            z++;
-        }
-    }
-
-    private shotTargetsRight(): number 
-    {
-        const x = this._levelController.getLevelWidth() - 1;
-        let z = this._levelController.getLevelHeight() - 1;
-        while (z >= 0)
-        {
-            if (this.hasPassedBlock(x, z))
-            {
-                z--;
-                continue;
-            }
-            let protentialTileTarget = this._levelController.getTileAtCoord(x, z);
-            if (!protentialTileTarget)
-            {
-                console.error("No tile found at coord:", x, z);
-                return;
-            }
-
-            if (protentialTileTarget.getWorldPosZ() < this.node.worldPositionZ)
-            {
-                z--;
-                continue;
-            }
-
-            this.markBlockAsPassed(x, z);
-
-            if (!protentialTileTarget.isContainBlock())
-            {
-                // Dig Leftwards from right edge
-                let leftLinkedTile = protentialTileTarget.getLeftLinkedTile();
-                while (leftLinkedTile)
-                {
-                    if (leftLinkedTile.isContainBlock() || leftLinkedTile.isMatchingColorID(this.colorID))
-                    {
-                        protentialTileTarget = leftLinkedTile;
-                        break;
-                    }
-                    leftLinkedTile = leftLinkedTile.getLeftLinkedTile();
-                }
-            }
-
-            const targetBlock = protentialTileTarget.getPixelBlock();
-            if (!targetBlock || targetBlock.getColorID() !== this.colorID)
-            {
-                z--;
-                continue;
-            }
-            const canBeTargeted = targetBlock.markForDestroy(this.firePointNode.getWorldPosition());
-            if (canBeTargeted) {
-                this._targetCount++;
-                this.reduceAmmoCount(1);
-                if (this.ammoCount <= 0)
-                {
-                    break;
-                }
-            }
-            z--;
-        }
+        this._targets.length = 0;
+        this._levelController.findTargetPixels(this.ammoCount, this._targets);
+        return this._targets;
     }
 
     public init(shooterData: Shooter, colorQueue: IColorQueue, levelController: ILevelController): void
@@ -559,7 +306,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         {
             return;
         }
-        this.animator.play(animationName);
+        this.animator.crossFade(animationName, 0.1);
         this._curAnimationName = animationName;
     }
 
@@ -605,7 +352,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                 .start();
             await PromiseDelay.Wait(tweenJump.duration);
             this.playWaterParticles();
-            this._floater.onCompleteLoopAction = this.onCompleteLoop.bind(this);
         }
         catch (error)
         {
@@ -637,7 +383,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public faceTheMapDirection(): void
     {
-        this.characterRoot.setRotationFromEuler(0, -90, 0);
+        this.characterRoot.setRotationFromEuler(0, 0, 0);
     }
 
     public onCompleteLoop(): void
@@ -657,7 +403,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     {
         const scene = director.getScene();
         this.node.setParent(scene, true);
-        this._floater.onCompleteLoopAction = null;
         this._floater.setShooter(null);
         this._floater = null;
         EventDispatcher.dispatch(EventName.ShooterInConvey, false);

@@ -177,8 +177,9 @@ export class PixelBlock extends Component implements IPixelBlock
         }
         this._targetPosition.set(this._underTile.getWorldPosX(), 0, this._underTile.getWorldPosZ());
         this._gravityTween = tween(this.node)
-            .to(duration, { worldPosition: this._targetPosition }, { easing: easing.linear })
+            .to(duration, { worldPosition: this._targetPosition }, { easing: easing.sineOut })
         this._gravityTween.start();
+        this.coordZ = this._underTile.getCoordZ();
     }
 }
 

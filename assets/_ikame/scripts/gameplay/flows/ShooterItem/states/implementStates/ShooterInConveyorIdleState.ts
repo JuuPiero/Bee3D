@@ -1,39 +1,34 @@
-import { PromiseDelay } from "db://assets/_ikame/scripts/commons/PromiseDelay";
+import { EShooterState } from "../EShooterState";
 import { ShooterAnimationName } from "../ShooterAnimationName";
 import { ShooterStateBase } from "../ShooterStateBase";
-import { EShooterState } from "../EShooterState";
+
+const SEARCH_INTERVAL = 0.1;
 
 export class ShooterInConveyorIdleState extends ShooterStateBase
 {
+    private _searchTimer: number = 0;
 
     public onEnter(): void
     {
         this._shooter.faceTheMapDirection();    
         this._shooter.clearPassedBlocks();
-        this._shooter.markPassedBlocks();
+
+        this._shooter.changeAnimation(ShooterAnimationName.Idle, true);
     }
 
     public onUpdate(dt: number): void
     {
-        const targetCount = this._shooter.tryShootTargets();
-        if (targetCount > 0)
+        this._searchTimer += dt;
+        if (this._searchTimer < SEARCH_INTERVAL)
         {
-            this._shooter.changeAnimation(ShooterAnimationName.Attack, true);
-            // this._shooter.reduceAmmoCount(targetCount);
-            this._shooter.shootSoundEffect();
-            if (this._shooter.getAmmoCount() <= 0)
-            {
-                this.outOfAmmoRoutine();
-            }
+            return;
         }
-        // if (this._shooter.getAmmoCount() > 0)
-        this._shooter.moveAlongConveyor(dt);
-    }
-
-    private async outOfAmmoRoutine()
-    {
-        await PromiseDelay.Wait(0.1);
-        this._shooter.tryCompleteShooter();
+        this._searchTimer = 0;
+        const targets = this._shooter.findTargets();
+        if (targets.length > 0)
+        {
+            this.stateMachine.changeState(EShooterState.InConveyor_Shot);
+        }
     }
 
 }
