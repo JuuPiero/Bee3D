@@ -218,7 +218,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public findTargets(): IPixelBlock[]
     {
         this._targets.length = 0;
-        this._levelController.findTargetPixels(this.ammoCount, this._targets);
+        this._levelController.findTargetPixels(this.ammoCount, this.colorID, this._targets);
         return this._targets;
     }
 
@@ -386,6 +386,43 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this.characterRoot.setRotationFromEuler(0, 0, 0);
     }
 
+    public rotateTowardsTarget(targetPosition: Vec3, maxDegreesDelta: number): boolean
+    {
+        const rootPosition = this.characterRoot.worldPosition;
+        const directionX = targetPosition.x - rootPosition.x;
+        const directionZ = targetPosition.z - rootPosition.z;
+
+        if (Math.abs(directionX) < 0.001 && Math.abs(directionZ) < 0.001)
+        {
+            return true;
+        }
+
+        const targetYaw = Math.atan2(-directionX, -directionZ) * 180 / Math.PI;
+        const currentYaw = this.characterRoot.eulerAngles.y;
+        const nextYaw = this.rotateAngleTowards(currentYaw, targetYaw, maxDegreesDelta);
+
+        this.characterRoot.setRotationFromEuler(0, nextYaw, 0);
+        return Math.abs(this.deltaAngle(nextYaw, targetYaw)) <= 1;
+    }
+
+    public shootTarget(target: IPixelBlock): boolean
+    {
+        if (!target || this.ammoCount <= 0 || target.isMarkedForDestroy())
+        {
+            return false;
+        }
+
+        const didShoot = target.markForDestroy(this.getFirePointWorldPosition());
+        if (!didShoot)
+        {
+            return false;
+        }
+
+        this.reduceAmmoCount(1);
+        this.shootSoundEffect();
+        return true;
+    }
+
     public onCompleteLoop(): void
     {
         // this.loopAround();
@@ -467,6 +504,41 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private resetRotation(): void 
     {
         this.characterRoot.setRotationFromEuler(0, 0, 0);
+    }
+
+    private getFirePointWorldPosition(): Vec3
+    {
+        if (this.firePointNode)
+        {
+            return this.firePointNode.getWorldPosition();
+        }
+
+        return this.node.getWorldPosition();
+    }
+
+    private rotateAngleTowards(currentAngle: number, targetAngle: number, maxDegreesDelta: number): number
+    {
+        const delta = this.deltaAngle(currentAngle, targetAngle);
+        if (Math.abs(delta) <= maxDegreesDelta)
+        {
+            return targetAngle;
+        }
+
+        return currentAngle + Math.sign(delta) * maxDegreesDelta;
+    }
+
+    private deltaAngle(currentAngle: number, targetAngle: number): number
+    {
+        let delta = (targetAngle - currentAngle) % 360;
+        if (delta > 180)
+        {
+            delta -= 360;
+        }
+        if (delta < -180)
+        {
+            delta += 360;
+        }
+        return delta;
     }
 
     getAmmoCount(): number
@@ -940,6 +1012,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public getColorID(): number
     {
         return this.colorID;
+    }
+
+    public getTargets(): IPixelBlock[] {
+        return this._targets;
     }
 }
 

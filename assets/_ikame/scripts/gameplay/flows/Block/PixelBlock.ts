@@ -9,7 +9,7 @@ const { ccclass, property } = _decorator;
 
 const OUT_SCALE = new Vec3(1.1, 3, 1.1);
 
-const BULLET_SPEED = 9.8;
+const BULLET_SPEED = 3;
 const LOWER_SCALE = new Vec3(1, 0.5, 1);
 
 const Z_SPEED = 2.0;
@@ -50,7 +50,17 @@ export class PixelBlock extends Component implements IPixelBlock
     @property(Node) public particleNode: Node = null;
     @property(Node) public cubeRoot: Node = null;
 
-    private _underTile : IGridTile = null;
+    private _underTile: IGridTile = null;
+    
+    private _isTargeted: boolean = false;
+
+    public isTargeted(): boolean {
+        return this._isTargeted;
+    }
+
+    public setTargeted(targeted: boolean): void {
+        this._isTargeted = targeted;
+    }
 
     init(colorID: number, level: ILevelController, bulletPool: BulletPooling): void 
     {

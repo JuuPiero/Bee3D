@@ -560,7 +560,7 @@ export class LevelController extends Component implements ILevelController
         }
     }
 
-    public findTargetPixels(max: number, out : IPixelBlock[] = []): IPixelBlock[]
+    public findTargetPixels(max: number, colorID: number, out : IPixelBlock[] = []): IPixelBlock[]
     {
         if (max <= 0)
         {
@@ -573,28 +573,59 @@ export class LevelController extends Component implements ILevelController
         const width = this.getLevelWidth();
         const height = this.getLevelHeight();
 
+        const isOpenFromBottom = (tile: IGridTile): boolean =>
+        {
+            let bottomTile = tile.getBottomLinkedTile();
+            while (bottomTile)
+            {
+                if (bottomTile.isContainBlock())
+                {
+                    return false;
+                }
+                bottomTile = bottomTile.getBottomLinkedTile();
+            }
+            return true;
+        };
+
         const tryAddTargetAt = (x: number, startZ: number): void =>
         {
             let tile = this.getTileAtCoord(x, startZ);
-            while (tile && !tile.isContainBlock())
+            while (tile)
             {
-                tile = tile.getTopLinkedTile();
-            }
+                if (!tile.isContainBlock())
+                {
+                    tile = tile.getTopLinkedTile();
+                    continue;
+                }
 
-            if (!tile || !tile.isContainBlock())
-            {
+                const pixelBlock = tile.getPixelBlock();
+                if (pixelBlock.isTargeted())
+                {
+                    tile = tile.getTopLinkedTile();
+                    continue;
+                }
+
+                if (pixelBlock.getColorID() !== colorID)
+                {
+                    return;
+                }
+
+                if (!isOpenFromBottom(tile))
+                {
+                    return;
+                }
+
+                const uid = pixelBlock.getUid();
+                if (addedTargets.has(uid))
+                {
+                    return;
+                }
+
+                addedTargets.add(uid);
+                pixelBlock.setTargeted(true);
+                targets.push(pixelBlock);
                 return;
             }
-
-            const pixelBlock = tile.getPixelBlock();
-            const uid = pixelBlock.getUid();
-            if (addedTargets.has(uid))
-            {
-                return;
-            }
-
-            addedTargets.add(uid);
-            targets.push(pixelBlock);
         };
 
         for (let z = height - 1; z >= 0 && targets.length < max; z--)

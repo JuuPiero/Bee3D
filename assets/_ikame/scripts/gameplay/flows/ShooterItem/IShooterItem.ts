@@ -30,6 +30,9 @@ export interface IShooterItem {
     markPassedBlocks(): void
     getColorID(): number
     findTargets(): IPixelBlock[]
+    rotateTowardsTarget(targetPosition: Vec3, maxDegreesDelta: number): boolean
+    shootTarget(target: IPixelBlock): boolean
+    getTargets(): IPixelBlock[]
 }
 
 
