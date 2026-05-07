@@ -51,6 +51,10 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
         {
             this._shooter.pauseAnimation();
         }
+        if (targets.length <= 0)
+        {
+            this._shooter.doNoTarget();
+        }
     }
 
 }

@@ -31,10 +31,11 @@ export interface IShooterItem {
     markPassedBlocks(): void
     getColorID(): number
     findTargets(): IPixelBlock[]
-    rotateTowardsTargetAsync(target: IPixelBlock): Promise<void>
+    rotateTowardsTargetAsync( deltaAngle: number): Promise<void>
     shootTarget(target: IPixelBlock): boolean
     getTargets(): IPixelBlock[]
     pauseAnimation(): void
+    getAngleDeltaToTarget(target: IPixelBlock): number
 }
 
 

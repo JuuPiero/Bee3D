@@ -37,13 +37,14 @@
       "name": "Pixel_Static.animation",
       "userData": {
         "gltfIndex": 0,
-        "wrapMode": 2,
+        "wrapMode": 1,
         "sample": 30,
         "span": {
           "from": 0,
           "to": 0.03333333507180214
         },
-        "events": []
+        "events": [],
+        "speed": 2
       },
       "ver": "1.0.17",
       "imported": true,
@@ -60,7 +61,7 @@
       "name": "Pixel_Attack Sit.animation",
       "userData": {
         "gltfIndex": 1,
-        "wrapMode": 2,
+        "wrapMode": 1,
         "sample": 30,
         "span": {
           "from": 0,
@@ -243,8 +244,9 @@
             "name": "Pixel_Static",
             "from": 0,
             "to": 0.03333333507180214,
-            "wrapMode": 2,
-            "previousId": "8a5ac"
+            "wrapMode": 1,
+            "previousId": "8a5ac",
+            "speed": 2
           }
         ]
       },
@@ -257,7 +259,7 @@
             "name": "Pixel_Attack Sit",
             "from": 0,
             "to": 0.1666666716337204,
-            "wrapMode": 2,
+            "wrapMode": 1,
             "previousId": "757ad"
           }
         ]

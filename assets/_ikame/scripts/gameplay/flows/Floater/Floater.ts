@@ -1,5 +1,6 @@
 import { _decorator, Component, easing, Node, tween, Tween, Vec3 } from 'cc';
 import { IShooterItem } from '../ShooterItem/IShooterItem';
+import { lerp3, lerp3Vec3 } from '../../../utils/Utils';
 const { ccclass, property } = _decorator;
         
 const upPosition = new Vec3(0, 0.1, 0);
@@ -10,9 +11,18 @@ export class Floater extends Component {
 
     private _shooter: IShooterItem = null;
 
+    private _initPosition = new Vec3();
+    private _downPosition = new Vec3();
+    private _pos = new Vec3();
+    private tweenObj  = {value : 0};
+    
+
     protected start(): void
     {
         this.setShooter(null);
+        this._initPosition.set(this.node.getPosition());
+        this._downPosition.set(this._initPosition);
+        this._downPosition.y = -0.6;
     }
     
     public setShooter(shooter: IShooterItem): void
@@ -30,30 +40,22 @@ export class Floater extends Component {
         return this._shooter !== null && this._shooter !== undefined;
     }
 
-    public popupAnim(): void 
+    public floatDownAsync(duration: number): Promise<void> 
     {
-        const root = this.node.children[ 0 ];
-        Tween.stopAllByTarget(root);
-        root.setScale(Vec3.ZERO);
-        root.setPosition(Vec3.ZERO);
-
-        const t1 = tween(root)
-            .to(0.5, { scale: OUT_SCALE }, { easing: easing.backOut })
-        const t2 = tween(root)
-            .to(0.3, { position: upPosition }, { easing: easing.quadOut })
-            .to(0.2, { position: Vec3.ZERO }, { easing: easing.quadIn });
-
-        tween(root)
-            .delay(0.1)
-            .parallel(t1, t2)
-            .start();
-    }
-
-    public shrinkAnim(): void 
-    {
-        const root = this.node.children[ 0 ];
-        Tween.stopAllByTarget(root);
-        root.setScale(Vec3.ZERO);
+        return new Promise((resolve) => {
+            Tween.stopAllByTarget(this.tweenObj);
+            this.tweenObj.value = 0;
+            tween(this.tweenObj)
+                .to(duration, { value: 1 }, {
+                    easing: easing.sineOutIn, onUpdate: () => {
+                        lerp3Vec3(this._initPosition, this._downPosition, this._initPosition, this.tweenObj.value, this._pos);
+                        this.node.setPosition(this._pos);
+                    },
+                    onComplete: () => {
+                        resolve();
+                    }
+                }).start();
+        });
     }
 }
 

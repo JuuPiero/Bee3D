@@ -35,7 +35,6 @@ const RETREIVE_JUMP_DURATION = 0.32;
 const RIGHT_ROT = new Vec3(0, -90, 0);
 const LEFT_ROT = new Vec3(0, 90, 0);
 
-const JUMP_OFFSET_DURATION = 0.23
 
 const IN_CONVEYOR_SIZE = Vec3.ONE;
 
@@ -284,6 +283,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     }
 
     changeAnimation(animationName: string, force: boolean): void {
+        this.animator.off(Animation.EventType.FINISHED, this.onAnimationFinishedPause, this);
         if (this._curAnimationName === animationName && !force) {
             return;
         }
@@ -302,16 +302,14 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public async jumpToConveyor(): Promise<void> {
         try {
             EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
-            // this._floaterNode = this._levelController.getFloaterToStream();
             this._floater = this._levelController.getBestFloaterSlot();
             EventDispatcher.dispatch(EventName.ShooterInConvey, true);
             this._floater.setShooter(this);
             this.progress = 0;
             this._cacheSlotIndex = -1;
-            const scene = director.getScene();
-            this.node.setParent(scene, true);
             this._colorQueue.removeShooter(this);
             this.node.getWorldPosition(this._startJumpPosition);
+            this.node.setParent(this._floater.node, true);
             const tweenObj = { progress: 0 }
             const size = new Vec3();
             const tweenJump = tween(tweenObj)
@@ -321,13 +319,12 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
                         Vec3.lerp(this._lerpPos, this._startJumpPosition, this._jumpToPosition, target.progress)
                         this.node.setWorldPosition(this._lerpPos);
 
-                        Vec3.lerp(size, Vec3.ONE, IN_CONVEYOR_SIZE, target.progress);
-                        this.node.setScale(size);
                     }
                 })
                 .start();
             await PromiseDelay.Wait(tweenJump.duration);
-            this.playWaterParticles();
+            await this._floater.floatDownAsync(.3);
+            // this.playWaterParticles();
         }
         catch (error) {
             console.error("Error during jumpToConveyor:", error);
@@ -362,16 +359,24 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private _targetWorldPosition = new Vec3();
     private _curentEuler = new Vec3();
     private _euler : Vec3 = new Vec3();
-    public async rotateTowardsTargetAsync(target: IPixelBlock): Promise<void>
+
+
+    public getAngleDeltaToTarget(target: IPixelBlock): number 
     {
         this.characterRoot.getRotation(this._curRotattion)
         this._curRotattion.getEulerAngles(this._curentEuler);
         this.node.getWorldPosition(this._worldPosition);
         target.getWorldPosition(this._targetWorldPosition);
         const deltaEuler = Utils.getDeltaEuler(this._worldPosition, this._targetWorldPosition, this._curentEuler.y);
-        const duration = Math.abs(deltaEuler) / ROTATE_SPEED;
+        return deltaEuler;
+    }
+
+
+    public rotateTowardsTargetAsync( deltaAngle : number): Promise<void>
+    {
+        const duration = Math.abs(deltaAngle) / ROTATE_SPEED;
         this._euler.set(this._curentEuler);
-        const targetEulerY = Utils.clampAngle(this._curentEuler.y + deltaEuler);
+        const targetEulerY = Utils.clampAngle(this._curentEuler.y + deltaAngle);
         return new Promise<void>((resolve) => {
             tween(this._euler)
                 .to(duration, { y: targetEulerY }, {

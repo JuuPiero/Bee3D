@@ -31,7 +31,11 @@ export class ShooterInConveyorShootState extends ShooterStateBase {
         while (this._targets.length > 0)
         {
             const target = this._targets.shift();
-            await this._shooter.rotateTowardsTargetAsync(target);
+            this._shooter.pauseAnimation();
+            const angle = this._shooter.getAngleDeltaToTarget(target);
+            if (Math.abs(angle) > 10) 
+                this._shooter.pauseAnimation();
+            await this._shooter.rotateTowardsTargetAsync(angle);
             this._shooter.changeAnimation(ShooterAnimationName.Attack, false);
             const delayTime = Math.max(0, FIRE_INTERVAL - (game.totalTime - this._lastFireTime) * 1000);
             await PromiseDelay.Wait(delayTime);
