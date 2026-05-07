@@ -9,7 +9,7 @@ const { ccclass, property } = _decorator;
 
 const OUT_SCALE = new Vec3(1.1, 3, 1.1);
 
-const BULLET_SPEED = 3;
+const BULLET_SPEED = 8.3;
 const LOWER_SCALE = new Vec3(1, 0.5, 1);
 
 const Z_SPEED = 2.0;
@@ -71,9 +71,9 @@ export class PixelBlock extends Component implements IPixelBlock
         this._bulletPool = bulletPool;   
     }
 
-    getWorldPosition(): Vec3
+    getWorldPosition(out: Vec3): void 
     {
-        return this.node.getWorldPosition();
+        this.node.getWorldPosition(out);
     }
 
     protected start(): void
@@ -98,6 +98,7 @@ export class PixelBlock extends Component implements IPixelBlock
         this._gridTile = tile;
         this.coordX = tile.getCoordX();
         this.coordZ = tile.getCoordZ();
+        this._level.setBottomPixel(this, this.coordX, this.coordZ);
     }
 
     getUid(): string
@@ -105,12 +106,14 @@ export class PixelBlock extends Component implements IPixelBlock
         return this.node.uuid;
     }
 
+
     public markForDestroy(barrolPosition: Vec3): boolean
     {
         if (this._isMarkedForDestroy) {
             return false;
         }
         this._isMarkedForDestroy = true;
+        this._level.removePixelFromColumn(this.coordX, this);
         this._gridTile.removePixelBlock();
         this._level.checkWinCondition();
 
@@ -125,30 +128,26 @@ export class PixelBlock extends Component implements IPixelBlock
             p.play();
         });
     
-        this.bulletNode.setWorldPosition(barrolPosition);
+        // this.bulletNode.setWorldPosition(barrolPosition);
         const targetPos = this.node.getWorldPosition();
-        targetPos.y = barrolPosition.y;
 
-        const distance = barrolPosition.subtract(targetPos).length();
+        const distance = Vec3.distance(barrolPosition, targetPos);
         const travelTime = (distance / BULLET_SPEED);
-
+        this.bulletNode.setWorldPosition(barrolPosition);
         tween(this.bulletNode)
-            .to(travelTime, { worldPosition: targetPos})
-            .call(() => {
-                this.bulletNode.active = false;
-                // this.node.active = false;
+            .to(travelTime, { worldPosition: targetPos }, {
+                easing: easing.linear, onComplete: () => {
+                }
             })
-        .start();
+            .start();
+        
         tween(this.cubeRoot)
-           .delay(travelTime - (travelTime * 0.3))
+            .delay (travelTime)
             .call(() => {
                 this.particleNode.active = true;
             })
             .to(0.12, { scale: OUT_SCALE }, { easing: easing.backOut })
             .to(0.1, { scale: LOWER_SCALE }, { easing: easing.quadIn })
-            .call(() => {
-                this._level.dropColumn(this.coordX);
-            })
             .to(0.1, { scale: Vec3.ZERO }, { easing: easing.smooth })
             .call(() =>
             {
@@ -158,8 +157,9 @@ export class PixelBlock extends Component implements IPixelBlock
                     p.clear();
                 });
                 this._bulletPool.returnBullet(this.bulletNode);
+                this._level.dropColumn(this.coordX);
             })
-            .start();
+        .start();
         return true;
     }
 
@@ -181,15 +181,22 @@ export class PixelBlock extends Component implements IPixelBlock
 
         if (!this._underTile) return;
 
-        const duration = Math.abs(this.node.worldPositionZ - this._underTile.getWorldPosZ()) / Z_SPEED;
         if (this._gravityTween)        {
             this._gravityTween.stop();
+            this._gravityTween = null;
         }
+        const duration = Math.abs(this.node.worldPositionZ - this._underTile.getWorldPosZ()) / Z_SPEED;
         this._targetPosition.set(this._underTile.getWorldPosX(), 0, this._underTile.getWorldPosZ());
         this._gravityTween = tween(this.node)
-            .to(duration, { worldPosition: this._targetPosition }, { easing: easing.sineOut })
+            .to(duration, { worldPosition: this._targetPosition }, { easing: easing.linear })
         this._gravityTween.start();
         this.coordZ = this._underTile.getCoordZ();
+        this._level.setBottomPixel(this, this.coordX, this.coordZ);
+    }
+
+    public disable(): void
+    {
+        this.node.active = false;
     }
 }
 

@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, CCFloat, CCInteger, Collider, director, easing, EventKeyboard, Input, input, KeyCode, Label, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, Tween, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, AudioClip, CCFloat, CCInteger, Collider, director, easing, EventKeyboard, Input, input, KeyCode, Label, math, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, Tween, tween, Vec2, Vec3 } from 'cc';
 import { Utils } from '../../../utils/Utils';
 import { EDirection } from '../../../enums/EDirection';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
@@ -39,13 +39,15 @@ const JUMP_OFFSET_DURATION = 0.23
 
 const IN_CONVEYOR_SIZE = Vec3.ONE;
 
+const ROTATE_SPEED = 120; // degrees per second
+
 @ccclass('ShooterItem')
 export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {
     
-    @property([ LinkedConnection ]) connections: LinkedConnection[] = [];
+    @property([LinkedConnection]) connections: LinkedConnection[] = [];
 
-    @property(CCFloat   )
-    public id : number = -1;
+    @property(CCFloat)
+    public id: number = -1;
 
 
     @property(CCInteger) public colorID: number = -1;
@@ -57,14 +59,14 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private _passedBlockCoords: Set<string> = new Set<string>();
     private _hasPassedResetProgress: boolean = false;
 
-    @property([ MeshRenderer ])
+    @property([MeshRenderer])
     private characterMeshs: MeshRenderer[] = [];
     
     @property(ColorConfig)
     public colorConfig: ColorConfig = null;
 
     @property(Node)
-    public characterRoot : Node = null;
+    public characterRoot: Node = null;
 
     @property({ type: CCInteger, readonly: true })
     private ammoCount: number = 0;
@@ -108,7 +110,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     @property(AudioClip)
     public retrieveSound: AudioClip = null;
 
-    @property([ ParticleSystem ])
+    @property([ParticleSystem])
     waterParticles: ParticleSystem[] = [];
 
     @property(CCFloat)
@@ -119,33 +121,30 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     @property(Collider) private hitCollider: Collider = null;
 
+    private _rowSign: number = 0;
+
     @property(Node)
     private connectionRoot: Node = null;
 
-    public setLinkedShooters(shooterLeft: IShooterItem, shooterRight: IShooterItem, firstChainShooter: IShooterItem): void
-    {
+    public setLinkedShooters(shooterLeft: IShooterItem, shooterRight: IShooterItem, firstChainShooter: IShooterItem): void {
         console.log("Setting linked shooters for shooter ID:", this.id, "Left:", shooterLeft ? shooterLeft : "null", "Right:", shooterRight ? shooterRight : "null");
-        if (shooterLeft)
-        {
-            this.connections[ 0 ].setTargetNode(shooterLeft.getLinkedWirePoint());
-            this.connections[ 0 ].node.active = true;
+        if (shooterLeft) {
+            this.connections[0].setTargetNode(shooterLeft.getLinkedWirePoint());
+            this.connections[0].node.active = true;
         }
-        if (shooterRight)
-        {
-            this.connections[ this.connections.length - 1 ].setTargetNode(shooterRight.getLinkedWirePoint());
-            this.connections[ this.connections.length - 1 ].node.active = true;
+        if (shooterRight) {
+            this.connections[this.connections.length - 1].setTargetNode(shooterRight.getLinkedWirePoint());
+            this.connections[this.connections.length - 1].node.active = true;
         }
 
         this._firstChainShooter = firstChainShooter;
         this._rightLinkedShooter = shooterRight;
-        if (this._firstChainShooter)
-        {
+        if (this._firstChainShooter) {
             this.connectionRoot.active = true;
         }
     }
 
-    public reduceAmmoCount(amount: number): number
-    {
+    public reduceAmmoCount(amount: number): number {
         this.ammoCount = Math.max(0, this.ammoCount - amount);
         const count = this._ammoDisplayCount < this.ammoCount ? this._ammoDisplayCount : this.ammoCount;
         this.ammoLabel.string = count.toString();
@@ -168,46 +167,38 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this._passedBlockCoords.clear();
     }
 
-    protected start(): void
-    {
+    protected start(): void {
         this.hitCollider.on('onTriggerEnter', this.onTriggerEnter, this);
 
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         EventDispatcher.addListener(EventName.SureWinFinalStep, this.speedUp, this);
     }
 
-    private speedUp(): void
-    {
+    private speedUp(): void {
         this.speed = this.fastSpeed;
     }
 
-    protected onDestroy(): void
-    {
+    protected onDestroy(): void {
         EventDispatcher.addListener(EventName.SureWinFinalStep, this.speedUp, this);
         input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
 
         this.hitCollider.off('onTriggerEnter', this.onTriggerEnter, this);
     }
 
-    private onTriggerEnter(event: any): void
-    {
+    private onTriggerEnter(event: any): void {
         console.log("ShooterItem: Trigger entered by");
         this.clearPassedBlocks();
     }
 
-    private onKeyDown(event: EventKeyboard): void
-    {
+    private onKeyDown(event: EventKeyboard): void {
         // Example key handling logic
-        if(event.keyCode === KeyCode.SPACE)
-        {
+        if (event.keyCode === KeyCode.SPACE) {
             this.tryShootTargets();
         }
     }
 
-    public tryShootTargets(): number
-    {
-        if (this.ammoCount <= 0)
-        {
+    public tryShootTargets(): number {
+        if (this.ammoCount <= 0) {
             return 0;
         }
         this._targetCount = 0;
@@ -215,15 +206,14 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         return this._targetCount;
     }
 
-    public findTargets(): IPixelBlock[]
-    {
+    public findTargets(): IPixelBlock[] {
         this._targets.length = 0;
-        this._levelController.findTargetPixels(this.ammoCount, this.colorID, this._targets);
+        this._levelController.findTargetPixels(this.ammoCount, this.colorID, this._targets, this._rowSign);
+        this._rowSign += 1;
         return this._targets;
     }
 
-    public init(shooterData: Shooter, colorQueue: IColorQueue, levelController: ILevelController): void
-    {
+    public init(shooterData: Shooter, colorQueue: IColorQueue, levelController: ILevelController): void {
         this.id = shooterData.id;
         this.spline = levelController.getSpline();
         this.colorID = shooterData.material;
@@ -234,8 +224,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         if (this._ammoDisplayCount < 10) this._ammoDisplayCount = 10;
         this.ammoLabel.string = this._ammoDisplayCount.toString();
         const mat = this.colorConfig.getShooterColorById(shooterData.material);
-        if (PREVIEW)
-        {
+        if (PREVIEW) {
             if (!mat) console.warn("Material not found for colorID:", EColor[shooterData.material]);
         }
         this.characterMeshs.forEach(mesh => mesh.setSharedMaterial(mat, 0));
@@ -265,34 +254,27 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this._levelController.addShooterCount();
     }
 
-    protected update(deltaTime: number): void
-    {
+    protected update(deltaTime: number): void {
         // super.update(deltaTime);
         // this.tryShootTargets();
 
         this._stateMachine.update(deltaTime);
     }
 
-    protected lateUpdate(dt: number): void
-    {
+    protected lateUpdate(dt: number): void {
         this._stateMachine.lateUpdate(dt);
     }
 
-    public onTouchShooter(remainCount: number): boolean
-    {
-        if (this.canJumpToConveyor(remainCount))
-        {
-            if (this._firstChainShooter)
-            {
+    public onTouchShooter(remainCount: number): boolean {
+        if (this.canJumpToConveyor(remainCount)) {
+            if (this._firstChainShooter) {
                 let shooter: IShooterItem = this._firstChainShooter;
-                while (shooter)
-                {
+                while (shooter) {
                     shooter.changeState(EShooterState.Jump);
                     shooter = shooter.getRightLinkedShooter();
                 }
             }
-            else 
-            {
+            else {
                 this.changeState(EShooterState.Jump);
             }
             return true;
@@ -300,30 +282,24 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         return false;
     }
 
-    changeAnimation(animationName: string, force: boolean): void
-    {
-        if (this._curAnimationName === animationName && !force)
-        {
+    changeAnimation(animationName: string, force: boolean): void {
+        if (this._curAnimationName === animationName && !force) {
             return;
         }
         this.animator.crossFade(animationName, 0.1);
         this._curAnimationName = animationName;
     }
 
-    onChangeState(stateFrom: EShooterState, toState: EShooterState): void
-    {
+    onChangeState(stateFrom: EShooterState, toState: EShooterState): void {
         
     }
 
-    public isAtTop(): boolean
-    {
+    public isAtTop(): boolean {
         return this._colorQueue.isOnTop(this);
     }
 
-    public async jumpToConveyor(): Promise<void>
-    {
-        try
-        {
+    public async jumpToConveyor(): Promise<void> {
+        try {
             EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
             // this._floaterNode = this._levelController.getFloaterToStream();
             this._floater = this._levelController.getBestFloaterSlot();
@@ -339,8 +315,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             const size = new Vec3();
             const tweenJump = tween(tweenObj)
                 .to(JUMP_DURATION, { progress: 1 }, {
-                    onUpdate: (target: any, ratio: number) =>
-                    {
+                    onUpdate: (target: any, ratio: number) => {
                         this._floater.node.getWorldPosition(this._jumpToPosition);
                         Vec3.lerp(this._lerpPos, this._startJumpPosition, this._jumpToPosition, target.progress)
                         this.node.setWorldPosition(this._lerpPos);
@@ -353,56 +328,60 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             await PromiseDelay.Wait(tweenJump.duration);
             this.playWaterParticles();
         }
-        catch (error)
-        {
+        catch (error) {
             console.error("Error during jumpToConveyor:", error);
             return Promise.resolve();
         }
     }
 
-    public moveAlongConveyor(dt: number): void
-    {
+    public moveAlongConveyor(dt: number): void {
         this.node.setWorldPosition(this._floater.node.worldPosition);
         this.node.setWorldRotation(this._floater.node.worldRotation);
         
         const resetProgress = this._levelController.getResetProgress();
         
         // Reset flag when progress loops back
-        if (this.progress < resetProgress)
-        {
+        if (this.progress < resetProgress) {
             this._hasPassedResetProgress = false;
         }
         
         // Only trigger once when passing resetProgress
-        if (this.progress >= resetProgress && !this._hasPassedResetProgress)
-        {
+        if (this.progress >= resetProgress && !this._hasPassedResetProgress) {
             this._hasPassedResetProgress = true;
             this.clearPassedBlocks();
         }
     }
 
-    public faceTheMapDirection(): void
-    {
+    public faceTheMapDirection(): void {
         this.characterRoot.setRotationFromEuler(0, 0, 0);
     }
 
-    public rotateTowardsTarget(targetPosition: Vec3, maxDegreesDelta: number): boolean
+    private _curRotattion = new Quat();
+    private _worldPosition = new Vec3();
+    private _targetWorldPosition = new Vec3();
+    private _curentEuler = new Vec3();
+    private _euler : Vec3 = new Vec3();
+    public async rotateTowardsTargetAsync(target: IPixelBlock): Promise<void>
     {
-        const rootPosition = this.characterRoot.worldPosition;
-        const directionX = targetPosition.x - rootPosition.x;
-        const directionZ = targetPosition.z - rootPosition.z;
+        this.characterRoot.getRotation(this._curRotattion)
+        this._curRotattion.getEulerAngles(this._curentEuler);
+        this.node.getWorldPosition(this._worldPosition);
+        target.getWorldPosition(this._targetWorldPosition);
+        const deltaEuler = Utils.getDeltaEuler(this._worldPosition, this._targetWorldPosition, this._curentEuler.y);
+        const duration = Math.abs(deltaEuler) / ROTATE_SPEED;
+        this._euler.set(this._curentEuler);
+        const targetEulerY = Utils.clampAngle(this._curentEuler.y + deltaEuler);
+        return new Promise<void>((resolve) => {
+            tween(this._euler)
+                .to(duration, { y: targetEulerY }, {
+                    easing: easing.linear, onUpdate: () => {
+                        this.characterRoot.setRotationFromEuler(this._euler);
+                    }, 
+                    onComplete: () => { resolve(); }
+                })
+                .start();
+        });
 
-        if (Math.abs(directionX) < 0.001 && Math.abs(directionZ) < 0.001)
-        {
-            return true;
-        }
-
-        const targetYaw = Math.atan2(-directionX, -directionZ) * 180 / Math.PI;
-        const currentYaw = this.characterRoot.eulerAngles.y;
-        const nextYaw = this.rotateAngleTowards(currentYaw, targetYaw, maxDegreesDelta);
-
-        this.characterRoot.setRotationFromEuler(0, nextYaw, 0);
-        return Math.abs(this.deltaAngle(nextYaw, targetYaw)) <= 1;
     }
 
     public shootTarget(target: IPixelBlock): boolean
@@ -506,39 +485,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this.characterRoot.setRotationFromEuler(0, 0, 0);
     }
 
+    private _firePointWorldPos = new Vec3();
     private getFirePointWorldPosition(): Vec3
     {
-        if (this.firePointNode)
-        {
-            return this.firePointNode.getWorldPosition();
-        }
-
-        return this.node.getWorldPosition();
-    }
-
-    private rotateAngleTowards(currentAngle: number, targetAngle: number, maxDegreesDelta: number): number
-    {
-        const delta = this.deltaAngle(currentAngle, targetAngle);
-        if (Math.abs(delta) <= maxDegreesDelta)
-        {
-            return targetAngle;
-        }
-
-        return currentAngle + Math.sign(delta) * maxDegreesDelta;
-    }
-
-    private deltaAngle(currentAngle: number, targetAngle: number): number
-    {
-        let delta = (targetAngle - currentAngle) % 360;
-        if (delta > 180)
-        {
-            delta -= 360;
-        }
-        if (delta < -180)
-        {
-            delta += 360;
-        }
-        return delta;
+        this.firePointNode.getWorldPosition(this._firePointWorldPos);
+        return this._firePointWorldPos;
     }
 
     getAmmoCount(): number

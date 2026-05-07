@@ -10,10 +10,16 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
 
     public onEnter(): void
     {
-        this._shooter.faceTheMapDirection();    
-        this._shooter.clearPassedBlocks();
+        // this._shooter.faceTheMapDirection();    
+        // this._shooter.clearPassedBlocks();
+        const targets = this._shooter.findTargets();
+        if (targets.length > 0)
+        {
+            this.stateMachine.changeState(EShooterState.InConveyor_Shot);
+            return;
+        }
 
-        this._shooter.changeAnimation(ShooterAnimationName.Idle, true);
+        // this._shooter.changeAnimation(ShooterAnimationName.Idle, true);
     }
 
     public onUpdate(dt: number): void
@@ -25,6 +31,7 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
         }
         this._searchTimer = 0;
         const targets = this._shooter.findTargets();
+        console.log("In Conveyor Idle State, found " + targets.length + " targets");
         if (targets.length > 0)
         {
             this.stateMachine.changeState(EShooterState.InConveyor_Shot);

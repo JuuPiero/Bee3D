@@ -42,7 +42,11 @@ export interface ILevelController
     getResetProgress(): number
     dropColumn(x: number): void
 
-    findTargetPixels(max: number, colorID: number, out : IPixelBlock[]): IPixelBlock[]
+    findTargetPixels(max: number, colorID: number, out: IPixelBlock[],  rowSign: number): boolean
+    
+    setBottomPixel(block: IPixelBlock, colIndex: number, rowIndex: number): void
+    
+    removePixelFromColumn(colIndex: number, pixel: IPixelBlock): void
 }
 
 

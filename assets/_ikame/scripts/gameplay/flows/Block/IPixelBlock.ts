@@ -4,7 +4,7 @@ import { IGridTile } from "../MapTiles/IGridTile";
 export interface IPixelBlock {
     // init(id: number): void;
     getColorID(): number;
-    getWorldPosition(): Vec3;
+    getWorldPosition(out : Vec3): void;
     setTile(tile: IGridTile): void;
     getUid(): string;
     markForDestroy(barrolPosition: Vec3): boolean;
@@ -12,5 +12,6 @@ export interface IPixelBlock {
     moveBlockDown(): void;
     isTargeted(): boolean;
     setTargeted(targeted: boolean): void;
+    disable(): void;
 }
 

@@ -1,18 +1,22 @@
+import { PromiseDelay } from "db://assets/_ikame/scripts/commons/PromiseDelay";
 import { IPixelBlock } from "../../../Block/IPixelBlock";
 import { EShooterState } from "../EShooterState";
 import { ShooterAnimationName } from "../ShooterAnimationName";
 import { ShooterStateBase } from "../ShooterStateBase";
+import { game } from "cc";
 
-const ROTATION_SPEED = 720;
+const FIRE_INTERVAL = 0.3;
 
 export class ShooterInConveyorShootState extends ShooterStateBase {
 
-    private _targets : IPixelBlock[] = [];
+    private _targets: IPixelBlock[] = [];
+    private _lastFireTime = Number.MIN_VALUE;
 
     public onEnter(): void
     {
-        this._shooter.changeAnimation(ShooterAnimationName.Attack, true);
         this._targets = this._shooter.getTargets();
+        this.rotateAndShoot();
+        console.log("Enter InConveyor Shoot State  2 with " + this._targets.length + " targets");
     }
 
     public onUpdate(dt: number): void {
@@ -21,32 +25,24 @@ export class ShooterInConveyorShootState extends ShooterStateBase {
             this.finishShootState();
             return;
         }
-
-        this.rotateAndShoot(dt);
     }
 
-    private rotateAndShoot(dt: number): void
+    private async rotateAndShoot()
     {
-        const target = this._targets[0];
-        if (!target || target.isMarkedForDestroy())
+        while (this._targets.length > 0)
         {
-            this._targets.shift();
-            return;
+            const target = this._targets.shift();
+            await this._shooter.rotateTowardsTargetAsync(target);
+            this._shooter.changeAnimation(ShooterAnimationName.Attack, false);
+            const delayTime = Math.max(0, FIRE_INTERVAL - (game.totalTime - this._lastFireTime) * 1000);
+            await PromiseDelay.Wait(delayTime);
+            const shootSuccess = this._shooter.shootTarget(target);
+            this._lastFireTime = game.totalTime;
         }
-
-        const isFacingTarget = this._shooter.rotateTowardsTarget(target.getWorldPosition(), ROTATION_SPEED * dt);
-        if (!isFacingTarget)
-        {
-            return;
-        }
-
-        this._shooter.shootTarget(target);
-        this._targets.shift();
     }
 
     private finishShootState(): void
     {
-        this._shooter.faceTheMapDirection();
         if (this._shooter.getAmmoCount() <= 0)
         {
             this._shooter.tryCompleteShooter();

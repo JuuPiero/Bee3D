@@ -21,14 +21,14 @@ import { Floater } from '../flows/Floater/Floater';
 import { ETrackingEvent, TrackingManager } from '../../base-script/PlayableAds/Tracking/TrackingManager';
 import { LevelScaler } from '../LevelScaler';
 import { IPixelBlock } from '../flows/Block/IPixelBlock';
+import { Queue } from '../../commons/Queue';
 const { ccclass, property } = _decorator;
 
 const PIXEL_BLOCK_SIZE = 1;
 
 @ccclass('LevelController')
 export class LevelController extends Component implements ILevelController
-{    
-
+{
     private _isFinished: boolean = false;
 
     @property({ type: Prefab, group: 'Pixel Map' })
@@ -74,6 +74,7 @@ export class LevelController extends Component implements ILevelController
     }
 
     private _gridMap = new Map<string, GridTile>();
+    private _pixelColumn : Queue<IPixelBlock>[] = [];
     
     public get CenterMap(): Vec3
     {
@@ -196,6 +197,7 @@ export class LevelController extends Component implements ILevelController
         //#region Spawn Pixel Blocks
         var textJson = JSON.stringify(this.levelJsonAsset.json);
         this.levelData = new LevelData(textJson);
+        this._pixelColumn.length = 0;
         
         this.pixelBlockHolder.setPosition(this.CenterMap);
         const scaleHorizontal = this.WidthMap / this.levelData.widthMap;
@@ -214,6 +216,7 @@ export class LevelController extends Component implements ILevelController
                 const gridTile = new GridTile(i, j, this.pixelBlockHolder, new Vec3(i + offsetX, 0, j + offsetZ));
                 this._gridMap.set(key, gridTile);
             }
+            this._pixelColumn.push(new Queue<IPixelBlock>());
         }
 
         for (const [ key, tile ] of this._gridMap)
@@ -238,6 +241,8 @@ export class LevelController extends Component implements ILevelController
             const key = Utils.generateKeyFromCoord(pixelData.x, pixelData.y);
             const gridTile = this._gridMap.get(key);
             gridTile.setPixelBlock(pixelBlockComp);
+
+            this._pixelColumn[pixelData.x].enqueue(pixelBlockComp);
         }
         //#endregion
 
@@ -483,7 +488,7 @@ export class LevelController extends Component implements ILevelController
             {
                 tile = tile.getTopLinkedTile();
             }
-            if (tile && tile.isContainBlock())
+            if (tile && tile.isContainBlock() && !tile.getPixelBlock().isTargeted())
             {
                 colors.add(tile.getOccupyingColorID());
             }
@@ -494,7 +499,6 @@ export class LevelController extends Component implements ILevelController
 
     public doUpdate(dt: number): void
     {
-
     }
 
     public checkLose():  void
@@ -549,15 +553,15 @@ export class LevelController extends Component implements ILevelController
 
     public dropColumn(x: number): void
     {
-        let i = this.getLevelHeight() - 1;
-        while (i >= 0)
+        let i = 0;
+        while (i < this.getLevelHeight())
         {
             const tile = this.getTileAtCoord(x, i);
             if (tile && tile.isContainBlock())
             {
                 tile.getPixelBlock().moveBlockDown();
             }
-            i--;
+            i++;
         }
     }
 
@@ -574,7 +578,7 @@ export class LevelController extends Component implements ILevelController
         const step = isFlipped ? -1 : 1;
         while (colIndex >= 0 && colIndex < width && out.length < max)
         {
-            const pixel = this._bottomPixels[colIndex];
+            const pixel = this.getBottomPixelAt(colIndex);
             if (!pixel || pixel.getColorID() !== colorID)
             {
                 colIndex += step;
@@ -585,44 +589,33 @@ export class LevelController extends Component implements ILevelController
             colIndex += step;
         }
 
-        return out.length >= max || colIndex >= width || colIndex <= 0;
+        return out.length > 0;
     }
+    
 
-    public setBottomPixel(block: IPixelBlock, colIndex : number, rowIndex: number): void
-    {
-        if (colIndex < 0 || colIndex >= this.getLevelWidth() || rowIndex !== this.getLevelHeight() - 1)
-        {
+
+    setBottomPixel(block: IPixelBlock, colIndex: number, rowIndex: number): void {
+        if (colIndex < 0 || colIndex >= this.getLevelWidth() || rowIndex < 0 || rowIndex !== this.getLevelHeight() - 1) {
             return;
         }
         this._bottomPixels[colIndex] = block;
+    }    
+
+
+    public getBottomPixelAt(col : number): IPixelBlock
+    {
+        const pixel = this._pixelColumn[col].peek();
+        // pixel.disable();
+        return pixel;
     }
 
-
-    public findTargetPixels2(max: number, colorID: number, out : IPixelBlock[], rowSign: number): boolean
+    public removePixelFromColumn(colIndex: number, pixel: IPixelBlock): void
     {
-        if (max <= 0)
+        const column = this._pixelColumn[colIndex];
+        if (column.peek() === pixel)
         {
-            out.length = 0;
-            return false;
+            column.dequeue();
         }
-        const isFlipped = rowSign % 2 !== 0;
-        const width = this.getLevelWidth();
-        let colIndex = isFlipped ? width - 1 : 0;
-        const step = isFlipped ? -1 : 1;
-        while (colIndex >= 0 && colIndex < width && out.length < max)
-        {
-            const pixel = this._bottomPixels[colIndex];
-            if (!pixel || pixel.getColorID() !== colorID)
-            {
-                colIndex += step;
-                continue;
-            }
-            out.push(pixel);
-            pixel.setTargeted(true);
-            colIndex += step;
-        }
-
-        return out.length >= max || colIndex >= width || colIndex <= 0;
     }
 }
 

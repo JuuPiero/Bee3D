@@ -60,7 +60,7 @@
       "name": "Pixel_Attack Sit.animation",
       "userData": {
         "gltfIndex": 1,
-        "wrapMode": 1,
+        "wrapMode": 2,
         "sample": 30,
         "span": {
           "from": 0,
@@ -257,7 +257,7 @@
             "name": "Pixel_Attack Sit",
             "from": 0,
             "to": 0.1666666716337204,
-            "wrapMode": 1,
+            "wrapMode": 2,
             "previousId": "757ad"
           }
         ]
