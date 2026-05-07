@@ -2270,7 +2270,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": -0.412,
+      "y": -0.516,
       "z": 0
     },
     "_lrot": {
@@ -2894,6 +2894,8 @@
       "__id__": 0
     },
     "fileId": "58suledChFk7nZxUpsUNN9",
+    "instance": null,
+    "targetOverrides": null,
     "nestedPrefabInstanceRoots": null
   },
   {
@@ -2978,6 +2980,9 @@
     },
     "connectionRoot": {
       "__id__": 50
+    },
+    "shadowNode": {
+      "__id__": 77
     },
     "ammoLabel": {
       "__id__": 99

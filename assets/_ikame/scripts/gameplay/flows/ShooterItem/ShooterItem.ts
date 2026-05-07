@@ -126,6 +126,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     @property(Node)
     private connectionRoot: Node = null;
 
+    @property(Node) shadowNode: Node;
+
     public setLinkedShooters(shooterLeft: IShooterItem, shooterRight: IShooterItem, firstChainShooter: IShooterItem): void {
         console.log("Setting linked shooters for shooter ID:", this.id, "Left:", shooterLeft ? shooterLeft : "null", "Right:", shooterRight ? shooterRight : "null");
         if (shooterLeft) {
@@ -301,6 +303,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public async jumpToConveyor(): Promise<void> {
         try {
+            this.shadowNode.active = false;
             EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
             this._floater = this._levelController.getBestFloaterSlot();
             EventDispatcher.dispatch(EventName.ShooterInConvey, true);
