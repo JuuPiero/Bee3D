@@ -11,7 +11,6 @@ import { ColorQueueControllers } from '../queues/ColorQueueControllers';
 import { SplineSmooth } from '../../splines/SplineSmooth';
 import { Conveyor } from '../flows/Conveyor/Conveyor';
 import { ShooterItem } from '../flows/ShooterItem/ShooterItem';
-import { CacheSlotController } from '../cacheSlots/CacheSlotController';
 import { ICacheSlotController } from '../cacheSlots/ICacheSlotController';
 import { EventDispatcher } from '../../designPatterns/observer/EventDispatcher';
 import { EventName } from '../../designPatterns/observer/EventName';
@@ -117,6 +116,8 @@ export class LevelController extends Component implements ILevelController
     private _is50Completed: boolean = false;
     private _is75Completed: boolean = false;
 
+    private _bottomPixels: IPixelBlock[] = [];
+
     protected _debugDrawSpline(): void
     {
         if (!this.cameraMain || !EDITOR || !this.debugDrawMapBorder) return;
@@ -204,7 +205,7 @@ export class LevelController extends Component implements ILevelController
         
         const offsetX = (-this.levelData.widthMap / 2) +  (PIXEL_BLOCK_SIZE / 2);
         const offsetZ = (-this.levelData.heightMap / 2) + (PIXEL_BLOCK_SIZE / 2);
-        
+        this._bottomPixels.length = this.levelData.widthMap;
         for (let i = 0; i < this.levelData.widthMap; i++)
         {
             for (let j = 0; j < this.levelData.heightMap; j++)
@@ -560,93 +561,68 @@ export class LevelController extends Component implements ILevelController
         }
     }
 
-    public findTargetPixels(max: number, colorID: number, out : IPixelBlock[] = []): IPixelBlock[]
+    public findTargetPixels(max: number, colorID: number, out : IPixelBlock[], rowSign: number): boolean
     {
         if (max <= 0)
         {
             out.length = 0;
-            return out;
+            return false;
         }
-
-        const targets: IPixelBlock[] = out;
-        const addedTargets = new Set<string>();
+        const isFlipped = rowSign % 2 !== 0;
         const width = this.getLevelWidth();
-        const height = this.getLevelHeight();
-
-        const isOpenFromBottom = (tile: IGridTile): boolean =>
+        let colIndex = isFlipped ? width - 1 : 0;
+        const step = isFlipped ? -1 : 1;
+        while (colIndex >= 0 && colIndex < width && out.length < max)
         {
-            let bottomTile = tile.getBottomLinkedTile();
-            while (bottomTile)
+            const pixel = this._bottomPixels[colIndex];
+            if (!pixel || pixel.getColorID() !== colorID)
             {
-                if (bottomTile.isContainBlock())
-                {
-                    return false;
-                }
-                bottomTile = bottomTile.getBottomLinkedTile();
-            }
-            return true;
-        };
-
-        const tryAddTargetAt = (x: number, startZ: number): void =>
-        {
-            let tile = this.getTileAtCoord(x, startZ);
-            while (tile)
-            {
-                if (!tile.isContainBlock())
-                {
-                    tile = tile.getTopLinkedTile();
-                    continue;
-                }
-
-                const pixelBlock = tile.getPixelBlock();
-                if (pixelBlock.isTargeted())
-                {
-                    tile = tile.getTopLinkedTile();
-                    continue;
-                }
-
-                if (pixelBlock.getColorID() !== colorID)
-                {
-                    return;
-                }
-
-                if (!isOpenFromBottom(tile))
-                {
-                    return;
-                }
-
-                const uid = pixelBlock.getUid();
-                if (addedTargets.has(uid))
-                {
-                    return;
-                }
-
-                addedTargets.add(uid);
-                pixelBlock.setTargeted(true);
-                targets.push(pixelBlock);
-                return;
-            }
-        };
-
-        for (let z = height - 1; z >= 0 && targets.length < max; z--)
-        {
-            const isLeftToRight = (height - 1 - z) % 2 === 0;
-            if (isLeftToRight)
-            {
-                for (let x = 0; x < width && targets.length < max; x++)
-                {
-                    tryAddTargetAt(x, z);
-                }
+                colIndex += step;
                 continue;
             }
-
-            for (let x = width - 1; x >= 0 && targets.length < max; x--)
-            {
-                tryAddTargetAt(x, z);
-            }
+            out.push(pixel);
+            pixel.setTargeted(true);
+            colIndex += step;
         }
 
-        return targets;
+        return out.length >= max || colIndex >= width || colIndex <= 0;
+    }
+
+    public setBottomPixel(block: IPixelBlock, colIndex : number, rowIndex: number): void
+    {
+        if (colIndex < 0 || colIndex >= this.getLevelWidth() || rowIndex !== this.getLevelHeight() - 1)
+        {
+            return;
+        }
+        this._bottomPixels[colIndex] = block;
+    }
+
+
+    public findTargetPixels2(max: number, colorID: number, out : IPixelBlock[], rowSign: number): boolean
+    {
+        if (max <= 0)
+        {
+            out.length = 0;
+            return false;
+        }
+        const isFlipped = rowSign % 2 !== 0;
+        const width = this.getLevelWidth();
+        let colIndex = isFlipped ? width - 1 : 0;
+        const step = isFlipped ? -1 : 1;
+        while (colIndex >= 0 && colIndex < width && out.length < max)
+        {
+            const pixel = this._bottomPixels[colIndex];
+            if (!pixel || pixel.getColorID() !== colorID)
+            {
+                colIndex += step;
+                continue;
+            }
+            out.push(pixel);
+            pixel.setTargeted(true);
+            colIndex += step;
+        }
+
+        return out.length >= max || colIndex >= width || colIndex <= 0;
     }
 }
 
