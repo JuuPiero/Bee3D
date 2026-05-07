@@ -84,6 +84,19 @@ export class Conveyor extends SplineSmooth
         return true;
     }
 
+    public getRemaniningSlotCount(): number
+    {
+        let count = 0;
+        for (let i = 0; i < this.floaters.length; i++)        {
+            const floater = this.floaters[i];
+            if (!floater.isTaken())
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
 }
 
 

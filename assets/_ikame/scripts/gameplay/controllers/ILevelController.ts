@@ -21,8 +21,7 @@ export interface ILevelController
     getCacheSlotController(): ICacheSlotController
     lose(): void 
     checkWinCondition(): void 
-    getFloaterToStream(): Node 
-    returnFloaterToPool(floater: Node): void
+
     getRemainCount(): number 
     addToShooterMap(id: number, shooter: IShooterItem): void
     addShooterCount(): void

@@ -3,6 +3,7 @@ import { EShooterState } from "./states/EShooterState";
 import { IPixelBlock } from "../Block/IPixelBlock";
 
 export interface IShooterItem {
+    doNoTarget(): void;
     changeAnimation(animationName: string, force: boolean): void;
     isAtTop(): boolean;
     jumpToConveyor(): Promise<void>;
@@ -33,6 +34,7 @@ export interface IShooterItem {
     rotateTowardsTargetAsync(target: IPixelBlock): Promise<void>
     shootTarget(target: IPixelBlock): boolean
     getTargets(): IPixelBlock[]
+    pauseAnimation(): void
 }
 
 

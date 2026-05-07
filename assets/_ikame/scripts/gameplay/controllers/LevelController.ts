@@ -25,7 +25,7 @@ import { Queue } from '../../commons/Queue';
 const { ccclass, property } = _decorator;
 
 const PIXEL_BLOCK_SIZE = 1;
-
+const GRAVITY = 23.8;
 @ccclass('LevelController')
 export class LevelController extends Component implements ILevelController
 {
@@ -74,7 +74,10 @@ export class LevelController extends Component implements ILevelController
     }
 
     private _gridMap = new Map<string, GridTile>();
-    private _pixelColumn : Queue<IPixelBlock>[] = [];
+    private _pixelColumn: Queue<IPixelBlock>[] = [];
+    private _columnHolders: Node[] = [];
+    private _columnFallSpeeds: number[] = [];
+    private _columnBaseZ: number = 0;
     
     public get CenterMap(): Vec3
     {
@@ -100,11 +103,6 @@ export class LevelController extends Component implements ILevelController
     @property({ type: Conveyor, group: 'Controllers' })
     protected conveyor: Conveyor = null;
 
-    // @property({ type: CacheSlotController, group: 'Controllers' })
-    // protected cacheSlotController: CacheSlotController = null;
-
-    @property({ type: FloaterPool, group: 'Controllers' })
-    protected floaterPool: FloaterPool = null;
 
     private _pixelCount: number = 0;
     private _totalPixelCount: number = 0;
@@ -198,6 +196,8 @@ export class LevelController extends Component implements ILevelController
         var textJson = JSON.stringify(this.levelJsonAsset.json);
         this.levelData = new LevelData(textJson);
         this._pixelColumn.length = 0;
+        this._columnHolders.length = 0;
+        this._columnFallSpeeds.length = 0;
         
         this.pixelBlockHolder.setPosition(this.CenterMap);
         const scaleHorizontal = this.WidthMap / this.levelData.widthMap;
@@ -207,9 +207,17 @@ export class LevelController extends Component implements ILevelController
         
         const offsetX = (-this.levelData.widthMap / 2) +  (PIXEL_BLOCK_SIZE / 2);
         const offsetZ = (-this.levelData.heightMap / 2) + (PIXEL_BLOCK_SIZE / 2);
+        const bottomRowIndex = this.levelData.heightMap - 1;
+        this._columnBaseZ = bottomRowIndex + offsetZ;
         this._bottomPixels.length = this.levelData.widthMap;
         for (let i = 0; i < this.levelData.widthMap; i++)
         {
+            const columnHolder = new Node(`ColumnHolder_${i}`);
+            columnHolder.parent = this.pixelBlockHolder;
+            columnHolder.setPosition(i + offsetX, 0, this._columnBaseZ);
+            this._columnHolders[i] = columnHolder;
+            this._columnFallSpeeds[i] = 0;
+
             for (let j = 0; j < this.levelData.heightMap; j++)
             {
                 const key = Utils.generateKeyFromCoord(i, j);
@@ -234,8 +242,8 @@ export class LevelController extends Component implements ILevelController
         {
             const pixelData = this.levelData.pixels[i];
             const pixelNode = instantiate(this.pixelBlockPrefab);
-            pixelNode.parent = this.pixelBlockHolder;
-            pixelNode.setPosition(pixelData.x + offsetX, 0, pixelData.y + offsetZ);
+            pixelNode.parent = this._columnHolders[pixelData.x];
+            pixelNode.setPosition(0, 0, pixelData.y - bottomRowIndex);
             const pixelBlockComp = pixelNode.getComponent(PixelBlock);
             pixelBlockComp.init(pixelData.material , this, this.bulletPool);
             const key = Utils.generateKeyFromCoord(pixelData.x, pixelData.y);
@@ -249,7 +257,6 @@ export class LevelController extends Component implements ILevelController
         this.colorQueueControllers.init(this.levelData.shooterQueues, this);
         this._pixelCount = this.levelData.pixels.length;
         this._totalPixelCount = this._pixelCount;
-        this.floaterPool.init(this.levelData.conveyorCapacity);
 
         this.linkShooters();
 
@@ -334,7 +341,7 @@ export class LevelController extends Component implements ILevelController
             return;
         }
 
-        const canAdd = shooter.onTouchShooter(this.floaterPool.getAvailableCount())
+        const canAdd = shooter.onTouchShooter(this.conveyor.getRemaniningSlotCount())
         if (canAdd)
         {
             if (this.isFinalStepSureWin())
@@ -374,52 +381,6 @@ export class LevelController extends Component implements ILevelController
                 EventDispatcher.dispatch(EventName.EndGame, true, true);
             }, 0.5);
         }
-    }
-
-    public getFloaterToStream(): Node 
-    {
-        const floater = this.floaterPool.getFloaterOut();
-        if (!floater) return null;
-
-        const pos = new Vec3();
-        const rot = new Quat();
-
-        const startPos = new Vec3();
-        const startRot = new Quat();
-        floater.getWorldPosition(startPos);
-        floater.getWorldRotation(startRot);
-        
-        const targetPos = new Vec3();
-        const targetRot = new Quat();
-
-        this.conveyor.getPercentageTransform(0, targetPos, targetRot);
-        
-        const tweenObj = { progress: 0 }
-        const jumpHeight = 2;
-
-        tween (tweenObj)
-            .to(0.35, { progress: 1 }, {
-                onUpdate: (target: any, ratio: number) =>   
-                {
-                    Vec3.lerp(pos, startPos, targetPos, target.progress);
-            
-                    // add some jump height
-                    pos.y += Math.sin(target.progress * Math.PI) * jumpHeight;
-
-                    Quat.slerp(rot, startRot, targetRot, target.progress);
-                    floater.setWorldPosition(pos);
-                    floater.setWorldRotation(rot);
-                }
-            })
-            .start();
-
-
-        return floater;
-    }
-
-    public returnFloaterToPool(floater: Node): void
-    {
-        this.floaterPool.returnFloater(floater);
     }
 
     public getRemainCount(): number 
@@ -488,7 +449,7 @@ export class LevelController extends Component implements ILevelController
             {
                 tile = tile.getTopLinkedTile();
             }
-            if (tile && tile.isContainBlock() && !tile.getPixelBlock().isTargeted())
+            if (tile && tile.isContainBlock())
             {
                 colors.add(tile.getOccupyingColorID());
             }
@@ -499,6 +460,7 @@ export class LevelController extends Component implements ILevelController
 
     public doUpdate(dt: number): void
     {
+        this.updateGravity(dt);
     }
 
     public checkLose():  void
@@ -604,9 +566,7 @@ export class LevelController extends Component implements ILevelController
 
     public getBottomPixelAt(col : number): IPixelBlock
     {
-        const pixel = this._pixelColumn[col].peek();
-        // pixel.disable();
-        return pixel;
+        return this._pixelColumn[col].peek();
     }
 
     public removePixelFromColumn(colIndex: number, pixel: IPixelBlock): void
@@ -615,6 +575,40 @@ export class LevelController extends Component implements ILevelController
         if (column.peek() === pixel)
         {
             column.dequeue();
+        }
+    }
+
+    private _colIndex : number = 0;
+
+    public updateGravity(dt: number): void {
+        for (this._colIndex = 0; this._colIndex < this.getLevelWidth(); this._colIndex++)
+        {
+            const columnHolder = this._columnHolders[this._colIndex];
+
+            const emptySlotCount = this.getLevelHeight() - columnHolder.children.length;
+            const targetZ = this._columnBaseZ + emptySlotCount;
+            const currentPosition = columnHolder.position;
+            const deltaZ = targetZ - currentPosition.z;
+
+            if (deltaZ <= 0)
+            {
+                this._columnFallSpeeds[this._colIndex] = 0;
+                if (deltaZ < 0)
+                {
+                    columnHolder.setPosition(currentPosition.x, currentPosition.y, targetZ);
+                }
+                continue;
+            }
+
+            this._columnFallSpeeds[this._colIndex] += GRAVITY * dt;
+            const fallDistance = Math.min(deltaZ, this._columnFallSpeeds[this._colIndex] * dt);
+            const nextZ = currentPosition.z + fallDistance;
+            columnHolder.setPosition(currentPosition.x, currentPosition.y, nextZ);
+
+            if (nextZ >= targetZ)
+            {
+                this._columnFallSpeeds[this._colIndex] = 0;
+            }
         }
     }
 }

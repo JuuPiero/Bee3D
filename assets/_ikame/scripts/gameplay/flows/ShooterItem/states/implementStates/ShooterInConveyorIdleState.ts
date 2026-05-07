@@ -19,7 +19,19 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
             return;
         }
 
-        // this._shooter.changeAnimation(ShooterAnimationName.Idle, true);
+        if (targets.length <= 0)
+        {
+            this._shooter.doNoTarget();
+        }
+
+        if (this.stateMachine.getLastStateName() === EShooterState.Jump) 
+        {
+            this._shooter.changeAnimation(ShooterAnimationName.Idle, true);
+        }
+        else
+        {
+            this._shooter.pauseAnimation();
+        }
     }
 
     public onUpdate(dt: number): void
@@ -31,10 +43,13 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
         }
         this._searchTimer = 0;
         const targets = this._shooter.findTargets();
-        console.log("In Conveyor Idle State, found " + targets.length + " targets");
         if (targets.length > 0)
         {
             this.stateMachine.changeState(EShooterState.InConveyor_Shot);
+        }
+        else if (this.stateMachine.getLastStateName() === EShooterState.InConveyor_Shot)
+        {
+            this._shooter.pauseAnimation();
         }
     }
 

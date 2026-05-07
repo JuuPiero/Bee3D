@@ -18,8 +18,7 @@ export class GameplayState extends GameStateBase
 
     public onUpdate(dt: number): void
     {
-        // this._levelController.doUpdate(dt);
-        // this.updateTimer(dt)
+        this._levelController.doUpdate(dt);
     }
 
     private toStoreForce(): void 

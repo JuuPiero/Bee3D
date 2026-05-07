@@ -7,6 +7,7 @@ import { BaseState } from './BaseState';
     */
 export interface IChangeState<E>
 {
+    getLastStateName(): E;
     changeState(stateName: E): void;    
 }
 
@@ -26,6 +27,7 @@ export interface IStateHolder<E>
 export class BaseStateMachine<E> implements IChangeState<E> {
     
     public currentState: BaseState<E>;
+    public lastStateName : E;
     protected statesMap: Map<E, BaseState<E>> = new Map<E, BaseState<E>>();
 
     private stateHolder: IStateHolder<E>;
@@ -48,7 +50,8 @@ export class BaseStateMachine<E> implements IChangeState<E> {
         {
             return;
         }
-        this.stateHolder?.onChangeState(this.currentState?.name, stateName);
+        this.lastStateName = this.currentState?.name;
+        this.stateHolder?.onChangeState(this.lastStateName, stateName);
         this.currentState?.onExit();
         this.currentState = this.statesMap.get(stateName);
         this.currentState?.onEnter();
@@ -70,6 +73,11 @@ export class BaseStateMachine<E> implements IChangeState<E> {
             return;    
         }
         this.currentState.onLateUpdate(dt);
+    }
+
+    public getLastStateName(): E
+    {
+        return this.lastStateName;
     }
 }
 

@@ -113,9 +113,7 @@ export class PixelBlock extends Component implements IPixelBlock
             return false;
         }
         this._isMarkedForDestroy = true;
-        this._level.removePixelFromColumn(this.coordX, this);
-        this._gridTile.removePixelBlock();
-        this._level.checkWinCondition();
+
 
         // this.node.active = false; // Hide the block immediately
 
@@ -127,6 +125,10 @@ export class PixelBlock extends Component implements IPixelBlock
             p.clear();
             p.play();
         });
+
+        this._level.removePixelFromColumn(this.coordX, this);
+        this._gridTile.removePixelBlock();
+        this._level.checkWinCondition();
     
         // this.bulletNode.setWorldPosition(barrolPosition);
         const targetPos = this.node.getWorldPosition();
@@ -141,7 +143,7 @@ export class PixelBlock extends Component implements IPixelBlock
             })
             .start();
         
-        tween(this.cubeRoot)
+        const t = tween(this.cubeRoot)
             .delay (travelTime)
             .call(() => {
                 this.particleNode.active = true;
@@ -151,6 +153,7 @@ export class PixelBlock extends Component implements IPixelBlock
             .to(0.1, { scale: Vec3.ZERO }, { easing: easing.smooth })
             .call(() =>
             {
+
                 particles.forEach(p =>
                 {
                     p.stop();
@@ -158,8 +161,14 @@ export class PixelBlock extends Component implements IPixelBlock
                 });
                 this._bulletPool.returnBullet(this.bulletNode);
                 this._level.dropColumn(this.coordX);
+
+                this.scheduleOnce(() =>
+                {
+                    this.node.destroy();
+                }, 0.04);
+
             })
-        .start();
+            .start();
         return true;
     }
 
@@ -168,8 +177,8 @@ export class PixelBlock extends Component implements IPixelBlock
         return this._isMarkedForDestroy;
     }
 
-    private _gravityTween : Tween<Node> = null;
-    private _targetPosition: Vec3 = new Vec3();
+    // private _gravityTween : Tween<Node> = null;
+    // private _targetPosition: Vec3 = new Vec3();
 
     public moveBlockDown(): void
     {
@@ -181,15 +190,15 @@ export class PixelBlock extends Component implements IPixelBlock
 
         if (!this._underTile) return;
 
-        if (this._gravityTween)        {
-            this._gravityTween.stop();
-            this._gravityTween = null;
-        }
-        const duration = Math.abs(this.node.worldPositionZ - this._underTile.getWorldPosZ()) / Z_SPEED;
-        this._targetPosition.set(this._underTile.getWorldPosX(), 0, this._underTile.getWorldPosZ());
-        this._gravityTween = tween(this.node)
-            .to(duration, { worldPosition: this._targetPosition }, { easing: easing.linear })
-        this._gravityTween.start();
+        // if (this._gravityTween)        {
+        //     this._gravityTween.stop();
+        //     this._gravityTween = null;
+        // }
+        // const duration = Math.abs(this.node.worldPositionZ - this._underTile.getWorldPosZ()) / Z_SPEED;
+        // this._targetPosition.set(this._underTile.getWorldPosX(), 0, this._underTile.getWorldPosZ());
+        // this._gravityTween = tween(this.node)
+        //     .to(duration, { worldPosition: this._targetPosition }, { easing: easing.linear })
+        // this._gravityTween.start();
         this.coordZ = this._underTile.getCoordZ();
         this._level.setBottomPixel(this, this.coordX, this.coordZ);
     }

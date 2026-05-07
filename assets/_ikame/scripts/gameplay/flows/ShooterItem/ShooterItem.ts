@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, CCFloat, CCInteger, Collider, director, easing, EventKeyboard, Input, input, KeyCode, Label, math, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, Tween, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, Animation, AnimationState, AudioClip, CCFloat, CCInteger, Collider, director, easing, EventKeyboard, Input, input, KeyCode, Label, math, MeshRenderer, Node, ParticleSystem, Quat, SkeletalAnimation, Tween, tween, Vec2, Vec3 } from 'cc';
 import { Utils } from '../../../utils/Utils';
 import { EDirection } from '../../../enums/EDirection';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
@@ -75,6 +75,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     @property(SkeletalAnimation) animator: SkeletalAnimation = null;
     private _curAnimationName: string = "";
+    private _pauseAfterAnimationName: string = "";
 
     private _stateMachine: ShooterStateMachine;
     private _staticState: ShooterStaticState;
@@ -405,15 +406,9 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public onCompleteLoop(): void
     {
         // this.loopAround();
-        this._levelController.checkLose ();
+        
         this.clearPassedBlocks();
     }
-
-    // public loopAround(): void
-    // {
-    //     this.clearPassedBlocks();
-    //     this.setProgress(0);
-    // }
 
     private returnFloaterToPool(): void
     {
@@ -967,6 +962,22 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public getTargets(): IPixelBlock[] {
         return this._targets;
+    }
+
+
+    public pauseAnimation(): void {
+
+        this.animator.once(Animation.EventType.LASTFRAME, this.onAnimationFinishedPause, this);
+    }
+
+    private onAnimationFinishedPause(): void {
+        this.animator.pause();
+    }
+
+
+    public doNoTarget(): void 
+    {
+        this._levelController.checkLose ();
     }
 }
 

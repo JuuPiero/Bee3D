@@ -13,9 +13,7 @@ export class FloaterPool extends Component {
     
     private _showCount: number = 0;
 
-    private _startPos = new Vec3();
 
-    @property(Label ) countLabel: Label = null;
     
     @property(Node) holder: Node = null;
     @property(Node) returnPos: Node = null;
@@ -29,17 +27,11 @@ export class FloaterPool extends Component {
     {
         this._showCount = showCount;
         this._queue = new Queue<Node>();
-        for (let i = 0; i < this._floaters.length; i++)
-        {
-            this._floaters[i].active = false;
-        }
         for (let i = 0; i < this._showCount; i++)
         {
             const floater = this._floaters[i];
-            floater.active = true;
             this._queue.enqueue(floater);
         }
-        this.updateView();
     }
 
     public getFloaterOut(): Node 
@@ -50,7 +42,6 @@ export class FloaterPool extends Component {
             return null;
         }
         const floater = this._queue.dequeue();
-        this.updateView();
         return floater;
     }
 
@@ -58,22 +49,6 @@ export class FloaterPool extends Component {
     {
         floater.setWorldPosition(this.returnPos.getWorldPosition());
         this._queue.enqueue(floater);
-        this.updateView();
-    }
-
-    private updateView(): void 
-    {
-        this.holder.getWorldPosition(this._startPos);
-        for (let i = 0; i < this._queue.Items.length; i++)
-        {
-            const floater = this._queue.Items[i];
-            const targetPos = new Vec3(this._startPos.x - (i * GAP), this._startPos.y, this._startPos.z);
-            floater.setRotationFromEuler(ROT);
-            tween(floater)
-                .to(0.23, { worldPosition: targetPos })
-                .start();
-        }
-        this.countLabel.string = `${this._queue.size()}/${this._showCount}`;
     }
 
     public isCanGetFloater(): boolean

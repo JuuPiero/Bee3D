@@ -16,7 +16,6 @@ export class ShooterInConveyorShootState extends ShooterStateBase {
     {
         this._targets = this._shooter.getTargets();
         this.rotateAndShoot();
-        console.log("Enter InConveyor Shoot State  2 with " + this._targets.length + " targets");
     }
 
     public onUpdate(dt: number): void {
