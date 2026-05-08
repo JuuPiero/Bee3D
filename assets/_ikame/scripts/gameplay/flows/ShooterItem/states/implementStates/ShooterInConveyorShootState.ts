@@ -18,13 +18,13 @@ export class ShooterInConveyorShootState extends ShooterStateBase {
         this.rotateAndShoot();
     }
 
-    public onUpdate(dt: number): void {
-        if (this._targets.length <= 0)
-        {
-            this.finishShootState();
-            return;
-        }
-    }
+    // public onUpdate(dt: number): void {
+    //     if (this._targets.length <= 0)
+    //     {
+    //         this.finishShootState();
+    //         return;
+    //     }
+    // }
 
     private async rotateAndShoot()
     {
@@ -36,12 +36,14 @@ export class ShooterInConveyorShootState extends ShooterStateBase {
             if (Math.abs(angle) > 10) 
                 this._shooter.pauseAnimation();
             await this._shooter.rotateTowardsTargetAsync(angle);
-            this._shooter.changeAnimation(ShooterAnimationName.Attack, false);
+            this._shooter.changeAnimation(ShooterAnimationName.Attack, true);
             const delayTime = Math.max(0, FIRE_INTERVAL - (game.totalTime - this._lastFireTime) * 1000);
             await PromiseDelay.Wait(delayTime);
             const shootSuccess = this._shooter.shootTarget(target);
             this._lastFireTime = game.totalTime;
         }
+        await PromiseDelay.Wait(.1);
+        this.finishShootState();
     }
 
     private finishShootState(): void

@@ -285,7 +285,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     }
 
     changeAnimation(animationName: string, force: boolean): void {
-        this.animator.off(Animation.EventType.FINISHED, this.onAnimationFinishedPause, this);
+        if (this.isPauseTriggered)
+        {
+            this.animator.off(Animation.EventType.LASTFRAME, this.onAnimationFinishedPause, this);
+        }
+        this.isPauseTriggered = false;
         if (this._curAnimationName === animationName && !force) {
             return;
         }
@@ -973,8 +977,14 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     }
 
 
+    private isPauseTriggered = false;
+
     public pauseAnimation(): void {
 
+        if (this.isPauseTriggered) {
+            return;
+        }
+        this.isPauseTriggered = true;
         this.animator.once(Animation.EventType.LASTFRAME, this.onAnimationFinishedPause, this);
     }
 

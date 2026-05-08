@@ -46,6 +46,8 @@ export interface ILevelController
     setBottomPixel(block: IPixelBlock, colIndex: number, rowIndex: number): void
     
     removePixelFromColumn(colIndex: number, pixel: IPixelBlock): void
+
+    getSurroundingPixels(grid : IGridTile , pixel : IPixelBlock, out: IPixelBlock[]): void
 }
 
 

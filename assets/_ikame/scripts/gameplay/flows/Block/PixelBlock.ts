@@ -5,14 +5,18 @@ import { IPixelBlock } from './IPixelBlock';
 import { IGridTile } from '../MapTiles/IGridTile';
 import { ILevelController } from '../../controllers/ILevelController';
 import { BulletPooling } from '../../../pooling/BulletPooling';
+import { TweenShake } from '../../../commons/TweenShake';
 const { ccclass, property } = _decorator;
 
-const OUT_SCALE = new Vec3(1.1, 3, 1.1);
+const OUT_SCALE = new Vec3(1.1, 3.8, 1.1);
 
-const BULLET_SPEED = 8.3;
+const BULLET_SPEED = 10.3;
 const LOWER_SCALE = new Vec3(1, 0.5, 1);
 
 const Z_SPEED = 2.0;
+
+const STRONG_SHAKE_STRENGTH = .34;
+const WEAK_SHAKE_STRENGTH = .18;
 
 @ccclass('PixelBlock')
 export class PixelBlock extends Component implements IPixelBlock
@@ -62,6 +66,8 @@ export class PixelBlock extends Component implements IPixelBlock
         this._isTargeted = targeted;
     }
 
+    @property(TweenShake) public tweenShake: TweenShake = null;
+
     init(colorID: number, level: ILevelController, bulletPool: BulletPooling): void 
     {
         const color = this.colorData.getPixelBlockMaterialById(colorID);
@@ -106,7 +112,6 @@ export class PixelBlock extends Component implements IPixelBlock
         return this.node.uuid;
     }
 
-
     public markForDestroy(barrolPosition: Vec3): boolean
     {
         if (this._isMarkedForDestroy) {
@@ -147,6 +152,7 @@ export class PixelBlock extends Component implements IPixelBlock
             .delay (travelTime)
             .call(() => {
                 this.particleNode.active = true;
+                this.shakeEffect();
             })
             .to(0.12, { scale: OUT_SCALE }, { easing: easing.backOut })
             .to(0.1, { scale: LOWER_SCALE }, { easing: easing.quadIn })
@@ -206,6 +212,23 @@ export class PixelBlock extends Component implements IPixelBlock
     public disable(): void
     {
         this.node.active = false;
+    }
+    
+    private _surroundingPixels: IPixelBlock[] = [];
+
+    public shakeEffect(): void 
+    {
+        this.shakeLite(STRONG_SHAKE_STRENGTH);
+        this._surroundingPixels.length = 0;
+        this._level.getSurroundingPixels(this._gridTile, this, this._surroundingPixels);
+        for (const pixel of this._surroundingPixels) {
+            pixel.shakeLite(WEAK_SHAKE_STRENGTH);
+        }
+    }
+
+    public shakeLite(strength: number): void
+    {
+        this.tweenShake.playShake(0.15, strength);
     }
 }
 

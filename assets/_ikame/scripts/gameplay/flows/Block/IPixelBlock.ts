@@ -13,5 +13,6 @@ export interface IPixelBlock {
     isTargeted(): boolean;
     setTargeted(targeted: boolean): void;
     disable(): void;
+    shakeLite(strength : number);
 }
 

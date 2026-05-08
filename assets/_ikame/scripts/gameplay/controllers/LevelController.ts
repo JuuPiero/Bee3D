@@ -541,7 +541,7 @@ export class LevelController extends Component implements ILevelController
         while (colIndex >= 0 && colIndex < width && out.length < max)
         {
             const pixel = this.getBottomPixelAt(colIndex);
-            if (!pixel || pixel.getColorID() !== colorID)
+            if (!pixel || pixel.getColorID() !== colorID || pixel.isTargeted())
             {
                 colIndex += step;
                 continue;
@@ -609,6 +609,156 @@ export class LevelController extends Component implements ILevelController
             {
                 this._columnFallSpeeds[this._colIndex] = 0;
             }
+        }
+    }
+
+    private _searchPixelWorldPos: Vec3 = new Vec3();
+
+    private pushUniquePixel(out: IPixelBlock[], pixel: IPixelBlock | undefined): void
+    {
+        if (!pixel)
+        {
+            return;
+        }
+
+        const pixelUid = pixel.getUid();
+        for (let i = 0; i < out.length; i++)
+        {
+            if (out[i].getUid() === pixelUid)
+            {
+                return;
+            }
+        }
+
+        out.push(pixel);
+    }
+
+    private collectNearestPixelsInColumn(column: Queue<IPixelBlock> | undefined, targetWorldZ: number, out: IPixelBlock[]): void
+    {
+        if (!column || column.isEmpty())
+        {
+            return;
+        }
+
+        let nearestPixel: IPixelBlock = null;
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        let abovePixel: IPixelBlock = null;
+        let aboveDistance = Number.POSITIVE_INFINITY;
+        let belowPixel: IPixelBlock = null;
+        let belowDistance = Number.POSITIVE_INFINITY;
+
+        for (const pixel of column.Items)
+        {
+            if (!pixel )
+            {
+                continue;
+            }
+
+            pixel.getWorldPosition(this._searchPixelWorldPos);
+            const pixelWorldZ = this._searchPixelWorldPos.z;
+            const distanceToTarget = Math.abs(pixelWorldZ - targetWorldZ);
+            if (distanceToTarget < nearestDistance)
+            {
+                nearestDistance = distanceToTarget;
+                nearestPixel = pixel;
+            }
+
+            if (pixelWorldZ < targetWorldZ)
+            {
+                const distanceAbove = targetWorldZ - pixelWorldZ;
+                if (distanceAbove < aboveDistance)
+                {
+                    aboveDistance = distanceAbove;
+                    abovePixel = pixel;
+                }
+            }
+            else if (pixelWorldZ > targetWorldZ)
+            {
+                const distanceBelow = pixelWorldZ - targetWorldZ;
+                if (distanceBelow < belowDistance)
+                {
+                    belowDistance = distanceBelow;
+                    belowPixel = pixel;
+                }
+            }
+        }
+
+        if (!nearestPixel)
+        {
+            return;
+        }
+
+        nearestPixel.getWorldPosition(this._searchPixelWorldPos);
+        const nearestWorldZ = this._searchPixelWorldPos.z;
+
+        let topNeighbor: IPixelBlock = null;
+        let topNeighborDistance = Number.POSITIVE_INFINITY;
+        let bottomNeighbor: IPixelBlock = null;
+        let bottomNeighborDistance = Number.POSITIVE_INFINITY;
+
+        for (const pixel of column.Items)
+        {
+            if (!pixel || pixel === nearestPixel)
+            {
+                continue;
+            }
+
+            pixel.getWorldPosition(this._searchPixelWorldPos);
+            const pixelWorldZ = this._searchPixelWorldPos.z;
+
+            if (pixelWorldZ < nearestWorldZ)
+            {
+                const distance = nearestWorldZ - pixelWorldZ;
+                if (distance < topNeighborDistance)
+                {
+                    topNeighborDistance = distance;
+                    topNeighbor = pixel;
+                }
+            }
+            else if (pixelWorldZ > nearestWorldZ)
+            {
+                const distance = pixelWorldZ - nearestWorldZ;
+                if (distance < bottomNeighborDistance)
+                {
+                    bottomNeighborDistance = distance;
+                    bottomNeighbor = pixel;
+                }
+            }
+        }
+
+        this.pushUniquePixel(out, nearestPixel);
+        this.pushUniquePixel(out, topNeighbor || abovePixel);
+        this.pushUniquePixel(out, bottomNeighbor || belowPixel);
+    }
+
+    private _tempPixelPos : Vec3 = new Vec3();
+
+    public getSurroundingPixels(grid: IGridTile, pixel : IPixelBlock, out: IPixelBlock[]): void {
+        
+        const botTile = grid.getBottomLinkedTile();
+        const topTile = grid.getTopLinkedTile();
+        if (botTile && botTile.isContainBlock())
+        {
+            out.push(botTile.getPixelBlock());
+        }
+        if (topTile && topTile.isContainBlock())
+        {
+            out.push(topTile.getPixelBlock());
+        }
+        const curX = grid.getCoordX();
+        const leftCol = this._pixelColumn[curX - 1];
+        const rightCol = this._pixelColumn[curX + 1];
+        pixel.getWorldPosition(this._tempPixelPos);
+        const targetWorldZ = this._tempPixelPos.z;
+
+        if (leftCol)
+        {
+            this.collectNearestPixelsInColumn(leftCol, targetWorldZ, out);
+        }
+
+        if (rightCol)
+        {
+            this.collectNearestPixelsInColumn(rightCol, targetWorldZ, out);
         }
     }
 }
