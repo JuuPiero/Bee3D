@@ -28,7 +28,7 @@ export class GameStartState extends GameStateBase {
         {
             TrackingManager.TrackEvent(ETrackingEvent.LOADING);
             this.levelController.clearLevel();
-            this.levelController.scaleLevel();
+            // this.levelController.scaleLevel();
             TrackingManager.TrackEvent(ETrackingEvent.LOADED);
             TrackingManager.TrackEvent(ETrackingEvent.DISPLAYED);
             this.levelController.spawnLevel();
