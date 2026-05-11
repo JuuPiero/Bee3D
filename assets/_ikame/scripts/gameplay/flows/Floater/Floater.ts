@@ -47,7 +47,7 @@ export class Floater extends Component {
             this.tweenObj.value = 0;
             tween(this.tweenObj)
                 .to(duration, { value: 1 }, {
-                    easing: easing.sineOutIn, onUpdate: () => {
+                    easing: easing.quadOut, onUpdate: () => {
                         lerp3Vec3(this._initPosition, this._downPosition, this._initPosition, this.tweenObj.value, this._pos);
                         this.node.setPosition(this._pos);
                     },

@@ -32,13 +32,9 @@ const { ccclass, property } = _decorator;
 const JUMP_DURATION = 0.3;
 const RETREIVE_JUMP_DURATION = 0.32;
 
-const RIGHT_ROT = new Vec3(0, -90, 0);
-const LEFT_ROT = new Vec3(0, 90, 0);
+const IN_CONVEYOR_SIZE = new Vec3(0.8, 0.8, 0.8);
 
-
-const IN_CONVEYOR_SIZE = Vec3.ONE;
-
-const ROTATE_SPEED = 120; // degrees per second
+const ROTATE_SPEED = 190; // degrees per second
 
 @ccclass('ShooterItem')
 export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {
@@ -86,7 +82,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private _finishState: ShooterStaticState;
 
     private _jumpToPosition: Vec3 = new Vec3();
-    private _jumpToQuat: Quat = new Quat();
     private _startJumpPosition: Vec3 = new Vec3();
     private _lerpPos = new Vec3();
 
@@ -318,14 +313,13 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             this.node.getWorldPosition(this._startJumpPosition);
             this.node.setParent(this._floater.node, true);
             const tweenObj = { progress: 0 }
-            const size = new Vec3();
             const tweenJump = tween(tweenObj)
                 .to(JUMP_DURATION, { progress: 1 }, {
                     onUpdate: (target: any, ratio: number) => {
                         this._floater.node.getWorldPosition(this._jumpToPosition);
                         Vec3.lerp(this._lerpPos, this._startJumpPosition, this._jumpToPosition, target.progress)
+                        this._lerpPos.y += Math.sin(target.progress * Math.PI) * 3.5; // Add jump arc
                         this.node.setWorldPosition(this._lerpPos);
-
                     }
                 })
                 .start();
@@ -509,28 +503,15 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         // this._cacheSlotController.removeFromCache(this);
         this.returnFloaterToPool();
         this.playWaterParticles();
-        const isRight = this.node.worldPositionX > 0;
         const startPosition = this.node.worldPosition.clone();
-        const targetPosition = new Vec3(isRight ? startPosition.x + 7 : startPosition.x - 7, startPosition.y + 5, startPosition.z);
-        const rot = isRight ? RIGHT_ROT : LEFT_ROT;
-        this.characterRoot.setWorldRotationFromEuler(rot.x, rot.y, rot.z);
-        this.changeAnimation(ShooterAnimationName.Jump, true);
-        const winSound = isRight ? this.finishSound1 : this.finishSound2;
-        EventDispatcher.dispatch(EventName.PlaySFX, winSound, 0.5);
-        const jumpHeight = 2;
-        const tweenObj = { progress: 0 };
+        const targetPosition = new Vec3();
+        Vec3.scaleAndAdd(targetPosition, startPosition, this.node.up, 2); // Adjust target position as needed
+
+        EventDispatcher.dispatch(EventName.PlaySFX, this.finishSound1, 0.25);
         this.ammoLabel.node.active = false;
-        const tweenJump = tween(tweenObj)
-            // .delay(0.03)
-            .to(JUMP_DURATION * 2, { progress: 1 }, {
-                onUpdate: (target: any, ratio: number) =>
-                {
-                    Vec3.lerp(this._lerpPos, startPosition, targetPosition, target.progress);
-                    const heightOffset = Math.sin(target.progress * Math.PI) * jumpHeight;
-                    this._lerpPos.y += heightOffset;
-                    this.node.setWorldPosition(this._lerpPos);
-                }
-            })
+        const tweenJump = tween(this.node)
+            .to(0.24, { worldPosition: targetPosition }, { easing: easing.backOut })
+            .to(0.2, { scale : Vec3.ZERO }, { easing: easing.backIn })
             .start();
 
         await PromiseDelay.Wait(tweenJump.duration);

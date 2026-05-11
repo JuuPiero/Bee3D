@@ -5,7 +5,7 @@
   "__editorExtras__": {},
   "_native": "",
   "_effectAsset": {
-    "__uuid__": "259a157a-a96c-4202-8836-aaf58dad971a",
+    "__uuid__": "7329b2ff-ee00-47e7-821b-f188eb6379f0",
     "__expectedType__": "cc.EffectAsset"
   },
   "_techIdx": 0,
@@ -14,7 +14,9 @@
       "USE_INSTANCING": true
     },
     {
-      "USE_INSTANCING": true
+      "USE_OUTLINE_PASS": true,
+      "USE_INSTANCING": true,
+      "USE_POSITION_SCALING": true
     }
   ],
   "_states": [
@@ -41,26 +43,24 @@
     {
       "_Color": {
         "__type__": "cc.Color",
-        "r": 76,
-        "g": 234,
-        "b": 248,
+        "r": 98,
+        "g": 241,
+        "b": 253,
         "a": 255
       },
       "_ColorShadow": {
         "__type__": "cc.Color",
-        "r": 0,
+        "r": 16,
         "g": 77,
-        "b": 107,
+        "b": 206,
         "a": 255
-      },
-      "_Matcap": {
-        "__uuid__": "d4801e4b-cd33-4359-ad3d-cc51f0149038@6c48a",
-        "__expectedType__": "cc.Texture2D"
       },
       "_FlipZ": 0,
       "_Glossiness": 0.5,
       "_SpecularIntensity": 0.35
     },
-    {}
+    {
+      "lineWidth": 18.3
+    }
   ]
 }

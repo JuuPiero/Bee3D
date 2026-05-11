@@ -24,11 +24,7 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
             this._shooter.doNoTarget();
         }
 
-        if (this.stateMachine.getLastStateName() === EShooterState.Jump) 
-        {
-            this._shooter.changeAnimation(ShooterAnimationName.Idle, true);
-        }
-        else
+        if (this.stateMachine.getLastStateName() !== EShooterState.Jump) 
         {
             this._shooter.pauseAnimation();
         }

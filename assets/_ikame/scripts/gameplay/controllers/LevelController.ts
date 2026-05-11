@@ -14,7 +14,6 @@ import { ShooterItem } from '../flows/ShooterItem/ShooterItem';
 import { ICacheSlotController } from '../cacheSlots/ICacheSlotController';
 import { EventDispatcher } from '../../designPatterns/observer/EventDispatcher';
 import { EventName } from '../../designPatterns/observer/EventName';
-import { FloaterPool } from '../flows/Floater/FloaterPool';
 import { IShooterItem } from '../flows/ShooterItem/IShooterItem';
 import { BulletPooling } from '../../pooling/BulletPooling';
 import { Floater } from '../flows/Floater/Floater';
@@ -25,7 +24,7 @@ import { Queue } from '../../commons/Queue';
 const { ccclass, property } = _decorator;
 
 const PIXEL_BLOCK_SIZE = 1;
-const GRAVITY = 23.8;
+const GRAVITY = 32.8;
 @ccclass('LevelController')
 export class LevelController extends Component implements ILevelController
 {
