@@ -10,10 +10,9 @@ const { ccclass, property } = _decorator;
 
 const OUT_SCALE = new Vec3(1.1, 3.8, 1.1);
 
-const BULLET_SPEED = 10.3;
+const BULLET_SPEED = 20.3;
 const LOWER_SCALE = new Vec3(1, 0.5, 1);
 
-const Z_SPEED = 2.0;
 
 const STRONG_SHAKE_STRENGTH = .34;
 const WEAK_SHAKE_STRENGTH = .18;
@@ -136,14 +135,24 @@ export class PixelBlock extends Component implements IPixelBlock
         this._level.checkWinCondition();
     
         // this.bulletNode.setWorldPosition(barrolPosition);
-        const targetPos = this.node.getWorldPosition();
-
+        const targetPos = new Vec3();
+        const startPos = new Vec3();
         const distance = Vec3.distance(barrolPosition, targetPos);
         const travelTime = (distance / BULLET_SPEED);
         this.bulletNode.setWorldPosition(barrolPosition);
+        const bullet = this.bulletNode;
+        const bulletPos = new Vec3();
+        startPos.set(barrolPosition);
+        const targetNode = this.node;
         tween(this.bulletNode)
             .to(travelTime, { worldPosition: targetPos }, {
-                easing: easing.linear, onComplete: () => {
+                easing: easing.sineOut, onUpdate(target, ratio)
+                {
+                    targetNode.getWorldPosition(targetPos);
+                    Vec3.lerp(bulletPos, startPos, targetPos, ratio);
+                    bullet.setWorldPosition(bulletPos);
+                },
+                onComplete: () => {
                 }
             })
             .start();

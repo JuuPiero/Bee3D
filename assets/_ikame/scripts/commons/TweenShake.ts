@@ -67,11 +67,11 @@ export class TweenShake extends Component {
 				this._initialPosition.z
 			);
 
-			sequence.to(stepDuration, { position: offset }, { easing: easing.sineInOut });
+			sequence.to(stepDuration, { position: offset }, { easing: easing.smooth });
 		}
 
 		sequence
-			.to(stepDuration, { position: this._cachedInitialPosition }, { easing: easing.sineInOut })
+			.to(stepDuration, { position: this._cachedInitialPosition }, { easing: easing.smooth })
 			.call(() => {
 				this._isShaking = false;
 				if (this.restorePositionOnFinish)
