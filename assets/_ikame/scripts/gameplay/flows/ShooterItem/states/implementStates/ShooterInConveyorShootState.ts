@@ -41,9 +41,9 @@ export class ShooterInConveyorShootState extends ShooterStateBase {
             await PromiseDelay.Wait(delayTime);
             this._shooter.shootTarget(target);
             this._lastFireTime = game.totalTime;
-            await PromiseDelay.Wait(0.02);
+            if (this._targets.length > 0)
+                await PromiseDelay.Wait(0.01);
         }
-        await PromiseDelay.Wait(.1);
         this.finishShootState();
     }
 

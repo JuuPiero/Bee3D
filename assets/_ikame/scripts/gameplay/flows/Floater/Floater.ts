@@ -1,10 +1,8 @@
 import { _decorator, Component, easing, Node, tween, Tween, Vec3 } from 'cc';
 import { IShooterItem } from '../ShooterItem/IShooterItem';
-import { lerp3, lerp3Vec3 } from '../../../utils/Utils';
-const { ccclass, property } = _decorator;
-        
-const upPosition = new Vec3(0, 0.1, 0);
-const OUT_SCALE = new Vec3(.76, .76, .76);
+import { lerp3Vec3 } from '../../../utils/Utils';
+const { ccclass } = _decorator;
+    
 
 @ccclass('Floater')
 export class Floater extends Component {

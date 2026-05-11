@@ -6,7 +6,7 @@ import { EventName } from '../../../designPatterns/observer/EventName';
 
 const { ccclass, property } = _decorator;
 
-const SLOT_SIZE = 1.36;
+const SLOT_SIZE = 1.1;
 
 @ccclass('Conveyor')
 export class Conveyor extends SplineSmooth 

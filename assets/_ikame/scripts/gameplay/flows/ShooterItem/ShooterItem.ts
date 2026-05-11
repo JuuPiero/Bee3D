@@ -19,7 +19,6 @@ import { ShooterStateBase } from './states/ShooterStateBase';
 import { IShooterItem } from './IShooterItem';
 import { PromiseDelay } from '../../../commons/PromiseDelay';
 import { ShooterRetriveState } from './states/implementStates/ShooterRetriveState';
-import { ShooterAnimationName } from './states/ShooterAnimationName';
 import { EventDispatcher } from '../../../designPatterns/observer/EventDispatcher';
 import { EventName } from '../../../designPatterns/observer/EventName';
 import { EColor } from '../../../enums/EColor';
@@ -34,7 +33,7 @@ const RETREIVE_JUMP_DURATION = 0.32;
 
 const IN_CONVEYOR_SIZE = new Vec3(0.8, 0.8, 0.8);
 
-const ROTATE_SPEED = 190; // degrees per second
+const ROTATE_SPEED = 320; // degrees per second
 
 @ccclass('ShooterItem')
 export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {
@@ -500,7 +499,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public async finishAnimation(): Promise<void> 
     {
-        // this._cacheSlotController.removeFromCache(this);
+        console.log("Ammo Count at finish:", this.ammoCount);
         this.returnFloaterToPool();
         this.playWaterParticles();
         const startPosition = this.node.worldPosition.clone();
@@ -976,7 +975,9 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public doNoTarget(): void 
     {
-        this._levelController.checkLose ();
+        if (this.getAmmoCount() <= 0) return;
+        console.log("Ammo Count at no target:", this.getAmmoCount());
+        this._levelController.checkLose();
     }
 }
 

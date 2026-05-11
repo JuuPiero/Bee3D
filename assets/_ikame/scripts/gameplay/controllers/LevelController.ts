@@ -464,12 +464,12 @@ export class LevelController extends Component implements ILevelController
 
     public checkLose():  void
     {
-        const inConveyColor : Set<number> = new Set<number>();
+        const inConveyColor: Set<number> = new Set<number>();
         for (const floater of this.conveyor.floaters)
         {
-            if (floater.isTaken() === false)
-                return;
             const shooter = floater.getShooter();
+            if (!shooter) return;
+            if (shooter.getAmmoCount() <= 0) return;
             inConveyColor.add(shooter.getColorID());
         }
         const colorEgdes = this.getAllOutsideColor(); 
