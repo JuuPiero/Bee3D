@@ -1,9 +1,8 @@
-            this._shooter.changeAnimation(ShooterAnimationName.Idle, true);
 {
   "ver": "4.0.24",
   "importer": "typescript",
   "imported": true,
-  "uuid": "a64fea94-cc5c-4c02-a7cd-4d08c14f7801",
+  "uuid": "b564ccbd-3810-4e54-805f-fc4f87f91d88",
   "files": [],
   "subMetas": {},
   "userData": {}
