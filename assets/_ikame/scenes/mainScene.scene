@@ -2330,7 +2330,7 @@
     "_color": {
       "__type__": "cc.Color",
       "r": 252,
-      "g": 237,
+      "g": 184,
       "b": 64,
       "a": 255
     },
@@ -2750,7 +2750,7 @@
     },
     "debugDrawMapBorder": true,
     "levelJsonAsset": {
-      "__uuid__": "1898b6bf-2137-43ff-a76f-85690a4f5644",
+      "__uuid__": "78046e9e-d22d-4e47-a393-d282af76d81f",
       "__expectedType__": "cc.JsonAsset"
     },
     "bulletPool": {
