@@ -42,11 +42,9 @@
         "a": 255
       },
       "_MatCap": {
-        "__uuid__": "eaf4be1d-659a-46d5-9eba-f34922ad8190@6c48a",
+        "__uuid__": "33db8eca-ea0b-4a82-8ae5-c76cab491e38@6c48a",
         "__expectedType__": "cc.Texture2D"
-      },
-      "_Glossiness": 0.4,
-      "_SpecularIntensity": 0.35
+      }
     }
   ]
 }
