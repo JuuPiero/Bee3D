@@ -1,0 +1,143 @@
+CCEffect %{
+  techniques:
+  - name: cubeOutline
+    passes:
+    - vert: outline-vs:vert
+      frag: outline-fs:frag
+      properties:
+        _Color:         { value: [0.0, 0.0, 0.0, 1.0], editor: { type: color } }
+        _OutlineWidth:  { value: 0.0 }
+        _DepthBias:     { value: 0.0 }
+      rasterizerState:
+        cullMode: front
+      depthStencilState:
+        depthFunc: less_equal
+        depthTest: true
+        depthWrite: true
+        stencilTestFront: true
+        stencilFuncFront: not_equal
+        stencilReadMaskFront: 1
+        stencilWriteMaskFront: 1
+        stencilFailOpFront: keep
+        stencilZFailOpFront: keep
+        stencilPassOpFront: keep
+        stencilRefFront: 1
+        stencilTestBack: true
+        stencilFuncBack: not_equal
+        stencilReadMaskBack: 1
+        stencilWriteMaskBack: 1
+        stencilFailOpBack: keep
+        stencilZFailOpBack: keep
+        stencilPassOpBack: keep
+        stencilRefBack: 1
+      blendState:
+        targets:
+          - blend: false
+}%
+
+CCProgram outline-vs %{
+  precision highp float;
+  #include <legacy/input>
+  #include <builtin/uniforms/cc-global>
+  #include <legacy/decode-base>
+  #include <legacy/local-batch>
+
+  uniform Constants {
+    vec4 _Color;
+    float _OutlineWidth;
+    float _DepthBias;
+  };
+
+  out vec3 v_worldPos;
+
+  // Compute object scale from world matrix columns
+  vec3 getObjectScale(mat4 m) {
+    vec3 sx = vec3(m[0].x, m[1].x, m[2].x);
+    vec3 sy = vec3(m[0].y, m[1].y, m[2].y);
+    vec3 sz = vec3(m[0].z, m[1].z, m[2].z);
+    return vec3(length(sx), length(sy), length(sz));
+  }
+
+  vec4 vert () {
+    vec4 position;
+    CCVertInput(position);
+
+    mat4 matWorld, matWorldIT;
+    CCGetWorldMatrixFull(matWorld, matWorldIT);
+
+    // Compute object scale (matching Unity shader)
+    vec3 objScale = getObjectScale(matWorld);
+    
+    // Adjust position based on scale (matching Unity shader logic)
+    vec4 Pos = position;
+    Pos.xyz /= objScale;
+    
+    float minScale = min(min(objScale.x, objScale.y), objScale.z);
+    const float eps = 0.01;
+    
+    if (minScale == objScale.x) {
+      Pos.xyz *= objScale.x;
+      if (position.y > 0.5) Pos.y += (objScale.y - objScale.x) / objScale.y;
+      if (position.z > eps) Pos.z += (objScale.z - objScale.x) / (objScale.z * 2.0);
+      else if (position.z < -eps) Pos.z -= (objScale.z - objScale.x) / (objScale.z * 2.0);
+    } else if (minScale == objScale.y) {
+      Pos.xyz *= objScale.y;
+      if (position.x > eps) Pos.x += (objScale.x - objScale.y) / (objScale.x * 2.0);
+      else if (position.x < -eps) Pos.x -= (objScale.x - objScale.y) / (objScale.x * 2.0);
+      if (position.z > eps) Pos.z += (objScale.z - objScale.y) / (objScale.z * 2.0);
+      else if (position.z < -eps) Pos.z -= (objScale.z - objScale.y) / (objScale.z * 2.0);
+    } else {
+      Pos.xyz *= objScale.z;
+      if (position.x > eps) Pos.x += (objScale.x - objScale.z) / (objScale.x * 2.0);
+      else if (position.x < -eps) Pos.x -= (objScale.x - objScale.z) / (objScale.x * 2.0);
+      if (position.y > 0.5) Pos.y += (objScale.y - objScale.z) / objScale.y;
+    }
+    
+    // Clamp bottom vertices (matching Unity shader)
+    if (position.y < 0.5) Pos.y = 0.025;
+    
+    // Calculate world position
+    vec4 worldPos = matWorld * Pos;
+    v_worldPos = worldPos.xyz;
+    
+    // Calculate clip position
+    vec4 clipPos = cc_matProj * cc_matView * worldPos;
+    
+    // Apply outline expansion in screen space (matching Unity shader)
+    if (_OutlineWidth > 0.0) {
+      // Transform normal to homogeneous clip space (matching Unity's UNITY_MATRIX_VP * UNITY_MATRIX_M)
+      vec3 worldNormal = normalize((matWorldIT * vec4(a_normal, 0.0)).xyz);
+      vec3 viewNormal = normalize((cc_matView * vec4(worldNormal, 0.0)).xyz);
+      vec4 clipNormal = cc_matProj * vec4(viewNormal, 0.0);
+      
+      // Normalize and expand in screen space
+      vec2 screenNormal = normalize(clipNormal.xy);
+      clipPos.xy += screenNormal * clipPos.w * _OutlineWidth * 10.0 / vec2(cc_screenSize.x, cc_screenSize.y);
+    }
+    
+    // Apply depth bias to push outline behind main geometry
+    // Only apply to top vertices to keep bottom outline visible
+    if (position.y >= 0.5) {
+      float scaleZ = cc_nearFar.z == 0.0 ? 0.5 : 1.0;
+      clipPos.z -= _DepthBias * 0.002 * scaleZ;
+    }
+    
+    return clipPos;
+  }
+}%
+
+CCProgram outline-fs %{
+  precision highp float;
+  
+  in vec3 v_worldPos;
+  
+  uniform Constants {
+    vec4 _Color;
+    float _OutlineWidth;
+    float _DepthBias;
+  };
+
+  vec4 frag () {
+    return vec4(_Color.rgb, 1.0);
+  }
+}%

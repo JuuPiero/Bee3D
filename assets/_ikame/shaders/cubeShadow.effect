@@ -92,7 +92,8 @@ CCProgram fakeshadow-fs %{
 
   vec4 frag () {
     vec2 mask = texture(mainTexture, v_uv).xy;
-    float a = mask.x * colorDropShadow.a;
+    // Invert mask.x so white (outside) is transparent, black (inside) is opaque
+    float a = (1.0 - mask.x) * colorDropShadow.a;
     vec3 rgb = mix(colorDropShadow.rgb, color.rgb, mask.y);
     return vec4(rgb, a);
   }

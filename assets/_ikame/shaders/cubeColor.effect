@@ -24,8 +24,7 @@ CCProgram cubeColor-vs %{
   #include <legacy/local-batch>
 
   out mediump vec4 v_cap; // xy: matcap by normal, zw: matcap by adjusted pos
-  out mediump vec3 v_randSeed; // stable per-object seed (world translation)
-  out mediump float v_side; // 0: top/bottom (up/down), 1: vertical side
+  out mediump vec3 v_worldNormal;
 
   // Compute object scale from world matrix columns
   vec3 getObjectScale(mat4 m) {
@@ -41,9 +40,6 @@ CCProgram cubeColor-vs %{
 
     mat4 matWorld, matWorldIT;
     CCGetWorldMatrixFull(matWorld, matWorldIT);
-
-    // Stable per-object random seed (translation part of world matrix)
-    v_randSeed = vec3(matWorld[3].x, matWorld[3].y, matWorld[3].z);
 
     // Compute object scale
     vec3 objScale = getObjectScale(matWorld);
@@ -75,10 +71,9 @@ CCProgram cubeColor-vs %{
     // View-space normal for matcap (matching Unity)
     vec3 worldNormal = (matWorldIT * vec4(a_normal, 0.0)).xyz;
     worldNormal = normalize(worldNormal);
+    v_worldNormal = worldNormal;
     vec3 viewNormal = normalize((cc_matView * vec4(worldNormal, 0.0)).xyz);
     v_cap.xy = clamp(viewNormal.xy * 0.5 + 0.5, 0.0, 1.0);
-    // Darken only vertical sides (normals not pointing up/down).
-    v_side = clamp(1.0 - abs(worldNormal.y), 0.0, 1.0);
 
     // Output clip position using adjusted position
     vec4 clipPos = cc_matProj * (cc_matView * matWorld) * pos;
@@ -98,10 +93,10 @@ CCProgram cubeColor-vs %{
 
 CCProgram cubeColor-fs %{
   precision highp float;
+  #include <legacy/output>
 
   in mediump vec4 v_cap;
-  in mediump vec3 v_randSeed;
-  in mediump float v_side;
+  in mediump vec3 v_worldNormal;
   uniform sampler2D _MatCap;
 
   uniform Constant {
@@ -109,67 +104,20 @@ CCProgram cubeColor-fs %{
     vec4 _ColorShadow;
   };
 
-  float randFromSeed (vec3 seed) {
-    return fract(sin(dot(seed, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
-  }
-
-  vec3 makeLightVariant (vec3 c) {
-    // Stronger lift towards white so the variant is clearly visible.
-    const float kAmount = 0.4;
-    const float kSat = 1.1;
-    vec3 lifted = clamp(mix(c, vec3(1.0), kAmount), 0.0, 1.0);
-    float luma = dot(lifted, vec3(0.299, 0.587, 0.114));
-    return clamp(mix(vec3(luma), lifted, kSat), 0.0, 1.0);
-  }
-
-  vec3 makeDarkVariant (vec3 c) {
-    // Stronger push towards black so the variant is clearly visible.
-    // Dark variant should be noticeable, but not dramatically different.
-    const float kAmount = 0.1;
-    const float kSat = 1.01;
-    vec3 pushed = clamp(mix(c, vec3(0.0), kAmount), 0.0, 1.0);
-    float luma = dot(pushed, vec3(0.299, 0.587, 0.114));
-    return clamp(mix(vec3(luma), pushed, kSat), 0.0, 1.0);
-  }
-
-  vec3 pickMainColor () {
-    // Prefer base color heavily; variants are subtle and rare
-    // 85%: base, 7.5%: lighter, 7.5%: darker
-    float r = randFromSeed(v_randSeed);
-    vec3 base = _Color.rgb;
-    if (r < 0.85) return base;
-    if (r < 0.925) return makeLightVariant(base);
-    return makeDarkVariant(base);
-  }
-
   vec4 frag () {
-    // Sample matcap texture
     vec2 mask = texture(_MatCap, v_cap.xy).xy;
     float sss = texture(_MatCap, v_cap.zw).z;
 
-    // Mix shadow and main color based on mask.y
-    // vec3 mainColor = pickMainColor();
     vec3 mainColor = _Color.rgb;
-    vec3 final = mix(_ColorShadow.rgb, mainColor, mask.y);
-    
-    // Add subtle highlight based on mask.x (reduced intensity)
-    final += (final + 0.2) * mask.x * 0.1;
-    
-    // Add subtle subsurface scattering effect (reduced intensity)
-    final += final * sss * 0.25;
-    
-    // Boost saturation for more vibrant colors
-    vec3 luminance = vec3(dot(final, vec3(0.299, 0.587, 0.114)));
-    final = mix(luminance, final, 1.3);
+    vec3 shadowColor = _ColorShadow.rgb;
 
-    // Darken only the sides (not the top): based on how "vertical" the normal is.
-    const float kSideMin = 0.74;   // how dark the sides can get
-    const float kPower = 1.9;      // higher = darker sides, less effect on top edges
-    float sideShade = mix(1.0, kSideMin, pow(v_side, kPower));
-    final *= sideShade;
-    
-    // Slightly boost brightness
-    // final *= 0.8;
+    vec3 final = mix(shadowColor, mainColor, mask.y);
+    final += (final + 0.2) * mask.x * 0.2;
+    final += final * sss * 0.22;
+
+    float lighting = dot(normalize(vec3(0.0, 0.75, -0.25)), normalize(v_worldNormal));
+    lighting = smoothstep(1.0, 0.0, lighting);
+    final = clamp(mix(final, shadowColor * final * 1.1, lighting * 0.79) , 0.0, 1.0);
 
     return vec4(final, 1.0);
   }
