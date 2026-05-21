@@ -7,6 +7,7 @@ export interface ICacheSlotController
     addToCache(shooter: IShooterItem): boolean;
     removeFromCache(shooter: IShooterItem): boolean;
     compactCache(): void 
+    clearCache(): void
 }
 
 

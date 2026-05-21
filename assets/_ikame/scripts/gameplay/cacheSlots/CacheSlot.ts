@@ -59,6 +59,14 @@ export class CacheSlot extends Component implements ICacheSlot
     {
         return this._index;
     }
+
+    clearSlot(): void
+    {
+        if (this._shooterItem) {
+            this._shooterItem.destroyShooter();
+            this._shooterItem = null;
+        }
+    }
 }
 
 

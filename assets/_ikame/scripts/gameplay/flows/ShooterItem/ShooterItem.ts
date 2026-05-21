@@ -977,6 +977,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         if (this.getAmmoCount() <= 0) return;
         this._levelController.checkLose();
     }
+
+    destroyShooter(): void
+    {
+        this.node.destroy();
+    }
 }
 
 

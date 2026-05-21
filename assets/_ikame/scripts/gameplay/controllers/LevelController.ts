@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, Color, Component, EventKeyboard, EventTouch, Input, input, instantiate, JsonAsset, KeyCode, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, EventKeyboard, EventTouch, Input, input, instantiate, JsonAsset, KeyCode, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
 import { LevelData } from '../../configData/LevelData';
 import { EDITOR } from 'cc/env';
 import { PixelBlock } from '../flows/Block/PixelBlock';
@@ -53,8 +53,8 @@ export class LevelController extends Component implements ILevelController
     @property({ type: CCBoolean, group: 'Debug' })
     public debugDrawMapBorder: boolean = false;
 
-    @property({ type: JsonAsset , group: 'LevelData' })
-    public levelJsonAsset: JsonAsset
+    @property({ type: [JsonAsset] , group: 'LevelData' })
+    public levelJsonAssets: JsonAsset[] = [];
 
     @property(BulletPooling) public bulletPool: BulletPooling;
 
@@ -115,6 +115,9 @@ export class LevelController extends Component implements ILevelController
     private _is75Completed: boolean = false;
 
     private _bottomPixels: IPixelBlock[] = [];
+
+    @property({ type: CCInteger, group: 'LevelData' })
+    private levelIndex : number = 0;
 
     protected _debugDrawSpline(): void
     {
@@ -192,7 +195,7 @@ export class LevelController extends Component implements ILevelController
         this._isFinished = false;
         this.conveyor.init();
         //#region Spawn Pixel Blocks
-        var textJson = JSON.stringify(this.levelJsonAsset.json);
+        var textJson = JSON.stringify(this.levelJsonAssets[this.levelIndex].json);
         this.levelData = new LevelData(textJson);
         this._pixelColumn.length = 0;
         this._columnHolders.length = 0;
@@ -316,7 +319,10 @@ export class LevelController extends Component implements ILevelController
 
     public clearLevel(): void
     {
-
+        this.pixelBlockHolder.destroyAllChildren();
+        this.colorQueueControllers.clearQueue();
+        this.conveyor.clearConveyor();
+        this._gridMap.clear();
     }
 
     private onTouchStart(event: EventTouch): void
@@ -376,8 +382,9 @@ export class LevelController extends Component implements ILevelController
         if (this._pixelCount <= 0)
         {
             this._isFinished = true;
+            this.levelIndex++;
             this.scheduleOnce(() => {
-                EventDispatcher.dispatch(EventName.EndGame, true, true);
+                EventDispatcher.dispatch(EventName.EndGame, true, this.levelIndex >= this.levelJsonAssets.length);
             }, 0.5);
         }
     }
@@ -460,6 +467,7 @@ export class LevelController extends Component implements ILevelController
     public doUpdate(dt: number): void
     {
         this.updateGravity(dt);
+        this.colorQueueControllers.doUpdate(dt);
     }
 
     public checkLose():  void

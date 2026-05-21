@@ -22,6 +22,11 @@ export class ColorQueue extends Component implements IColorQueue {
     private _isRolling: boolean = false;
     private _translateVector = new Vec3();
 
+    public stopRolling(): void
+    {
+        this._isRolling = false;
+    }
+
     private _shooterQueue: Queue<ShooterItem> = new Queue<ShooterItem>();
 
     init(shooters: Shooter[], levelController: ILevelController): void
@@ -40,17 +45,17 @@ export class ColorQueue extends Component implements IColorQueue {
             this._shooterQueue.enqueue(shooterComp);
         }
 
-        this._inititalSize = this.node.children.length * QUEUE_GAP;
+        this._inititalSize = this._shooterQueue.size() * QUEUE_GAP;
         this.updateTargetZ();
     }
 
     private updateTargetZ(): void 
     {
-        this._wholeSize = this.node.children.length * QUEUE_GAP;
+        this._wholeSize = this._shooterQueue.size() * QUEUE_GAP;
         this._targetZ = this._wholeSize - this._inititalSize;
     }
 
-    protected update(dt: number): void
+    doUpdate(dt: number): void
     {
         this.updateTargetZ();
         if (this.node.position.z <= this._targetZ)

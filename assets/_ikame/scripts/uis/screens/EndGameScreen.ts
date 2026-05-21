@@ -6,11 +6,19 @@ import { EventName } from '../../designPatterns/observer/EventName';
 import { PlayableAdsManager } from '../../base-script/PlayableAds/PlayableAdsManager';
 const { ccclass, property } = _decorator;
 
+const ALLOW_REPLAY = true;
+
 @ccclass('EndGameScreen')
 export class EndGameScreen extends ScreenBase {
 
     @property(AudioClip)
     public lostSFX: AudioClip = null
+
+    @property(Node)
+    public replayButton: Node = null;
+
+    @property(Node)
+    public openStoreButton: Node = null;
         
     onShow(): void 
     {
@@ -27,11 +35,14 @@ export class EndGameScreen extends ScreenBase {
     protected onEnable(): void
     {
         this.node.on(Node.EventType.TOUCH_START, this.onTouch, this);
+
+        this.replayButton.active = ALLOW_REPLAY;
+        this.openStoreButton.active = !ALLOW_REPLAY;
     }
 
     protected onDisable(): void
     {
-        this.node.on(Node.EventType.TOUCH_START, this.onTouch, this);
+        this.node.off(Node.EventType.TOUCH_START, this.onTouch, this);
     }
 
     private onTouch()

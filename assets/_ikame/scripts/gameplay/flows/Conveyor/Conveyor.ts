@@ -97,6 +97,14 @@ export class Conveyor extends SplineSmooth
         return count;
     }
 
+    public clearConveyor(): void
+    {
+        for (let i = 0; i < this.floaters.length; i++) {
+            const floater = this.floaters[i];
+            floater.clear();
+        }
+    }
+
 }
 
 

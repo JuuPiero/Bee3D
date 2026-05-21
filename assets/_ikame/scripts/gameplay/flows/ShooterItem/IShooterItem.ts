@@ -36,6 +36,7 @@ export interface IShooterItem {
     getTargets(): IPixelBlock[]
     pauseAnimation(): void
     getAngleDeltaToTarget(target: IPixelBlock): number
+    destroyShooter(): void
 }
 
 

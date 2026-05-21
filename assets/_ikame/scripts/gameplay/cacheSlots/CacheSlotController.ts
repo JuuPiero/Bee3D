@@ -124,6 +124,16 @@ export class CacheSlotController extends Component implements ICacheSlotControll
             return null;
         return this._activeSlots[filledCount].node.worldPosition;
     }
+
+    public clearCache(): void
+    {
+        for (const shooter of this._inSlotShooters)
+        {
+            shooter.setCacheSlotIndex(-1);
+            shooter.destroyShooter();
+        }
+        this._inSlotShooters.clear();
+    }
 }
 
 

@@ -55,6 +55,27 @@ export class ColorQueueControllers extends Component implements IColorQueueContr
         }
         return count;
     }
+
+    public clearQueue(): void
+    {
+        for (let i = 0; i < this._colorQueues.length; i++)
+        {
+            const queue = this._colorQueues[i];
+            queue.node.destroyAllChildren();   
+            queue.node.setPosition(0, 0, 0);
+            queue.stopRolling();
+        }
+    }
+
+    private index = 0;
+
+    doUpdate(dt: number): void
+    {
+        for (this.index = 0; this.index < this._activeQueues.length; this.index++)
+        {
+            this._activeQueues[this.index].doUpdate(dt);
+        }
+    }
 }
 
 

@@ -55,6 +55,16 @@ export class Floater extends Component {
                 }).start();
         });
     }
+
+    public clear(): void
+    {
+        if (this._shooter) {
+            this._shooter.setCacheSlotIndex(-1);
+            this._shooter.destroyShooter();
+        }
+        this.setShooter(null);
+        this.node.setPosition(this._initPosition);
+    }
 }
 
 
