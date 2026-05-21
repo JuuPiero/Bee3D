@@ -499,7 +499,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public async finishAnimation(): Promise<void> 
     {
-        console.log("Ammo Count at finish:", this.ammoCount);
         this.returnFloaterToPool();
         this.playWaterParticles();
         const startPosition = this.node.worldPosition.clone();
@@ -976,7 +975,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public doNoTarget(): void 
     {
         if (this.getAmmoCount() <= 0) return;
-        console.log("Ammo Count at no target:", this.getAmmoCount());
         this._levelController.checkLose();
     }
 }
