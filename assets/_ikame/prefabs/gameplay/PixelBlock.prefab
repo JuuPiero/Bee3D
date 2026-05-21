@@ -28,11 +28,11 @@
     "_active": true,
     "_components": [
       {
-        "__id__": 157
+        "__id__": 159
       }
     ],
     "_prefab": {
-      "__id__": 159
+      "__id__": 161
     },
     "_lpos": {
       "__type__": "cc.Vec3",
@@ -89,10 +89,10 @@
     },
     "_lrot": {
       "__type__": "cc.Quat",
-      "x": 0,
-      "y": 1,
-      "z": 0,
-      "w": 6.123233995736766e-17
+      "x": 1.0632884247878856e-17,
+      "y": 0.984807753012208,
+      "z": -0.17364817766693033,
+      "w": 6.030208312509488e-17
     },
     "_lscale": {
       "__type__": "cc.Vec3",
@@ -104,7 +104,7 @@
     "_layer": 1073741824,
     "_euler": {
       "__type__": "cc.Vec3",
-      "x": 0,
+      "x": 20,
       "y": 180,
       "z": 0
     },
@@ -438,10 +438,14 @@
         "__id__": 19
       }
     ],
-    "_active": true,
-    "_components": [],
+    "_active": false,
+    "_components": [
+      {
+        "__id__": 156
+      }
+    ],
     "_prefab": {
-      "__id__": 156
+      "__id__": 158
     },
     "_lpos": {
       "__type__": "cc.Vec3",
@@ -631,7 +635,7 @@
     "duration": 0.5,
     "loop": false,
     "simulationSpeed": 1.5,
-    "playOnAwake": false,
+    "playOnAwake": true,
     "gravityModifier": {
       "__id__": 33
     },
@@ -1640,7 +1644,7 @@
     "duration": 0.5,
     "loop": false,
     "simulationSpeed": 1.5,
-    "playOnAwake": false,
+    "playOnAwake": true,
     "gravityModifier": {
       "__id__": 103
     },
@@ -2434,6 +2438,24 @@
     "nestedPrefabInstanceRoots": null
   },
   {
+    "__type__": "38c8dwL8LdNvqq8P8T+wUXH",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 18
+    },
+    "_enabled": true,
+    "__prefab": {
+      "__id__": 157
+    },
+    "_id": ""
+  },
+  {
+    "__type__": "cc.CompPrefabInfo",
+    "fileId": "82COMGeOVFwaqCl7Bg+jau"
+  },
+  {
     "__type__": "cc.PrefabInfo",
     "root": {
       "__id__": 1
@@ -2456,7 +2478,7 @@
     },
     "_enabled": true,
     "__prefab": {
-      "__id__": 158
+      "__id__": 160
     },
     "colorData": {
       "__uuid__": "7842e53d-33a4-4b97-b73b-0f157ca26cec",
@@ -2475,14 +2497,6 @@
     "cubeRoot": {
       "__id__": 2
     },
-    "hitVFXs": [
-      {
-        "__id__": 21
-      },
-      {
-        "__id__": 91
-      }
-    ],
     "tweenShake": {
       "__id__": 14
     },
@@ -2504,7 +2518,7 @@
     "instance": null,
     "targetOverrides": [
       {
-        "__id__": 160
+        "__id__": 162
       }
     ]
   },
@@ -2514,7 +2528,7 @@
       "__id__": 18
     },
     "sourceInfo": {
-      "__id__": 161
+      "__id__": 163
     },
     "propertyPath": [
       "_trailModule",
@@ -2524,7 +2538,7 @@
       "__id__": 18
     },
     "targetInfo": {
-      "__id__": 162
+      "__id__": 164
     }
   },
   {

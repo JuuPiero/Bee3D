@@ -8,7 +8,7 @@ import { BulletPooling } from '../../../pooling/BulletPooling';
 import { TweenShake } from '../../../commons/TweenShake';
 const { ccclass, property } = _decorator;
 
-const OUT_SCALE = new Vec3(1.1, 3.8, 1.1);
+const OUT_SCALE = new Vec3(1.1, 1.8, 1.1);
 
 const BULLET_SPEED = 36;
 const LOWER_SCALE = new Vec3(1, 0.5, 1);
