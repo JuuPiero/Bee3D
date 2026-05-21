@@ -162,6 +162,7 @@ export class PixelBlock extends Component implements IPixelBlock
             .call(() => {
                 this.particleNode.active = true;
                 this.shakeEffect();
+                this.bulletNode.active = false;
             })
             .to(0.12, { scale: OUT_SCALE }, { easing: easing.backOut })
             .to(0.1, { scale: LOWER_SCALE }, { easing: easing.quadIn })
