@@ -2329,9 +2329,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 252,
-      "g": 184,
-      "b": 64,
+      "r": 255,
+      "g": 246,
+      "b": 182,
       "a": 255
     },
     "_spriteFrame": {
@@ -2751,11 +2751,7 @@
     "debugDrawMapBorder": true,
     "levelJsonAssets": [
       {
-        "__uuid__": "c068e55d-63d3-474f-a3de-5346bedc9cd9",
-        "__expectedType__": "cc.JsonAsset"
-      },
-      {
-        "__uuid__": "43771369-eea1-4d53-b515-c175506b5c17",
+        "__uuid__": "b3d9edf3-ebd5-4e64-a5d7-011c86dee65a",
         "__expectedType__": "cc.JsonAsset"
       }
     ],
@@ -6657,13 +6653,13 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 255,
-      "g": 255,
-      "b": 255,
+      "r": 82,
+      "g": 98,
+      "b": 142,
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "da0cf6a8-6a07-4ed9-a824-680074ac66f6@f9941",
+      "__uuid__": "e4f2ac24-29f5-45ac-bb3b-7fb6984db6ed@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,
