@@ -200,6 +200,17 @@ class channel_handler {
         s_content = `<script type="text/javascript">\n${s_content}\n</script>`;
         return s_html_content.replace("</head>", () => `${s_content}\n</head>`);
     }
+    _add_script_to_body(s_html_content, s_content) {
+        if (!s_content)
+            return s_html_content;
+                var removeInterNetworkEncryption = `<script type="text/javascript">
+ 
+</script>`;
+
+        s_content = `<script type="text/javascript">\n${s_content}\n</script>`;
+        var lastContent = removeInterNetworkEncryption + `\n` + s_content;
+        return s_html_content.replace("</body>", () => `${lastContent}\n</body>`);
+    }
     //获得压缩库脚本
     _get_zip_script() {
         return utils_1.default.get_json(config_1.default.constants.inject_jszip_script);
