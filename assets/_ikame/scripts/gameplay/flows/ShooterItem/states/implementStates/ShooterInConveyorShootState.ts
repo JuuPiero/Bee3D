@@ -5,7 +5,7 @@ import { ShooterAnimationName } from "../ShooterAnimationName";
 import { ShooterStateBase } from "../ShooterStateBase";
 import { game } from "cc";
 
-const FIRE_INTERVAL = 0.1;
+const FIRE_INTERVAL = 0.04;
 
 export class ShooterInConveyorShootState extends ShooterStateBase {
 
