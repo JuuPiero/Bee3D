@@ -33,7 +33,7 @@ const RETREIVE_JUMP_DURATION = 0.32;
 
 const IN_CONVEYOR_SIZE = new Vec3(0.8, 0.8, 0.8);
 
-const ROTATE_SPEED = 390; // degrees per second
+const ROTATE_SPEED = 490; // degrees per second
 
 @ccclass('ShooterItem')
 export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {

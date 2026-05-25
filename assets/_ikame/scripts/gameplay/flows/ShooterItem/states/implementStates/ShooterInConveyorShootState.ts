@@ -5,7 +5,6 @@ import { ShooterAnimationName } from "../ShooterAnimationName";
 import { ShooterStateBase } from "../ShooterStateBase";
 import { game } from "cc";
 
-const FIRE_INTERVAL = 0.04;
 
 export class ShooterInConveyorShootState extends ShooterStateBase {
 
@@ -37,8 +36,8 @@ export class ShooterInConveyorShootState extends ShooterStateBase {
                 this._shooter.pauseAnimation();
             await this._shooter.rotateTowardsTargetAsync(angle);
             this._shooter.changeAnimation(ShooterAnimationName.Attack, true);
-            const delayTime = Math.max(0, FIRE_INTERVAL - (game.totalTime - this._lastFireTime) * 1000);
-            await PromiseDelay.Wait(delayTime);
+            // const delayTime = Math.max(0, FIRE_INTERVAL - (game.totalTime - this._lastFireTime) * 1000);
+            // await PromiseDelay.Wait(delayTime);
             this._shooter.shootTarget(target);
             this._lastFireTime = game.totalTime;
             // if (this._targets.length > 0)

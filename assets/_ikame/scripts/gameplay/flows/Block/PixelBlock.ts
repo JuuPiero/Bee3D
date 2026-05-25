@@ -10,7 +10,7 @@ const { ccclass, property } = _decorator;
 
 const OUT_SCALE = new Vec3(1.1, 2.8, 1.1);
 
-const BULLET_SPEED = 56;
+const BULLET_SPEED = 36;
 const LOWER_SCALE = new Vec3(1, 0.5, 1);
 
 
