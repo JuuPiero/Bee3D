@@ -4022,7 +4022,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 833.8314208984375,
+      "width": 563.8306884765625,
       "height": 77.742
     },
     "_anchorPoint": {
@@ -4047,12 +4047,12 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 195,
-      "g": 68,
-      "b": 8,
+      "r": 0,
+      "g": 0,
+      "b": 0,
       "a": 255
     },
-    "_string": "No timer. No rush. Just pure fun!",
+    "_string": "Only IQ 180+ can win",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
     "_actualFontSize": 61.1,
@@ -4164,9 +4164,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 254,
-      "g": 159,
-      "b": 77,
+      "r": 251,
+      "g": 219,
+      "b": 162,
       "a": 255
     },
     "_spriteFrame": {
@@ -4585,7 +4585,7 @@
     },
     "debugDrawMapBorder": true,
     "levelJsonAsset": {
-      "__uuid__": "b1399e2b-0d98-4982-990d-2e85ae84c2ec",
+      "__uuid__": "da5320dc-4396-4251-b288-def4518e7b45",
       "__expectedType__": "cc.JsonAsset"
     },
     "bulletPool": {

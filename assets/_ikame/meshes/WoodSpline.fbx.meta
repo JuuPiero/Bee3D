@@ -5,42 +5,6 @@
   "uuid": "754e5d39-d566-4da6-807d-9e3ea2ad1085",
   "files": [],
   "subMetas": {
-    "99d6c": {
-      "importer": "gltf-mesh",
-      "uuid": "754e5d39-d566-4da6-807d-9e3ea2ad1085@99d6c",
-      "displayName": "",
-      "id": "99d6c",
-      "name": "Scene-0.mesh",
-      "userData": {
-        "gltfIndex": 0,
-        "triangleCount": 5184
-      },
-      "ver": "1.1.1",
-      "imported": true,
-      "files": [
-        ".bin",
-        ".json"
-      ],
-      "subMetas": {}
-    },
-    "6ec10": {
-      "importer": "gltf-mesh",
-      "uuid": "754e5d39-d566-4da6-807d-9e3ea2ad1085@6ec10",
-      "displayName": "",
-      "id": "6ec10",
-      "name": "Scene-1.mesh",
-      "userData": {
-        "gltfIndex": 1,
-        "triangleCount": 568
-      },
-      "ver": "1.1.1",
-      "imported": true,
-      "files": [
-        ".bin",
-        ".json"
-      ],
-      "subMetas": {}
-    },
     "fd73d": {
       "importer": "gltf-embeded-image",
       "uuid": "754e5d39-d566-4da6-807d-9e3ea2ad1085@fd73d",
@@ -81,6 +45,42 @@
       ],
       "subMetas": {}
     },
+    "99d6c": {
+      "importer": "gltf-mesh",
+      "uuid": "754e5d39-d566-4da6-807d-9e3ea2ad1085@99d6c",
+      "displayName": "",
+      "id": "99d6c",
+      "name": "Scene-0.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 5184
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "6ec10": {
+      "importer": "gltf-mesh",
+      "uuid": "754e5d39-d566-4da6-807d-9e3ea2ad1085@6ec10",
+      "displayName": "",
+      "id": "6ec10",
+      "name": "Scene-1.mesh",
+      "userData": {
+        "gltfIndex": 1,
+        "triangleCount": 568
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
     "4f17a": {
       "importer": "texture",
       "uuid": "754e5d39-d566-4da6-807d-9e3ea2ad1085@4f17a",
@@ -94,8 +94,8 @@
         "magfilter": "linear",
         "mipfilter": "none",
         "anisotropy": 0,
-        "isUuid": true,
-        "imageUuidOrDatabaseUri": "754e5d39-d566-4da6-807d-9e3ea2ad1085@fd73d"
+        "isUuid": false,
+        "imageUuidOrDatabaseUri": "db://assets/_ikame/textures/Asset_Conveyor belt_3.png"
       },
       "ver": "1.0.22",
       "imported": true,
@@ -117,8 +117,8 @@
         "magfilter": "linear",
         "mipfilter": "none",
         "anisotropy": 0,
-        "isUuid": true,
-        "imageUuidOrDatabaseUri": "754e5d39-d566-4da6-807d-9e3ea2ad1085@ca721"
+        "isUuid": false,
+        "imageUuidOrDatabaseUri": "db://assets/_ikame/textures/FakeShadow.png"
       },
       "ver": "1.0.22",
       "imported": true,
@@ -180,11 +180,11 @@
     "imageMetas": [
       {
         "name": "DiffuseColor_Texture",
-        "uri": "754e5d39-d566-4da6-807d-9e3ea2ad1085@fd73d"
+        "uri": "db://assets/_ikame/textures/Asset_Conveyor belt_3.png"
       },
       {
         "name": "DiffuseColor_Texture_1",
-        "uri": "754e5d39-d566-4da6-807d-9e3ea2ad1085@ca721"
+        "uri": "db://assets/_ikame/textures/FakeShadow.png"
       }
     ],
     "fbx": {
