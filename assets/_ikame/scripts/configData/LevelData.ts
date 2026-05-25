@@ -1,4 +1,5 @@
 import { _decorator, JsonAsset } from 'cc';
+import { EColor } from '../enums/EColor';
 /**
  * Schema classes that match the structure of current level JSON files.
  * These are used only for parsing JsonAsset -> LevelData runtime objects.
@@ -335,7 +336,7 @@ export class LevelData
         // Get all colors that appear (works the same in preview + HTML build)
         const allColors = this.collectAllColors(pixelCountByColor, bulletCountByColor);
         console.log("===== CORRECT LEVEL DATA =====");
-        console.log(`Colors to check: ${allColors.join(", ")}`);
+        console.log(`Colors to check: ${allColors.map(c => EColor[c] ?? c).join(", ")}`);
 
         for (let i = 0; i < allColors.length; i++) {
             const color = allColors[i];
@@ -344,7 +345,7 @@ export class LevelData
             const diff = pixelCount - bulletCount;
             if (diff === 0)
             {
-                console.log(`Color ${color}: ✓ Match (${pixelCount} pixels = ${bulletCount} bullets)`);
+                console.log(`Color ${EColor[color] ?? color}: ✓ Match (${pixelCount} pixels = ${bulletCount} bullets)`);
                 continue; // Already matched
             }
             // Get all shooters of this color
@@ -357,14 +358,14 @@ export class LevelData
                 }
             }
             if (shooters.length === 0) {
-                console.log(`Color ${color}: No shooters available.`);
+                console.log(`Color ${EColor[color] ?? color}: No shooters available.`);
                 continue; // No shooter for this color
             }
 
             if (diff > 0) {
                 // Not enough bullets, add to the last shooter
                 shooters[shooters.length - 1].ammo += diff;
-                console.log(`Added ${diff} bullets for color ${color} to the last shooter.`);
+                console.log(`Added ${diff} bullets for color ${EColor[color] ?? color} to the last shooter.`);
             } else if (diff < 0) {
                 // Too many bullets, remove from last shooter to first
                 let remainToRemove = -diff;
@@ -378,7 +379,7 @@ export class LevelData
                         shooter.ammo = 0;
                     }
                 }
-                console.log(`Removed ${-diff} bullets for color ${color} from shooters.`);
+                console.log(`Removed ${-diff} bullets for color ${EColor[color] ?? color} from shooters.`);
             }
         }
     }
