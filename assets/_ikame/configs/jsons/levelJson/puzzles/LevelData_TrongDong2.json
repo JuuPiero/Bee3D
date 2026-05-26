@@ -77,7 +77,7 @@
                     },
                     {
                         "id": 111,
-                        "ammo": 73,
+                        "ammo": 71,
                         "material": 19,
                         "isLock": false
                     }
@@ -342,25 +342,31 @@
             {
                 "shooters": [
                     {
-                        "id": 90,
-                        "ammo": 100,
-                        "material": 18,
-                        "isLock": false
-                    },
-                    {
                         "id": 91,
-                        "ammo": 100,
+                        "ammo": 200,
                         "material": 18,
-                        "isLock": false
-                    },
-                    {
-                        "id": 266,
-                        "ammo": 50,
-                        "material": 0,
                         "isLock": false
                     },
                     {
                         "id": 89,
+                        "ammo": 100,
+                        "material": 18,
+                        "isLock": false
+                    },
+                    {
+                        "id": 263,
+                        "ammo": 100,
+                        "material": 18,
+                        "isLock": false
+                    },
+                    {
+                        "id": 59,
+                        "ammo": 100,
+                        "material": 18,
+                        "isLock": false
+                    },
+                    {
+                        "id": 57,
                         "ammo": 100,
                         "material": 18,
                         "isLock": false
@@ -372,37 +378,7 @@
                         "isLock": false
                     },
                     {
-                        "id": 263,
-                        "ammo": 100,
-                        "material": 18,
-                        "isLock": false
-                    },
-                    {
-                        "id": 267,
-                        "ammo": 50,
-                        "material": 0,
-                        "isLock": false
-                    },
-                    {
-                        "id": 59,
-                        "ammo": 100,
-                        "material": 18,
-                        "isLock": false
-                    },
-                    {
-                        "id": 269,
-                        "ammo": 50,
-                        "material": 0,
-                        "isLock": false
-                    },
-                    {
-                        "id": 57,
-                        "ammo": 100,
-                        "material": 18,
-                        "isLock": false
-                    },
-                    {
-                        "id": 108,
+                        "id": 266,
                         "ammo": 50,
                         "material": 0,
                         "isLock": false
@@ -414,19 +390,19 @@
                         "isLock": false
                     },
                     {
+                        "id": 267,
+                        "ammo": 50,
+                        "material": 0,
+                        "isLock": false
+                    },
+                    {
                         "id": 260,
                         "ammo": 100,
                         "material": 18,
                         "isLock": false
                     },
                     {
-                        "id": 274,
-                        "ammo": 50,
-                        "material": 0,
-                        "isLock": false
-                    },
-                    {
-                        "id": 268,
+                        "id": 269,
                         "ammo": 50,
                         "material": 0,
                         "isLock": false
@@ -438,13 +414,19 @@
                         "isLock": false
                     },
                     {
-                        "id": 264,
+                        "id": 108,
+                        "ammo": 50,
+                        "material": 0,
+                        "isLock": false
+                    },
+                    {
+                        "id": 262,
                         "ammo": 100,
                         "material": 18,
                         "isLock": false
                     },
                     {
-                        "id": 275,
+                        "id": 274,
                         "ammo": 50,
                         "material": 0,
                         "isLock": false
@@ -456,20 +438,32 @@
                         "isLock": false
                     },
                     {
-                        "id": 262,
+                        "id": 268,
+                        "ammo": 50,
+                        "material": 0,
+                        "isLock": false
+                    },
+                    {
+                        "id": 264,
                         "ammo": 100,
                         "material": 18,
                         "isLock": false
                     },
                     {
+                        "id": 275,
+                        "ammo": 67,
+                        "material": 0,
+                        "isLock": false
+                    },
+                    {
                         "id": 71,
-                        "ammo": 28,
+                        "ammo": 30,
                         "material": 18,
                         "isLock": false
                     },
                     {
                         "id": 66,
-                        "ammo": 57,
+                        "ammo": 40,
                         "material": 0,
                         "isLock": false
                     }
