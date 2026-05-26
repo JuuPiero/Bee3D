@@ -313,11 +313,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             this.node.setParent(this._floater.node, true);
             const tweenObj = { progress: 0 }
             const tweenJump = tween(tweenObj)
-                .to(JUMP_DURATION, { progress: 1 }, {
+                .to(JUMP_DURATION, { progress: 1 }, { easing: easing.linear,
                     onUpdate: (target: any, ratio: number) => {
                         this._floater.node.getWorldPosition(this._jumpToPosition);
                         Vec3.lerp(this._lerpPos, this._startJumpPosition, this._jumpToPosition, target.progress)
-                        this._lerpPos.y += Math.sin(target.progress * Math.PI) * 3.5; // Add jump arc
+                        this._lerpPos.y += Math.sin(target.progress * Math.PI) * 1.5; // Add jump arc
                         this.node.setWorldPosition(this._lerpPos);
                     }
                 })
