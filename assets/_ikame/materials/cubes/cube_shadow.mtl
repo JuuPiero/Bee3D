@@ -28,22 +28,22 @@
   "_props": [
     {
       "mainTexture": {
-        "__uuid__": "75ea0292-2308-4403-a31d-019bd43018ff@6c48a",
+        "__uuid__": "d7b85181-1c50-48f6-b389-8898d31e5a63@6c48a",
         "__expectedType__": "cc.Texture2D"
       },
       "color": {
         "__type__": "cc.Color",
-        "r": 22,
-        "g": 22,
-        "b": 22,
-        "a": 255
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 162
       },
       "colorDropShadow": {
         "__type__": "cc.Color",
-        "r": 39,
-        "g": 39,
-        "b": 39,
-        "a": 255
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 98
       }
     }
   ]

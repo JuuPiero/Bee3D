@@ -29,24 +29,22 @@
     {
       "_Color": {
         "__type__": "cc.Color",
-        "r": 143,
-        "g": 83,
-        "b": 48,
+        "r": 255,
+        "g": 207,
+        "b": 160,
         "a": 255
       },
       "_ColorShadow": {
         "__type__": "cc.Color",
-        "r": 102,
-        "g": 46,
-        "b": 20,
+        "r": 212,
+        "g": 153,
+        "b": 113,
         "a": 255
       },
       "_MatCap": {
-        "__uuid__": "eaf4be1d-659a-46d5-9eba-f34922ad8190@6c48a",
+        "__uuid__": "33db8eca-ea0b-4a82-8ae5-c76cab491e38@6c48a",
         "__expectedType__": "cc.Texture2D"
-      },
-      "_Glossiness": 0.4,
-      "_SpecularIntensity": 0.25
+      }
     }
   ]
 }

@@ -29,20 +29,20 @@
     {
       "_Color": {
         "__type__": "cc.Color",
-        "r": 250,
-        "g": 204,
-        "b": 160,
+        "r": 255,
+        "g": 219,
+        "b": 172,
         "a": 255
       },
       "_ColorShadow": {
         "__type__": "cc.Color",
-        "r": 199,
-        "g": 141,
-        "b": 102,
+        "r": 214,
+        "g": 178,
+        "b": 130,
         "a": 255
       },
       "_MatCap": {
-        "__uuid__": "eaf4be1d-659a-46d5-9eba-f34922ad8190@6c48a",
+        "__uuid__": "33db8eca-ea0b-4a82-8ae5-c76cab491e38@6c48a",
         "__expectedType__": "cc.Texture2D"
       }
     }
