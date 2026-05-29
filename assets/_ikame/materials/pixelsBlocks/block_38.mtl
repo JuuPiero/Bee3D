@@ -27,13 +27,6 @@
   ],
   "_props": [
     {
-      "_Color": {
-        "__type__": "cc.Color",
-        "r": 102,
-        "g": 102,
-        "b": 102,
-        "a": 255
-      },
       "_ColorShadow": {
         "__type__": "cc.Color",
         "r": 58,
