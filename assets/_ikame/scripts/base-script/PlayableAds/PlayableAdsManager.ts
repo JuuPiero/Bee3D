@@ -8,7 +8,7 @@ import { EventName } from '../../designPatterns/observer/EventName';
 
 const { ccclass, property } = _decorator;
 
-const urlPlayStore: string = "https://play.google.com/store/apps/details?id=ig.com.pixel.blast";
+const urlPlayStore: string = "https://play.google.com/store/apps/details?id=com.ig.water.flow";
 const urlAppStore: string = "https://apps.apple.com/vn/app/color-flow-shooter/id6756484165";
 
 @ccclass('PlayableAdsManager')
