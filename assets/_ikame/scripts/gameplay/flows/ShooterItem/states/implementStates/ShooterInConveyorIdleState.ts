@@ -12,14 +12,14 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
     {
         // this._shooter.faceTheMapDirection();    
         // this._shooter.clearPassedBlocks();
-        const targets = this._shooter.findTargets();
-        if (targets.length > 0)
+        const target = this._shooter.findTarget();
+        if (target)
         {
             this.stateMachine.changeState(EShooterState.InConveyor_Shot);
             return;
         }
 
-        if (targets.length <= 0)
+        if (!target)
         {
             this._shooter.doNoTarget();
         }
@@ -38,8 +38,8 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
             return;
         }
         this._searchTimer = 0;
-        const targets = this._shooter.findTargets();
-        if (targets.length > 0)
+        const target = this._shooter.findTarget();
+        if (target)
         {
             this.stateMachine.changeState(EShooterState.InConveyor_Shot);
         }
@@ -47,7 +47,7 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
         {
             this._shooter.pauseAnimation();
         }
-        if (targets.length <= 0)
+        if (!target)
         {
             this._shooter.doNoTarget();
         }

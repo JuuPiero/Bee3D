@@ -114,7 +114,7 @@ export class LevelData
     {
         this.levelJson = jsonText;
         this.parseData();
-        this.correctLevelData();
+        // this.correctLevelData();
     }
 
     private collectAllColors(

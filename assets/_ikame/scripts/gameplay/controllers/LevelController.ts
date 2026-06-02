@@ -534,33 +534,44 @@ export class LevelController extends Component implements ILevelController
         }
     }
 
-    public findTargetPixels(max: number, colorID: number, out : IPixelBlock[], rowSign: number): boolean
-    {
-        if (max <= 0)
-        {
-            out.length = 0;
-            return false;
-        }
+    findTargetPixel(colorID: number, rowSign: number, startColIndex: number): { isRowChanged: boolean; pixelBlock: IPixelBlock; nextColIndex: number } {
+
         const isFlipped = rowSign % 2 !== 0;
         const width = this.getLevelWidth();
-        let colIndex = isFlipped ? width - 1 : 0;
+        let colIndex = startColIndex;
         const step = isFlipped ? -1 : 1;
-        while (colIndex >= 0 && colIndex < width && out.length < max)
-        {
+        while (colIndex >= 0 && colIndex < width) {
             const pixel = this.getBottomPixelAt(colIndex);
-            if (!pixel || pixel.getColorID() !== colorID || pixel.isTargeted())
-            {
-                colIndex += step;
-                continue;
+            if (pixel && pixel.getColorID() === colorID && !pixel.isTargeted()) {
+                pixel.setTargeted(true);
+                const isRowChanged = (isFlipped ? colIndex === 0 : colIndex === width - 1) || !this.hasSameColorTilEndRow(colorID, colIndex, step, width);
+                const nextColIndex = isRowChanged ? colIndex : colIndex + step;
+                return { isRowChanged: isRowChanged, pixelBlock: pixel, nextColIndex: nextColIndex };
             }
-            out.push(pixel);
-            pixel.setTargeted(true);
             colIndex += step;
         }
-
-        return out.length > 0;
+        const isRowChanged = (isFlipped ? colIndex === 0 : colIndex === width - 1) || !this.hasSameColorTilEndRow(colorID, colIndex, step, width);
+        return { isRowChanged: isRowChanged, pixelBlock: undefined, nextColIndex : colIndex}
     }
     
+
+    private hasSameColorTilEndRow(colorID: number, colIndex: number, step: number, width)
+    {
+        let col: number = colIndex + step;
+        while (col >= 0 && col < width)
+        {
+            const pixel = this.getBottomPixelAt(col)
+            if (!pixel)
+            {
+                col += step;
+                continue;
+            }
+            if (pixel.getColorID() === colorID && !pixel.isTargeted())
+                return true;
+            col += step;
+        }
+        return false;
+    }
 
 
     setBottomPixel(block: IPixelBlock, colIndex: number, rowIndex: number): void {
@@ -573,6 +584,7 @@ export class LevelController extends Component implements ILevelController
 
     public getBottomPixelAt(col : number): IPixelBlock
     {
+        if (!this._pixelColumn[col]) console.log ("HHHHH", col)
         return this._pixelColumn[col].peek();
     }
 

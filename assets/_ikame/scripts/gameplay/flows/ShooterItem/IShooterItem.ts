@@ -30,10 +30,10 @@ export interface IShooterItem {
     shuffleToCacheUpdate(dt: number, pos: Vec3, index: number): void
     markPassedBlocks(): void
     getColorID(): number
-    findTargets(): IPixelBlock[]
+    findTarget(): IPixelBlock
     rotateTowardsTargetAsync( deltaAngle: number): Promise<void>
     shootTarget(target: IPixelBlock): boolean
-    getTargets(): IPixelBlock[]
+    getTarget(): IPixelBlock
     pauseAnimation(): void
     getAngleDeltaToTarget(target: IPixelBlock): number
     destroyShooter(): void

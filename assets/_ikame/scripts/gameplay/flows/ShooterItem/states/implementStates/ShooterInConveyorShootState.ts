@@ -8,12 +8,12 @@ import { game } from "cc";
 
 export class ShooterInConveyorShootState extends ShooterStateBase {
 
-    private _targets: IPixelBlock[] = [];
+    private _target: IPixelBlock;
     private _lastFireTime = Number.MIN_VALUE;
 
     public onEnter(): void
     {
-        this._targets = this._shooter.getTargets();
+        this._target = this._shooter.getTarget();
         this.rotateAndShoot();
     }
 
@@ -27,18 +27,16 @@ export class ShooterInConveyorShootState extends ShooterStateBase {
 
     private async rotateAndShoot()
     {
-        while (this._targets.length > 0)
-        {
-            const target = this._targets.shift();
+        if (this._target) {
             this._shooter.pauseAnimation();
-            const angle = this._shooter.getAngleDeltaToTarget(target);
-            if (Math.abs(angle) > 10) 
+            const angle = this._shooter.getAngleDeltaToTarget(this._target);
+            if (Math.abs(angle) > 10)
                 this._shooter.pauseAnimation();
             await this._shooter.rotateTowardsTargetAsync(angle);
             this._shooter.changeAnimation(ShooterAnimationName.Attack, true);
             // const delayTime = Math.max(0, FIRE_INTERVAL - (game.totalTime - this._lastFireTime) * 1000);
             // await PromiseDelay.Wait(delayTime);
-            this._shooter.shootTarget(target);
+            this._shooter.shootTarget(this._target);
             this._lastFireTime = game.totalTime;
             // if (this._targets.length > 0)
             //     await PromiseDelay.Wait(0.01);

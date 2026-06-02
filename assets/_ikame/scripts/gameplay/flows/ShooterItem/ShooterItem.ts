@@ -85,7 +85,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private _lerpPos = new Vec3();
 
     private _targetCount: number = 0;
-    private _targets: IPixelBlock[] = [];
+    private _target: IPixelBlock;
 
     private _floater: Floater = null;
     
@@ -116,6 +116,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     @property(Collider) private hitCollider: Collider = null;
 
     private _rowSign: number = 0;
+    private _colIndex: number = 0;
 
     @property(Node)
     private connectionRoot: Node = null;
@@ -143,7 +144,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public reduceAmmoCount(amount: number): number {
         this.ammoCount = Math.max(0, this.ammoCount - amount);
         const count = this._ammoDisplayCount < this.ammoCount ? this._ammoDisplayCount : this.ammoCount;
-        this.ammoLabel.string = count.toString();
+        // this.ammoLabel.string = count.toString();
+        this.ammoLabel.string = this.ammoCount.toString ();
         return this.ammoCount;
     }
     
@@ -192,7 +194,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             this.tryShootTargets();
         }
     }
-
+o
     public tryShootTargets(): number {
         if (this.ammoCount <= 0) {
             return 0;
@@ -202,14 +204,21 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         return this._targetCount;
     }
 
-    public findTargets(): IPixelBlock[] {
-        this._targets.length = 0;
-        this._levelController.findTargetPixels(this.ammoCount, this.colorID, this._targets, this._rowSign);
-        this._rowSign += 1;
-        return this._targets;
+    public findTarget(): IPixelBlock {
+        const res = this._levelController.findTargetPixel(this.colorID, this._rowSign, this._colIndex);
+        this._rowSign += res.isRowChanged ? 1 : 0;
+        this._target = res.pixelBlock;
+        this._colIndex = res.nextColIndex;
+        if (!res.pixelBlock) {
+            const isFlipped = this. _rowSign % 2 !== 0;
+            this._colIndex = isFlipped ? this._levelController.getLevelWidth() - 1 : 0;
+        }   
+        return this._target;
     }
 
     public init(shooterData: Shooter, colorQueue: IColorQueue, levelController: ILevelController): void {
+        this._rowSign = 0;
+        this._colIndex = 0
         this.id = shooterData.id;
         this.spline = levelController.getSpline();
         this.colorID = shooterData.material;
@@ -218,7 +227,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         this.ammoCount = shooterData.ammo;
         this._ammoDisplayCount = this.ammoCount - this.ammoCount % 10;
         if (this._ammoDisplayCount < 10) this._ammoDisplayCount = 10;
-        this.ammoLabel.string = this._ammoDisplayCount.toString();
+        // this.ammoLabel.string = this._ammoDisplayCount.toString();
+        this.ammoLabel.string = this.ammoCount.toString();
         const mat = this.colorConfig.getShooterColorById(shooterData.material);
         if (PREVIEW) {
             if (!mat) console.warn("Material not found for colorID:", EColor[shooterData.material]);
@@ -951,8 +961,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         return this.colorID;
     }
 
-    public getTargets(): IPixelBlock[] {
-        return this._targets;
+    public getTarget(): IPixelBlock {
+        return this._target;
     }
 
 
