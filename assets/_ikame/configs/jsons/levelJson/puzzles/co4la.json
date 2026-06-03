@@ -1,76 +1,7 @@
 {
     "QueueGroup": {
         "shooterQueues": [
-            {
-                "shooters": [
-                    {
-                        "id": 0,
-                        "ammo": 50,
-                        "material": 1,
-                        "isLock": false
-                    },
-                    {
-                        "id": 66,
-                        "ammo": 50,
-                        "material": 1,
-                        "isLock": false
-                    },
-                    {
-                        "id": 65,
-                        "ammo": 50,
-                        "material": 1,
-                        "isLock": false
-                    },
-                    {
-                        "id": 13,
-                        "ammo": 50,
-                        "material": 1,
-                        "isLock": false
-                    },
-                    {
-                        "id": 11,
-                        "ammo": 50,
-                        "material": 1,
-                        "isLock": false
-                    },
-                    {
-                        "id": 4,
-                        "ammo": 50,
-                        "material": 1,
-                        "isLock": false
-                    },
-                    {
-                        "id": 77,
-                        "ammo": 50,
-                        "material": 1,
-                        "isLock": false
-                    },
-                    {
-                        "id": 14,
-                        "ammo": 50,
-                        "material": 1,
-                        "isLock": false
-                    },
-                    {
-                        "id": 18,
-                        "ammo": 50,
-                        "material": 1,
-                        "isLock": false
-                    },
-                    {
-                        "id": 89,
-                        "ammo": 18,
-                        "material": 1,
-                        "isLock": false
-                    },
-                    {
-                        "id": 12,
-                        "ammo": 10,
-                        "material": 1,
-                        "isLock": false
-                    }
-                ]
-            },
+
             {
                 "shooters": [
                     {
@@ -151,6 +82,76 @@
                     }
                 ]
             },
+                        {
+                            "shooters": [
+                                {
+                                    "id": 0,
+                                    "ammo": 50,
+                                    "material": 1,
+                                    "isLock": false
+                                },
+                                {
+                                    "id": 66,
+                                    "ammo": 50,
+                                    "material": 1,
+                                    "isLock": false
+                                },
+                                {
+                                    "id": 65,
+                                    "ammo": 50,
+                                    "material": 1,
+                                    "isLock": false
+                                },
+                                {
+                                    "id": 13,
+                                    "ammo": 50,
+                                    "material": 1,
+                                    "isLock": false
+                                },
+                                {
+                                    "id": 11,
+                                    "ammo": 50,
+                                    "material": 1,
+                                    "isLock": false
+                                },
+                                {
+                                    "id": 4,
+                                    "ammo": 50,
+                                    "material": 1,
+                                    "isLock": false
+                                },
+                                {
+                                    "id": 77,
+                                    "ammo": 50,
+                                    "material": 1,
+                                    "isLock": false
+                                },
+                                {
+                                    "id": 14,
+                                    "ammo": 50,
+                                    "material": 1,
+                                    "isLock": false
+                                },
+                                {
+                                    "id": 18,
+                                    "ammo": 50,
+                                    "material": 1,
+                                    "isLock": false
+                                },
+                                {
+                                    "id": 89,
+                                    "ammo": 18,
+                                    "material": 1,
+                                    "isLock": false
+                                },
+                                {
+                                    "id": 12,
+                                    "ammo": 10,
+                                    "material": 1,
+                                    "isLock": false
+                                }
+                            ]
+                        },
             {
                 "shooters": [
                     {
