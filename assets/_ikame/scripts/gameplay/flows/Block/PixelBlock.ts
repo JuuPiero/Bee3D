@@ -7,7 +7,7 @@ import { ILevelController } from '../../controllers/ILevelController';
 import { BulletPooling } from '../../../pooling/BulletPooling';
 const { ccclass, property } = _decorator;
 
-const OUT_SCALE = new Vec3(1.1, 3, 1.1);
+const OUT_SCALE = new Vec3(1.1, 2, 1.1);
 
 const BULLET_SPEED = 7.8;
 const LOWER_SCALE = new Vec3(1, 0.5, 1);
