@@ -9,7 +9,7 @@ const { ccclass, property } = _decorator;
 
 const OUT_SCALE = new Vec3(1.1, 3, 1.1);
 
-const BULLET_SPEED = 9.8;
+const BULLET_SPEED = 7.8;
 const LOWER_SCALE = new Vec3(1, 0.5, 1);
 
 @ccclass('PixelBlock')

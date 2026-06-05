@@ -11,26 +11,6 @@
     "__original-animation-4.cconb"
   ],
   "subMetas": {
-    "fd73d": {
-      "importer": "gltf-embeded-image",
-      "uuid": "09efeddb-627d-4421-a5af-346c912264c2@fd73d",
-      "displayName": "",
-      "id": "fd73d",
-      "name": "DiffuseColor_Texture.image",
-      "userData": {
-        "gltfIndex": 0,
-        "fixAlphaTransparencyArtifacts": true,
-        "hasAlpha": true,
-        "type": "texture"
-      },
-      "ver": "1.0.3",
-      "imported": true,
-      "files": [
-        ".json",
-        ".png"
-      ],
-      "subMetas": {}
-    },
     "a62fe": {
       "importer": "gltf-mesh",
       "uuid": "09efeddb-627d-4421-a5af-346c912264c2@a62fe",
