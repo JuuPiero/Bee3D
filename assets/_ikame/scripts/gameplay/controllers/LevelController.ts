@@ -1,8 +1,9 @@
 import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, EventKeyboard, EventTouch, Input, input, instantiate, JsonAsset, KeyCode, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
 import { LevelData } from '../../configData/LevelData';
-import { EDITOR } from 'cc/env';
+import { EDITOR, PREVIEW } from 'cc/env';
 import { PixelBlock } from '../flows/Block/PixelBlock';
 import { Utils } from '../../utils/Utils';
+import { EColor } from '../../enums/EColor';
 import { EDirection } from '../../enums/EDirection';
 import { GridTile } from '../flows/MapTiles/GridTile';
 import { ILevelController } from './ILevelController';
@@ -266,6 +267,24 @@ export class LevelController extends Component implements ILevelController
         this._is25Completed = false;
         this._is50Completed = false;
         this._is75Completed = false;
+
+        if(PREVIEW || EDITOR)
+            this.logAllColorIDs();
+    }
+
+    private logAllColorIDs(): void
+    {
+        const colorSet = new Set<number>();
+        for (const [, tile] of this._gridMap)
+        {
+            if (tile.isContainBlock())
+            {
+                colorSet.add(tile.getOccupyingColorID());
+            }
+        }
+        const colorList = Array.from(colorSet).sort((a, b) => a - b);
+        const colorNames = colorList.map(id => `${EColor[id] ?? 'Unknown'}(${id})`);
+        console.log(`[LevelController] Color IDs on map (${colorList.length}): [${colorNames.join(', ')}]`);
     }
 
     protected lateUpdate(dt: number): void

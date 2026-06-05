@@ -2037,7 +2037,7 @@
     "_priority": 1073741824,
     "_fov": 45,
     "_fovAxis": 0,
-    "_orthoHeight": 960,
+    "_orthoHeight": 959.9999999999999,
     "_near": 1,
     "_far": 2000,
     "_color": {
@@ -2751,7 +2751,7 @@
     "debugDrawMapBorder": false,
     "levelJsonAssets": [
       {
-        "__uuid__": "ec577ac5-b487-4bc2-860f-b324bd7b137b",
+        "__uuid__": "1a78cea5-016b-4046-bbd9-24e1044c3810",
         "__expectedType__": "cc.JsonAsset"
       }
     ],
@@ -6533,7 +6533,7 @@
     "_priority": 0,
     "_fov": 45,
     "_fovAxis": 0,
-    "_orthoHeight": 960,
+    "_orthoHeight": 959.9999999999999,
     "_near": 1,
     "_far": 2000,
     "_color": {
