@@ -253,7 +253,7 @@ class channel_handler {
 </script>`;
 
         s_content = `<script type="text/javascript">\n${s_content}\n</script>`;
-        var lastContent = removeInterNetworkEncryption + `\n` + s_content;
+        var lastContent = s_content;
         return s_html_content.replace("</body>", () => `${lastContent}\n</body>`);
     }
     //获得压缩库脚本
