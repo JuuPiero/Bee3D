@@ -4585,7 +4585,7 @@
     },
     "debugDrawMapBorder": true,
     "levelJsonAsset": {
-      "__uuid__": "898f9406-f949-49cf-b76d-b6425d16ab66",
+      "__uuid__": "873786ec-d93d-4c69-a549-7aa4be97ba4a",
       "__expectedType__": "cc.JsonAsset"
     },
     "bulletPool": {

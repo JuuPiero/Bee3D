@@ -436,7 +436,7 @@
         "__id__": 86
       }
     ],
-    "_active": true,
+    "_active": false,
     "_components": [],
     "_prefab": {
       "__id__": 151
@@ -637,7 +637,7 @@
     "renderer": {
       "__id__": 84
     },
-    "_prewarm": false,
+    "_prewarm": true,
     "_capacity": 100,
     "_simulationSpace": 0,
     "_id": ""
@@ -1643,7 +1643,7 @@
     "renderer": {
       "__id__": 149
     },
-    "_prewarm": false,
+    "_prewarm": true,
     "_capacity": 100,
     "_simulationSpace": 1,
     "_id": ""
@@ -2418,7 +2418,7 @@
     "coordX": 0,
     "coordZ": 0,
     "particleNode": {
-      "__id__": 14
+      "__id__": 15
     },
     "cubeRoot": {
       "__id__": 2
