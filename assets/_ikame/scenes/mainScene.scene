@@ -1890,7 +1890,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 1080,
-      "height": 1920.0000000000002
+      "height": 1920
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1952,7 +1952,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 540,
-      "y": 960.0000000000001,
+      "y": 960,
       "z": 0
     },
     "_lrot": {
@@ -2098,7 +2098,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": 914.8365000000001,
+      "y": 914.8365,
       "z": 0
     },
     "_lrot": {
@@ -2187,7 +2187,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 563.8306884765625,
+      "width": 665.8065185546875,
       "height": 77.742
     },
     "_anchorPoint": {
@@ -2217,7 +2217,7 @@
       "b": 0,
       "a": 255
     },
-    "_string": "Only IQ 180+ can win",
+    "_string": "Only 1% can win this level",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
     "_actualFontSize": 61.1,
@@ -2751,7 +2751,7 @@
     "debugDrawMapBorder": false,
     "levelJsonAssets": [
       {
-        "__uuid__": "f21b6f81-8627-4318-b555-4b13d576983f",
+        "__uuid__": "0fffbf76-7033-44ac-9b7f-5611990a8ded",
         "__expectedType__": "cc.JsonAsset"
       }
     ],
@@ -6448,7 +6448,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 540,
-      "y": 960.0000000000001,
+      "y": 960,
       "z": 0
     },
     "_lrot": {
@@ -6629,7 +6629,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 1080,
-      "height": 1920.0000000000002
+      "height": 1920
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -6720,7 +6720,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 1080,
-      "height": 1920.0000000000002
+      "height": 1920
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
