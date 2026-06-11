@@ -1,19 +1,25 @@
-import { _decorator, CCString, Color, Enum, Material } from 'cc';
+import { _decorator, CCString, Color, Enum } from 'cc';
 import { bh } from 'db://scriptable-asset/scriptable_runtime';
 import { EColor } from '../enums/EColor';
 const { ccclass, property } = _decorator;
 
 @ccclass('ColorData')
-export class ColorData 
+export class ColorData
 {
     @property({ type: Enum(EColor) })
     public colorEnum: EColor = EColor.Red;
 
-    @property({ type: Material })
-    public pixelBlockMaterial: Material = null;
-    
-    @property({ type: Material })
-    public chracterMaterial: Material = null;
+    @property(Color)
+    public blockColor: Color = new Color(255, 255, 255, 255);
+
+    @property(Color)
+    public blockShadow: Color = new Color(0, 0, 0, 255);
+
+    @property(Color)
+    public characterColor: Color = new Color(255, 255, 255, 255);
+
+    @property(Color)
+    public characterShadow: Color = new Color(0, 0, 0, 255);
 }
 
 @bh.createAssetMenu('ColorConfig', 'ScriptableAsset/ColorConfig')
@@ -24,32 +30,30 @@ export class ColorConfig extends bh.ScriptableAsset
 
     _colorMap: Map<EColor, ColorData> = null;
 
-    public getShooterColorById(id: EColor): Material
+    private _ensureMap(): void
     {
-        if (!this._colorMap)
+        if (this._colorMap) return;
+        this._colorMap = new Map<EColor, ColorData>();
+        for (const colorData of this.colors)
         {
-            this._colorMap = new Map<EColor, ColorData>();
-            for (const colorData of this.colors)
-            {
-                this._colorMap.set(colorData.colorEnum, colorData);
-            }
+            this._colorMap.set(colorData.colorEnum, colorData);
         }
-        const colorData = this._colorMap.get(id);
-        return colorData ? colorData.chracterMaterial : null;
     }
 
-    public getPixelBlockMaterialById(id: EColor): Material
+    public getCharacterColors(id: EColor): { color: Color; shadow: Color } | null
     {
-        if (!this._colorMap)
-        {
-            this._colorMap = new Map<EColor, ColorData>();
-            for (const colorData of this.colors)
-            {
-                this._colorMap.set(colorData.colorEnum, colorData);
-            }
-        }
+        this._ensureMap();
         const colorData = this._colorMap.get(id);
-        return colorData ? colorData.pixelBlockMaterial : null;
+        if (!colorData) return null;
+        return { color: colorData.characterColor, shadow: colorData.characterShadow };
+    }
+
+    public getBlockColors(id: EColor): { color: Color; shadow: Color } | null
+    {
+        this._ensureMap();
+        const colorData = this._colorMap.get(id);
+        if (!colorData) return null;
+        return { color: colorData.blockColor, shadow: colorData.blockShadow };
     }
 }
 

@@ -1890,7 +1890,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 1080,
-      "height": 1920
+      "height": 1920.0000000000002
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1952,7 +1952,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 540,
-      "y": 960,
+      "y": 960.0000000000001,
       "z": 0
     },
     "_lrot": {
@@ -2098,7 +2098,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": 914.8365,
+      "y": 914.8365000000001,
       "z": 0
     },
     "_lrot": {
@@ -2187,7 +2187,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 730.6946411132812,
+      "width": 849.6563110351562,
       "height": 77.742
     },
     "_anchorPoint": {
@@ -2217,7 +2217,7 @@
       "b": 0,
       "a": 255
     },
-    "_string": "99% Failed. Are You the 1%?",
+    "_string": "No Timer. No Rush. Just Fure Fun.",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
     "_actualFontSize": 61.1,
@@ -2532,7 +2532,7 @@
     "value": {
       "__type__": "cc.Size",
       "width": 1080,
-      "height": 1920
+      "height": 1920.0000000000002
     }
   },
   {
@@ -2552,7 +2552,7 @@
     "value": {
       "__type__": "cc.Size",
       "width": 1080,
-      "height": 1920
+      "height": 1920.0000000000002
     }
   },
   {
@@ -2751,7 +2751,7 @@
     "debugDrawMapBorder": false,
     "levelJsonAssets": [
       {
-        "__uuid__": "02236464-0445-482e-bc81-e2fbb1144c48",
+        "__uuid__": "d88791c9-1c04-454c-8a02-6e8cfd0411eb",
         "__expectedType__": "cc.JsonAsset"
       }
     ],
@@ -6448,7 +6448,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 540,
-      "y": 960,
+      "y": 960.0000000000001,
       "z": 0
     },
     "_lrot": {
@@ -6629,7 +6629,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 1080,
-      "height": 1920
+      "height": 1920.0000000000002
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -6653,9 +6653,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 72,
-      "g": 79,
-      "b": 107,
+      "r": 51,
+      "g": 76,
+      "b": 120,
       "a": 255
     },
     "_spriteFrame": {
@@ -6720,7 +6720,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 1080,
-      "height": 1920
+      "height": 1920.0000000000002
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",

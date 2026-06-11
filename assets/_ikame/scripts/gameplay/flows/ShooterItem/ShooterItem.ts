@@ -229,11 +229,18 @@ o
         if (this._ammoDisplayCount < 10) this._ammoDisplayCount = 10;
         // this.ammoLabel.string = this._ammoDisplayCount.toString();
         this.ammoLabel.string = this.ammoCount.toString();
-        const mat = this.colorConfig.getShooterColorById(shooterData.material);
+        const charColors = this.colorConfig.getCharacterColors(shooterData.material);
         if (PREVIEW) {
-            if (!mat) console.warn("Material not found for colorID:", EColor[shooterData.material]);
+            if (!charColors) console.warn("Color not found for colorID:", EColor[shooterData.material]);
         }
-        this.characterMeshs.forEach(mesh => mesh.setSharedMaterial(mat, 0));
+        if (charColors) {
+            const colorBytes = new Uint8Array([charColors.color.r, charColors.color.g, charColors.color.b, charColors.color.a]);
+            const shadowBytes = new Uint8Array([charColors.shadow.r, charColors.shadow.g, charColors.shadow.b, charColors.shadow.a]);
+            this.characterMeshs.forEach(mesh => {
+                mesh.setInstancedAttribute('a_instColor', colorBytes);
+                mesh.setInstancedAttribute('a_instColorShadow', shadowBytes);
+            });
+        }
 
         this._stateMachine = new ShooterStateMachine(this);
         const map = new Map<EShooterState, ShooterStateBase>();

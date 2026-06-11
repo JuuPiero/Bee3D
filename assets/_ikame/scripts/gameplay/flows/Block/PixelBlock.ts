@@ -69,8 +69,13 @@ export class PixelBlock extends Component implements IPixelBlock
 
     init(colorID: number, level: ILevelController, bulletPool: BulletPooling): void 
     {
-        const color = this.colorData.getPixelBlockMaterialById(colorID);
-        this.meshRenderer.setSharedMaterial( color, 0);
+        const blockColors = this.colorData.getBlockColors(colorID);
+        if (blockColors) {
+            const colorBytes = new Uint8Array([blockColors.color.r, blockColors.color.g, blockColors.color.b, blockColors.color.a]);
+            const shadowBytes = new Uint8Array([blockColors.shadow.r, blockColors.shadow.g, blockColors.shadow.b, blockColors.shadow.a]);
+            this.meshRenderer.setInstancedAttribute('a_instColor', colorBytes);
+            this.meshRenderer.setInstancedAttribute('a_instColorShadow', shadowBytes);
+        }
         this.colorID = colorID;
         this._level = level;
         this._bulletPool = bulletPool;   

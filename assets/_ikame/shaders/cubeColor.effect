@@ -23,8 +23,22 @@ CCProgram cubeColor-vs %{
   #include <legacy/decode-base>
   #include <legacy/local-batch>
 
+  uniform Constant {
+    vec4 _Color;
+    vec4 _ColorShadow;
+  };
+
+  #if USE_INSTANCING
+    #pragma format(RGBA8)
+    in lowp vec4 a_instColor;
+    #pragma format(RGBA8)
+    in lowp vec4 a_instColorShadow;
+  #endif
+
   out mediump vec4 v_cap; // xy: matcap by normal, zw: matcap by adjusted pos
   out mediump vec3 v_worldNormal;
+  out lowp vec4 v_color;
+  out lowp vec4 v_colorShadow;
 
   // Compute object scale from world matrix columns
   vec3 getObjectScale(mat4 m) {
@@ -43,7 +57,7 @@ CCProgram cubeColor-vs %{
 
     // Compute object scale
     vec3 objScale = getObjectScale(matWorld);
-    
+
     // Adjust position based on scale (matching Unity shader logic)
     vec4 pos = position;
     pos.xyz /= objScale;
@@ -77,7 +91,7 @@ CCProgram cubeColor-vs %{
 
     // Output clip position using adjusted position
     vec4 clipPos = cc_matProj * (cc_matView * matWorld) * pos;
-    
+
     // Build second matcap coord from adjusted local position
     vec4 adjustedPos = pos;
     adjustedPos.y -= 0.5;
@@ -86,6 +100,14 @@ CCProgram cubeColor-vs %{
     worldPosNoTrans /= objScale;
     vec3 viewPos = (cc_matView * vec4(worldPosNoTrans, 0.0)).xyz;
     v_cap.zw = clamp(vec2(viewPos.x, -viewPos.y) + 0.5, 0.0, 1.0);
+
+    #if USE_INSTANCING
+      v_color = a_instColor;
+      v_colorShadow = a_instColorShadow;
+    #else
+      v_color = _Color;
+      v_colorShadow = _ColorShadow;
+    #endif
 
     return clipPos;
   }
@@ -97,19 +119,16 @@ CCProgram cubeColor-fs %{
 
   in mediump vec4 v_cap;
   in mediump vec3 v_worldNormal;
+  in lowp vec4 v_color;
+  in lowp vec4 v_colorShadow;
   uniform sampler2D _MatCap;
-
-  uniform Constant {
-    vec4 _Color;
-    vec4 _ColorShadow;
-  };
 
   vec4 frag () {
     vec2 mask = texture(_MatCap, v_cap.xy).xy;
     float sss = texture(_MatCap, v_cap.zw).z;
 
-    vec3 mainColor = _Color.rgb;
-    vec3 shadowColor = _ColorShadow.rgb;
+    vec3 mainColor = v_color.rgb;
+    vec3 shadowColor = v_colorShadow.rgb;
 
     vec3 final = mix(shadowColor, mainColor, mask.y);
     final += (final + 0.2) * mask.x * 0.2;
