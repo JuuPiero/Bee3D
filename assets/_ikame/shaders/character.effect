@@ -87,8 +87,9 @@ CCProgram cubeColor-vs %{
     v_cap.zw = a_texCoord;
 
     #if USE_INSTANCING
-      v_color = a_instColor;
+        v_color = a_instColor;
       v_colorShadow = a_instColorShadow;
+
     #else
       v_color = _Color;
       v_colorShadow = _ColorShadow;
@@ -145,7 +146,7 @@ CCProgram cubeColor-fs %{
     // Boost overall brightness slightly for glossy appearance
     final.rgb = pow(final.rgb, vec3(1.23));
 
-    return CCFragOutput(final);
+    return final;
   }
 }%
 
