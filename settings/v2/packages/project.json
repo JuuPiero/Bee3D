@@ -25,6 +25,10 @@
     {
       "name": "BACK",
       "value": 524288
+    },
+    {
+      "name": "BACKGROUND",
+      "value": 262144
     }
   ]
 }
