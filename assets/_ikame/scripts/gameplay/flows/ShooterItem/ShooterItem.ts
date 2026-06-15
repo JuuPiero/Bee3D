@@ -38,7 +38,7 @@ const LEFT_ROT = new Vec3(0, 90, 0);
 
 const JUMP_OFFSET_DURATION = 0.23
 
-const IN_CONVEYOR_SIZE = new Vec3(0.65, 0.65, 0.65);
+const IN_CONVEYOR_SIZE = new Vec3(0.85, 0.85, 0.85);
 
 @ccclass('ShooterItem')
 export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<EShooterState>, IShooterItem {

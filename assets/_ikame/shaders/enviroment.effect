@@ -15,6 +15,26 @@ CCEffect %{
       propertyIndex: 0
       rasterizerState:
         cullMode: back
+    - &planar-shadow
+      vert: planar-shadow-vs
+      frag: planar-shadow-fs
+      phase: planar-shadow
+      propertyIndex: 0
+      depthStencilState:
+        depthTest: true
+        depthWrite: false
+        stencilTestFront: true
+        stencilFuncFront: not_equal
+        stencilPassOpFront: replace
+        stencilRef: 0x80
+        stencilReadMask: 0x80
+        stencilWriteMask: 0x80
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendDst: one_minus_src_alpha
+          blendDstAlpha: one_minus_src_alpha
 
     - switch: USE_OUTLINE_PASS
       vert: silhouette-edge-vs
@@ -84,7 +104,7 @@ CCProgram unlit-fs %{
     vec4 final = texture(mainTexture, v_uv.xy);
     
     // Lighting calculation
-    float lighting = dot(normalize(v_lightDirection), normalize(v_worldNormal.xyz));
+    float lighting = dot(normalize(-v_lightDirection), normalize(v_worldNormal.xyz));
     lighting = smoothstep(0.0, 1.0, lighting);
     final.rgb = mix(pow(abs(final.rgb), vec3(2.2)) * 0.9, final.rgb, lighting);
     
@@ -239,4 +259,80 @@ CCProgram silhouette-edge-fs %{
   #include <surfaces/includes/common-fs>
   #include <surface-fragment-silhouette-edge>
   #include <shading-entries/main-functions/misc/silhouette-edge-fs>
+}%
+
+// Planar shadow support
+CCProgram shared-ubos %{
+  uniform Constants {
+    vec4 tilingOffset;
+    vec4 albedo;
+    vec4 albedoScaleAndCutoff;
+    vec4 pbrParams;
+    vec4 emissive;
+    vec4 emissiveScaleParam;
+    vec4 anisotropyParam;
+  };
+}%
+
+CCProgram macro-remapping %{
+  // ui displayed macros
+  #pragma define-meta HAS_SECOND_UV
+  #pragma define-meta USE_TWOSIDE
+  #pragma define-meta IS_ANISOTROPY
+  #pragma define-meta USE_VERTEX_COLOR
+  #pragma define-meta FIX_ANISOTROPIC_ROTATION_MAP
+
+  #define CC_SURFACES_USE_SECOND_UV HAS_SECOND_UV
+  #define CC_SURFACES_USE_TWO_SIDED USE_TWOSIDE
+  #define CC_SURFACES_LIGHTING_ANISOTROPIC IS_ANISOTROPY
+  #define CC_SURFACES_USE_VERTEX_COLOR USE_VERTEX_COLOR
+
+  // depend on UI macros
+#if IS_ANISOTROPY || USE_NORMAL_MAP
+  #define CC_SURFACES_USE_TANGENT_SPACE 1
+#endif
+
+  // functionality for each effect
+  #define CC_SURFACES_LIGHTING_ANISOTROPIC_ENVCONVOLUTION_COUNT 31
+}%
+
+CCProgram surface-vertex %{
+  #define CC_SURFACES_VERTEX_MODIFY_SHADOW_BIAS
+  vec2 SurfacesVertexModifyShadowBias(in SurfacesStandardVertexIntermediate In, vec2 originShadowBias)
+  {
+    return originShadowBias + vec2(anisotropyParam.z, 0.0);
+  }
+
+  #define CC_SURFACES_VERTEX_MODIFY_UV
+  void SurfacesVertexModifyUV(inout SurfacesStandardVertexIntermediate In)
+  {
+    In.texCoord = In.texCoord * tilingOffset.xy + tilingOffset.zw;
+  #if CC_SURFACES_USE_SECOND_UV
+    In.texCoord1 = In.texCoord1 * tilingOffset.xy + tilingOffset.zw;
+  #endif
+  }
+}%
+
+CCProgram surface-fragment %{
+  #pragma define-meta DEFAULT_UV options([v_uv, v_uv1])
+}%
+
+CCProgram planar-shadow-vs %{
+  precision highp float;
+  #include <macro-remapping>
+  #include <surfaces/effect-macros/render-planar-shadow>
+  #include <surfaces/includes/common-vs>
+  #include <shared-ubos>
+  #include <surface-vertex>
+  #include <shading-entries/main-functions/render-planar-shadow/vs>
+}%
+
+CCProgram planar-shadow-fs %{
+  precision highp float;
+  #include <macro-remapping>
+  #include <surfaces/effect-macros/render-planar-shadow>
+  #include <surfaces/includes/common-fs>
+  #include <shared-ubos>
+  #include <surface-fragment>
+  #include <shading-entries/main-functions/render-planar-shadow/fs>
 }%

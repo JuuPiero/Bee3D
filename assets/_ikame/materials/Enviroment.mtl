@@ -14,12 +14,21 @@
       "USE_INSTANCING": true
     },
     {},
+    {},
     {
-      "USE_OUTLINE_PASS": true,
       "USE_INSTANCING": true
     }
   ],
   "_states": [
+    {
+      "rasterizerState": {},
+      "depthStencilState": {},
+      "blendState": {
+        "targets": [
+          {}
+        ]
+      }
+    },
     {
       "rasterizerState": {},
       "depthStencilState": {},
@@ -51,13 +60,12 @@
   "_props": [
     {
       "mainTexture": {
-        "__uuid__": "8ca0a505-b59a-417d-8245-68aa2c46c821@6c48a",
+        "__uuid__": "8832d007-e988-497c-9aa2-69e1be978b64@6c48a",
         "__expectedType__": "cc.Texture2D"
       }
     },
     {},
-    {
-      "lineWidth": 26.4
-    }
+    {},
+    {}
   ]
 }

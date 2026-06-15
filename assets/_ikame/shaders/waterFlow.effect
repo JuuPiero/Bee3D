@@ -4,15 +4,14 @@ CCEffect %{
     passes:
     - vert: waterFlow-vs:vert
       frag: waterFlow-fs:frag
-
-      properties: &props
-        _MainTex:        { value: white }
-        _MainTex_ST:     { value: [1.0, 1.0, 0.1, 0.15], editor: { displayName: "Main Tex Tiling & Speed" } }
-        _Bubble:         { value: black }
-        _Bubble_ST:      { value: [2.0, 2.0, 0.05, 0.08], editor: { displayName: "Bubble Tiling & Speed" } }
-        _ColorOut:       { value: [0.5, 0.5, 0.5, 1.0], editor: { type: color } }
-        _ColorIn:        { value: [0.0, 0.0, 0.0, 1.0], editor: { type: color } }
-        _ColorHighlight: { value: [1.0, 1.0, 1.0, 1.0], editor: { type: color } }
+      properties:
+        _NormalWater:    { value: grey, editor: { displayName: "Normal Water" } }
+        _NormalWater_ST: { value: [1.0, 1.0, 0.1, 0.15], editor: { displayName: "Normal Tiling & Speed" } }
+        _NoiseMap:       { value: black, editor: { displayName: "Noise Texture" } }
+        _NoiseMap_ST:    { value: [1.0, 1.0, 0.1, 0.1], editor: { displayName: "Noise Tiling & Speed" } }
+        _Highlight:      { value: [1.0, 1.0, 1.0, 1.0], editor: { type: color, displayName: "Highlight Color" } }
+        _Base:           { value: [0.5, 0.5, 0.5, 1.0], editor: { type: color, displayName: "Base Color" } }
+        _Shadow:         { value: [0.0, 0.0, 0.0, 1.0], editor: { type: color, displayName: "Shadow Color" } }
       rasterizerState:
         cullMode: none
       depthStencilState:
@@ -32,14 +31,7 @@ CCProgram waterFlow-vs %{
   #include <legacy/decode-base>
   #include <legacy/local-batch>
 
-  out vec4 v_uv;
-  out vec4 v_screenPos;
-  out vec3 v_worldPos;
-
-  uniform TexCoords {
-    vec4 _MainTex_ST;
-    vec4 _Bubble_ST;
-  };
+  out vec4 v_uv; // xy: uv, zw: world xz * 0.5
 
   vec4 vert () {
     vec4 position;
@@ -50,24 +42,12 @@ CCProgram waterFlow-vs %{
 
     // Calculate world position
     vec4 worldPos = matWorld * position;
-    v_worldPos = worldPos.xyz;
 
-    // Calculate clip position
-    vec4 clipPos = cc_matProj * (cc_matView * worldPos);
-    
-    // Calculate screen position
-    v_screenPos = clipPos;
-    v_screenPos.y = -v_screenPos.y; // Flip Y for screen space
+    // Unity: o.uv.xy = v.uv; o.uv.zw = v.vertex.xz*0.5;
+    v_uv.xy = a_texCoord;
+    v_uv.zw = position.xz * 0.5;
 
-    // Calculate scrolling UVs
-    vec2 uv = a_texCoord;
-    v_uv.xy = uv * _MainTex_ST.xy;
-    v_uv.x += fract(cc_time.x * _MainTex_ST.z);
-    
-    v_uv.zw = uv * _MainTex_ST.xy;
-    v_uv.z += fract(cc_time.x * _MainTex_ST.w);
-
-    return clipPos;
+    return cc_matViewProj * worldPos;
   }
 }%
 
@@ -76,61 +56,64 @@ CCProgram waterFlow-fs %{
   #include <builtin/uniforms/cc-global>
 
   in vec4 v_uv;
-  in vec4 v_screenPos;
-  in vec3 v_worldPos;
 
-  uniform sampler2D _MainTex;
-  uniform sampler2D _Bubble;
+  uniform sampler2D _NormalWater;
+  uniform sampler2D _NoiseMap;
 
   uniform TexCoords {
-    vec4 _MainTex_ST;
-    vec4 _Bubble_ST;
+    vec4 _NormalWater_ST;
+    vec4 _NoiseMap_ST;
   };
 
   uniform Colors {
-    vec4 _ColorOut;
-    vec4 _ColorIn;
-    vec4 _ColorHighlight;
+    vec4 _Highlight;
+    vec4 _Base;
+    vec4 _Shadow;
   };
 
+  // Unpack normal map (simplified for Cocos - assumes normal map in tangent space)
+  vec3 unpackNormal(vec4 packednormal) {
+    vec3 normal;
+    normal.xy = packednormal.xy * 2.0 - 1.0;
+    normal.z = sqrt(1.0 - clamp(dot(normal.xy, normal.xy), 0.0, 1.0));
+    return normal;
+  }
+
   vec4 frag () {
-    vec4 col = vec4(1.0);
+    // Unity: half2 uv = i.uv.xy;
+    vec2 uv = v_uv.xy;
     
-    // Sample and combine main texture masks
-    vec3 mask = texture(_MainTex, v_uv.xy).xyz;
-    mask *= texture(_MainTex, v_uv.zw).xyz;
+    // Unity: fixed noiseUV = tex2D(_NoiseMap, uv*0.2 + frac(_Time.y*fixed2(0,0.1))).y;
+    float noiseUV = texture(_NoiseMap, uv * 0.2 + fract(cc_time.x * vec2(0.0, 0.1))).y;
     
-    // Base color from mask blue channel
-    col.rgb = mix(_ColorOut.rgb, _ColorIn.rgb, mask.b);
+    // Unity: uv += noiseUV*0.1;
+    uv += noiseUV * 0.1;
     
-    // Calculate screen-space UV for bubbles
-    vec2 uvScreen = v_screenPos.xy / v_screenPos.w;
-    uvScreen = uvScreen * 0.5 + 0.5; // Convert from [-1,1] to [0,1]
-    uvScreen.x *= cc_screenSize.x / cc_screenSize.y;
-    uvScreen *= _Bubble_ST.xy;
-    uvScreen.y += uvScreen.x / _Bubble_ST.x;
+    // Unity: normal1 = UnpackNormal(tex2D(_NormalWater,(i.uv.zw + noiseUV*0.1)*_NormalWater_ST.xy + frac(_Time.y*_NormalWater_ST.zw*0.1)));
+    vec3 normal1 = unpackNormal(texture(_NormalWater, (v_uv.zw + noiseUV * 0.1) * _NormalWater_ST.xy + fract(cc_time.x * _NormalWater_ST.zw * 0.1)));
     
-    // Sample bubble texture with different scrolling speeds
-    float bubble = texture(_Bubble, uvScreen - fract(-cc_time.x * _Bubble_ST.zw)).r;
-    bubble += texture(_Bubble, uvScreen - fract(-cc_time.x * _Bubble_ST.zw * 0.7)).g;
-    bubble += texture(_Bubble, uvScreen - fract(-cc_time.x * _Bubble_ST.zw * 0.3)).b;
+    // Unity: normal2 = UnpackNormal(tex2D(_NormalWater,(i.uv.zw + noiseUV*0.1)*_NormalWater_ST.xy - frac(_Time.y*_NormalWater_ST.zw*0.1)));
+    vec3 normal2 = unpackNormal(texture(_NormalWater, (v_uv.zw + noiseUV * 0.1) * _NormalWater_ST.xy - fract(cc_time.x * _NormalWater_ST.zw * 0.1)));
     
-    // Apply bubble highlights with vertical gradient
-    float vertGradient = 1.0 - abs(v_uv.y * 3.0 - 1.5);
-    col.rgb = mix(col.rgb, _ColorHighlight.rgb, pow(clamp(bubble, 0.0, 1.0), 0.45) * vertGradient * 0.5);
+    // Unity: fixed lighting = saturate(dot(normalize((normal1+normal2)/2),normalize(half3(0.5,0.5,0.0))));
+    float lighting = clamp(dot(normalize((normal1 + normal2) / 2.0), normalize(vec3(0.5, 0.5, 0.0))), 0.0, 1.0);
     
-    // Add highlights from green channel
-    col.rgb += _ColorHighlight.rgb * (smoothstep(0.0, 0.8, mask.g) + mask.g) * 0.8;
-    col.rgb = mix(col.rgb, vec3(1.0), smoothstep(0.2, 0.5, mask.g) * 2.0);
+    // Unity: fixed highlight1 = tex2D(_NoiseMap, uv*_NoiseMap_ST.xy + frac(_Time.y*_NoiseMap_ST.zw)).x;
+    float highlight1 = texture(_NoiseMap, uv * _NoiseMap_ST.xy + fract(cc_time.x * _NoiseMap_ST.zw)).x;
     
-    // Calculate alpha from red channel
-    col.a = smoothstep(0.0, 0.01, mask.r);
-    col.rgb = mix(_ColorIn.rgb, col.rgb, col.a);
+    // Unity: fixed highlight2 = tex2D(_NoiseMap, uv*_NoiseMap_ST.xy + frac(_Time.y*_NoiseMap_ST.zw)+0.5).x;
+    float highlight2 = texture(_NoiseMap, uv * _NoiseMap_ST.xy + fract(cc_time.x * _NoiseMap_ST.zw) + 0.5).x;
     
-    // Add vertical edge fade
-    float edgeFade = pow(clamp(1.0 - abs(v_uv.y * 2.0 - 1.0), 0.0, 1.0), 2.25) * 0.8;
-    col.a = clamp(col.a + edgeFade, 0.0, 1.0);
+    // Unity: fixed highlight = lerp(highlight1,highlight2,sin(_Time.y*2)*0.5+0.5)+smoothstep(0.38,0.5,distance(0.5,uv.y-0.025));
+    float highlight = mix(highlight1, highlight2, sin(cc_time.x * 2.0) * 0.5 + 0.5) + smoothstep(0.38, 0.5, distance(0.5, uv.y - 0.025));
     
-    return col;
+    // Unity: color = lerp(_Base,_Shadow,lighting);
+    vec4 color = vec4(1.0);
+    color = mix(_Base, _Shadow, lighting);
+    
+    // Unity: color = lerp(color,_Highlight,highlight);
+    color = mix(color, _Highlight, highlight);
+    
+    return color;
   }
 }%
