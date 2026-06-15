@@ -2187,7 +2187,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 857.1716918945312,
+      "width": 644.1771240234375,
       "height": 77.742
     },
     "_anchorPoint": {
@@ -2217,7 +2217,7 @@
       "b": 0,
       "a": 255
     },
-    "_string": "No Timer. No Rush. Just Pure Fun.",
+    "_string": "Relieve Stress with Pride",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
     "_actualFontSize": 61.1,
@@ -2751,7 +2751,7 @@
     "debugDrawMapBorder": false,
     "levelJsonAssets": [
       {
-        "__uuid__": "02236464-0445-482e-bc81-e2fbb1144c48",
+        "__uuid__": "b0a7b066-38ba-4fff-8015-29a7e582c698",
         "__expectedType__": "cc.JsonAsset"
       }
     ],
@@ -6653,13 +6653,13 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 255,
-      "g": 255,
-      "b": 255,
+      "r": 84,
+      "g": 101,
+      "b": 145,
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "ff5bec53-eb16-4db8-b4c9-634e268ad6b1@f9941",
+      "__uuid__": "e4f2ac24-29f5-45ac-bb3b-7fb6984db6ed@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,

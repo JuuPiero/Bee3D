@@ -139,30 +139,30 @@
     "colorEnum": 0,
     "blockColor": {
       "__type__": "cc.Color",
-      "r": 248,
-      "g": 75,
-      "b": 55,
+      "r": 161,
+      "g": 57,
+      "b": 32,
       "a": 255
     },
     "blockShadow": {
       "__type__": "cc.Color",
-      "r": 173,
-      "g": 29,
-      "b": 12,
+      "r": 141,
+      "g": 48,
+      "b": 26,
       "a": 255
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 240,
-      "g": 49,
-      "b": 27,
+      "r": 161,
+      "g": 57,
+      "b": 32,
       "a": 255
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 118,
-      "g": 44,
-      "b": 46,
+      "r": 107,
+      "g": 30,
+      "b": 12,
       "a": 255
     }
   },
@@ -363,30 +363,30 @@
     "colorEnum": 7,
     "blockColor": {
       "__type__": "cc.Color",
-      "r": 125,
-      "g": 152,
-      "b": 38,
+      "r": 62,
+      "g": 147,
+      "b": 35,
       "a": 255
     },
     "blockShadow": {
       "__type__": "cc.Color",
-      "r": 84,
-      "g": 106,
-      "b": 27,
+      "r": 38,
+      "g": 111,
+      "b": 15,
       "a": 255
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 125,
-      "g": 152,
-      "b": 38,
+      "r": 62,
+      "g": 147,
+      "b": 35,
       "a": 255
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 96,
-      "g": 100,
-      "b": 23,
+      "r": 29,
+      "g": 85,
+      "b": 11,
       "a": 255
     }
   },
@@ -619,30 +619,30 @@
     "colorEnum": 16,
     "blockColor": {
       "__type__": "cc.Color",
-      "r": 229,
-      "g": 72,
-      "b": 165,
+      "r": 238,
+      "g": 114,
+      "b": 188,
       "a": 255
     },
     "blockShadow": {
       "__type__": "cc.Color",
-      "r": 156,
-      "g": 36,
-      "b": 107,
+      "r": 221,
+      "g": 77,
+      "b": 163,
       "a": 255
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 224,
-      "g": 78,
-      "b": 164,
+      "r": 238,
+      "g": 114,
+      "b": 188,
       "a": 255
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 136,
-      "g": 36,
-      "b": 96,
+      "r": 168,
+      "g": 50,
+      "b": 121,
       "a": 255
     }
   },
@@ -651,30 +651,30 @@
     "colorEnum": 17,
     "blockColor": {
       "__type__": "cc.Color",
-      "r": 231,
-      "g": 175,
-      "b": 212,
+      "r": 245,
+      "g": 196,
+      "b": 228,
       "a": 255
     },
     "blockShadow": {
       "__type__": "cc.Color",
-      "r": 194,
-      "g": 93,
-      "b": 133,
+      "r": 219,
+      "g": 146,
+      "b": 194,
       "a": 255
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 231,
-      "g": 175,
-      "b": 212,
+      "r": 245,
+      "g": 196,
+      "b": 228,
       "a": 255
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 180,
-      "g": 90,
-      "b": 126,
+      "r": 189,
+      "g": 101,
+      "b": 159,
       "a": 255
     }
   },
@@ -1024,9 +1024,9 @@
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 143,
-      "g": 171,
-      "b": 73,
+      "r": 113,
+      "g": 143,
+      "b": 38,
       "a": 255
     }
   },
