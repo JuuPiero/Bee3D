@@ -4468,7 +4468,7 @@
     },
     "debugDrawMapBorder": true,
     "levelJsonAsset": {
-      "__uuid__": "f724c864-ba6d-451f-ba78-c8eeb5f791c6",
+      "__uuid__": "32177438-b3d1-4a33-a95b-bed30c645da5",
       "__expectedType__": "cc.JsonAsset"
     },
     "bulletPool": {
@@ -10930,7 +10930,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 1080,
+      "width": 1079,
       "height": 1920
     },
     "_anchorPoint": {
@@ -10961,7 +10961,7 @@
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "a191f350-0ae8-4d03-a2cc-2dc8ca523a97@f9941",
+      "__uuid__": "10836a3c-17ec-4265-a525-f75d9e2012ff@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,
