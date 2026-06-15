@@ -222,7 +222,7 @@
     "__type__": "ColorData",
     "colorEnum": 7,
     "pixelBlockMaterial": {
-      "__uuid__": "e775458d-deff-4dfa-a27a-f65ba0f17d7b",
+      "__uuid__": "b1aec179-57d0-46d8-8929-aeebf6cf30b6",
       "__expectedType__": "cc.Material"
     },
     "chracterMaterial": {
