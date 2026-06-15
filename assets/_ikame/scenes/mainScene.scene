@@ -1831,7 +1831,7 @@
       "__type__": "cc.Vec3",
       "x": 5.43,
       "y": 0,
-      "z": 0.45
+      "z": 1.162
     },
     "_lrot": {
       "__type__": "cc.Quat",
@@ -2037,7 +2037,7 @@
     "_priority": 1073741824,
     "_fov": 45,
     "_fovAxis": 0,
-    "_orthoHeight": 960,
+    "_orthoHeight": 959.9999999999999,
     "_near": 1,
     "_far": 2000,
     "_color": {
@@ -2187,7 +2187,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 644.1771240234375,
+      "width": 584.482421875,
       "height": 77.742
     },
     "_anchorPoint": {
@@ -2217,7 +2217,7 @@
       "b": 0,
       "a": 255
     },
-    "_string": "Relieve Stress with Pride",
+    "_string": "Only IQ 180+ Can Win",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
     "_actualFontSize": 61.1,
@@ -2751,7 +2751,7 @@
     "debugDrawMapBorder": false,
     "levelJsonAssets": [
       {
-        "__uuid__": "b0a7b066-38ba-4fff-8015-29a7e582c698",
+        "__uuid__": "65b53f73-ad27-43bd-9bfb-f2d9dc69e4aa",
         "__expectedType__": "cc.JsonAsset"
       }
     ],
@@ -6533,7 +6533,7 @@
     "_priority": 0,
     "_fov": 45,
     "_fovAxis": 0,
-    "_orthoHeight": 960,
+    "_orthoHeight": 959.9999999999999,
     "_near": 1,
     "_far": 2000,
     "_color": {
@@ -6653,13 +6653,13 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 84,
-      "g": 101,
-      "b": 145,
+      "r": 156,
+      "g": 156,
+      "b": 156,
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "e4f2ac24-29f5-45ac-bb3b-7fb6984db6ed@f9941",
+      "__uuid__": "53051b73-1bb1-456c-8d69-52f862f12dc6@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,

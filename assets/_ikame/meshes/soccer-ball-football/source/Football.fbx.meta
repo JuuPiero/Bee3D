@@ -1,0 +1,194 @@
+{
+  "ver": "2.3.13",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "356e6ccd-2d22-4d2e-addb-4c24b9b7c632",
+  "files": [],
+  "subMetas": {
+    "67570": {
+      "importer": "gltf-material",
+      "uuid": "356e6ccd-2d22-4d2e-addb-4c24b9b7c632@67570",
+      "displayName": "",
+      "id": "67570",
+      "name": "Baked.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "2f6d1": {
+      "importer": "gltf-mesh",
+      "uuid": "356e6ccd-2d22-4d2e-addb-4c24b9b7c632@2f6d1",
+      "displayName": "",
+      "id": "2f6d1",
+      "name": "Cube.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 768
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "7d6ab": {
+      "importer": "texture",
+      "uuid": "356e6ccd-2d22-4d2e-addb-4c24b9b7c632@7d6ab",
+      "displayName": "",
+      "id": "7d6ab",
+      "name": "base_color_texture.texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": false,
+        "imageUuidOrDatabaseUri": "db://assets/_ikame/meshes/soccer-ball-football/textures/Football_Diffuse.jpg"
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "400be": {
+      "importer": "texture",
+      "uuid": "356e6ccd-2d22-4d2e-addb-4c24b9b7c632@400be",
+      "displayName": "",
+      "id": "400be",
+      "name": "normalmap_texture.texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": false,
+        "imageUuidOrDatabaseUri": "db://assets/_ikame/meshes/soccer-ball-football/textures/Football_Normal.jpg"
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "5d2b1": {
+      "importer": "gltf-scene",
+      "uuid": "356e6ccd-2d22-4d2e-addb-4c24b9b7c632@5d2b1",
+      "displayName": "",
+      "id": "5d2b1",
+      "name": "Football.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [
+      {
+        "name": "base_color_texture",
+        "uri": "db://assets/_ikame/meshes/soccer-ball-football/textures/Football_Diffuse.jpg"
+      },
+      {
+        "name": "normalmap_texture",
+        "uri": "db://assets/_ikame/meshes/soccer-ball-football/textures/Football_Normal.jpg"
+      }
+    ],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "356e6ccd-2d22-4d2e-addb-4c24b9b7c632@2f6d1"
+      ],
+      "skeletons": [],
+      "textures": [
+        "356e6ccd-2d22-4d2e-addb-4c24b9b7c632@7d6ab",
+        "356e6ccd-2d22-4d2e-addb-4c24b9b7c632@400be"
+      ],
+      "materials": [
+        "356e6ccd-2d22-4d2e-addb-4c24b9b7c632@67570"
+      ],
+      "scenes": [
+        "356e6ccd-2d22-4d2e-addb-4c24b9b7c632@5d2b1"
+      ]
+    },
+    "materials": {
+      "356e6ccd-2d22-4d2e-addb-4c24b9b7c632@67570": {
+        "__type__": "cc.Material",
+        "_name": "",
+        "_objFlags": 0,
+        "__editorExtras__": {},
+        "_native": "",
+        "_effectAsset": {
+          "__uuid__": "f1556893-88b6-4c65-8c16-a5256ef3ad25",
+          "__expectedType__": "cc.EffectAsset"
+        },
+        "_techIdx": 0,
+        "_defines": [
+          {
+            "USE_TEXTURE": true
+          }
+        ],
+        "_states": [
+          {
+            "rasterizerState": {},
+            "depthStencilState": {},
+            "blendState": {
+              "targets": [
+                {}
+              ]
+            }
+          }
+        ],
+        "_props": [
+          {
+            "colorArr": [],
+            "tilingOffsetArr": [],
+            "mainTexture": {
+              "__uuid__": "356e6ccd-2d22-4d2e-addb-4c24b9b7c632@7d6ab",
+              "__expectedType__": "cc.Texture2D"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
