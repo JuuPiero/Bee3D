@@ -683,16 +683,16 @@
     "colorEnum": 18,
     "blockColor": {
       "__type__": "cc.Color",
-      "r": 223,
-      "g": 241,
-      "b": 245,
+      "r": 228,
+      "g": 235,
+      "b": 236,
       "a": 255
     },
     "blockShadow": {
       "__type__": "cc.Color",
-      "r": 160,
-      "g": 198,
-      "b": 217,
+      "r": 190,
+      "g": 190,
+      "b": 190,
       "a": 255
     },
     "characterColor": {
