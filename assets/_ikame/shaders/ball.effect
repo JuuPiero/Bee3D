@@ -1,0 +1,215 @@
+CCEffect %{
+  techniques:
+  - name: ball
+    passes:
+    - vert: ball-vs:vert
+      frag: ball-fs:frag
+
+      properties: &props
+        _Color:           { value: [0.25, 0.72, 1.0, 1.0], editor: { type: color } }
+        _ColorDark:       { value: [0.04, 0.18, 0.55, 1.0], editor: { type: color } }
+        _SpecularColor:   { value: [1.0, 1.0, 1.0, 1.0], editor: { type: color } }
+        _Shininess:       { value: 80.0, editor: { type: slider, min: 4.0, max: 256.0, step: 1.0 } }
+        _FresnelPower:    { value: 2.5, editor: { type: slider, min: 0.5, max: 6.0, step: 0.1 } }
+        _FresnelStrength: { value: 0.55, editor: { type: slider, min: 0.0, max: 1.0, step: 0.01 } }
+        _SpecStrength:    { value: 1.0, editor: { type: slider, min: 0.0, max: 3.0, step: 0.05 } }
+      rasterizerState:
+        cullMode: back
+      blendState:
+        targets:
+          - blend: false
+    - switch: USE_OUTLINE_PASS
+      vert: silhouette-edge-vs
+      frag: silhouette-edge-fs
+      rasterizerState: &r1
+        cullMode: front
+      depthStencilState: &d1
+        depthFunc: less_equal
+        depthTest: true
+        depthWrite: true
+      properties:
+        lineWidth:     { value: 10, target: outlineParams.x }
+        depthBias:     { value: 0,  target: outlineParams.y }
+        baseColor:     { editor: { type: color } }
+        baseColorMap:  { value: grey }
+}%
+
+CCProgram ball-vs %{
+  precision highp float;
+  #include <legacy/input>
+  #include <builtin/uniforms/cc-global>
+  #include <legacy/decode-base>
+  #include <legacy/local-batch>
+
+  out vec3 v_viewNormal;
+  out vec3 v_viewPos;
+
+  vec4 vert () {
+    vec4 position;
+    CCVertInput(position);
+
+    mat4 matWorld, matWorldIT;
+    CCGetWorldMatrixFull(matWorld, matWorldIT);
+
+    vec3 worldNormal = normalize((matWorldIT * vec4(a_normal, 0.0)).xyz);
+    v_viewNormal = normalize((cc_matView * vec4(worldNormal, 0.0)).xyz);
+
+    vec4 worldPos = matWorld * position;
+    vec4 viewPos  = cc_matView * worldPos;
+    v_viewPos = viewPos.xyz;
+
+    return cc_matProj * viewPos;
+  }
+}%
+
+CCProgram ball-fs %{
+  precision highp float;
+  #include <legacy/output>
+
+  in vec3 v_viewNormal;
+  in vec3 v_viewPos;
+
+  uniform Constant {
+    vec4  _Color;
+    vec4  _ColorDark;
+    vec4  _SpecularColor;
+    float _Shininess;
+    float _FresnelPower;
+    float _FresnelStrength;
+    float _SpecStrength;
+  };
+
+  vec4 frag () {
+    vec3 N = normalize(v_viewNormal);
+    vec3 V = normalize(-v_viewPos);
+
+    // Fresnel: bright rim at grazing angles
+    float NdotV  = max(dot(N, V), 0.0);
+    float fresnel = pow(1.0 - NdotV, _FresnelPower);
+
+    // Key light from upper-left in view space (fixed, mimics the image lighting)
+    vec3 lightDir = normalize(vec3(-0.35, 0.75, 0.55));
+
+    // Diffuse
+    float diff = max(dot(N, lightDir), 0.0);
+
+    // Phong specular
+    vec3  R    = reflect(-lightDir, N);
+    float spec = pow(max(dot(R, V), 0.0), _Shininess) * _SpecStrength;
+
+    // Base color: dark on shadow side, bright on lit side
+    vec3 baseColor = mix(_ColorDark.rgb, _Color.rgb, diff * 0.75 + 0.25);
+
+    // Blend in rim highlight
+    vec3 rimColor = _Color.rgb * 1.4;
+    baseColor = mix(baseColor, rimColor, fresnel * _FresnelStrength);
+    baseColor = clamp(baseColor, 0.0, 1.0);
+
+    // Add specular on top
+    vec3 finalColor = baseColor + _SpecularColor.rgb * spec;
+    finalColor = clamp(finalColor, 0.0, 1.0);
+
+    return vec4(finalColor, 1.0);
+  }
+}%
+
+CCProgram surface-vertex-silhouette-edge %{
+  uniform OutlineVert {
+  vec4 outlineParams; // x: line width, y: depth hack
+};
+
+  #define CC_SURFACES_VERTEX_MODIFY_LOCAL_POS
+  vec3 SurfacesVertexModifyLocalPos(in SurfacesStandardVertexIntermediate In)
+  {
+    float width = outlineParams.x * 0.001;
+    vec3 localPos = In.position.xyz;
+
+  #if USE_POSITION_SCALING
+    vec3 dir = normalize(localPos);
+    float flip = dot(dir, normalize(In.normal)) < 0.0 ? -1.0 : 1.0;
+    localPos += flip * dir * width * 2.0;
+  #else
+    localPos += normalize(In.normal) * width;
+  #endif
+    return localPos;
+  }
+
+  #define CC_SURFACES_VERTEX_MODIFY_CLIP_POS
+  vec4 SurfacesVertexModifyClipPos(in SurfacesStandardVertexIntermediate In)
+  {
+    vec4 clipPos = In.clipPos;
+    float scaleZ = cc_nearFar.z == 0.0 ? 0.5 : 1.0;
+    clipPos.z -= outlineParams.y * 0.002 * scaleZ;
+    return clipPos;
+  }
+}%
+CCProgram surface-vertex-silhouette-edge %{
+  uniform OutlineVert {
+  vec4 outlineParams; // x: line width, y: depth hack
+};
+
+  #define CC_SURFACES_VERTEX_MODIFY_LOCAL_POS
+  vec3 SurfacesVertexModifyLocalPos(in SurfacesStandardVertexIntermediate In)
+  {
+    float width = outlineParams.x * 0.001;
+    vec3 localPos = In.position.xyz;
+
+  #if USE_POSITION_SCALING
+    vec3 dir = normalize(localPos);
+    float flip = dot(dir, normalize(In.normal)) < 0.0 ? -1.0 : 1.0;
+    localPos += flip * dir * width * 2.0;
+  #else
+    localPos += normalize(In.normal) * width;
+  #endif
+    return localPos;
+  }
+
+  #define CC_SURFACES_VERTEX_MODIFY_CLIP_POS
+  vec4 SurfacesVertexModifyClipPos(in SurfacesStandardVertexIntermediate In)
+  {
+    vec4 clipPos = In.clipPos;
+    float scaleZ = cc_nearFar.z == 0.0 ? 0.5 : 1.0;
+    clipPos.z -= outlineParams.y * 0.002 * scaleZ;
+    return clipPos;
+  }
+}%
+
+CCProgram surface-fragment-silhouette-edge %{
+  uniform OutlineFrag {
+    vec4 baseColor;
+  };
+  #if USE_BASE_COLOR_MAP
+    uniform sampler2D baseColorMap;
+  #endif
+
+  // only for render-to-shadow-map or misc usage
+  #define CC_SURFACES_FRAGMENT_MODIFY_BASECOLOR_AND_TRANSPARENCY
+  vec4 SurfacesFragmentModifyBaseColorAndTransparency()
+  {
+    vec4 color = vec4(cc_mainLitColor.rgb, 1.0);
+    color.rgb = SRGBToLinear(baseColor.rgb);
+    #if USE_BASE_COLOR_MAP
+      vec4 texColor = texture(baseColorMap, FSInput_texcoord);
+      texColor.rgb = SRGBToLinear(texColor.rgb);
+      color *= texColor;
+    #endif
+
+    return color;
+  }
+}%
+
+CCProgram silhouette-edge-vs %{
+  precision highp float;
+  #include <surfaces/effect-macros/silhouette-edge>
+  #include <surfaces/includes/common-vs>
+  #include <surface-vertex-silhouette-edge>
+  #include <shading-entries/main-functions/misc/silhouette-edge-vs>
+}%
+
+CCProgram silhouette-edge-fs %{
+  precision highp float;
+  #include <surfaces/effect-macros/silhouette-edge>
+  #include <surfaces/includes/common-fs>
+  #include <surface-fragment-silhouette-edge>
+  #include <shading-entries/main-functions/misc/silhouette-edge-fs>
+}%

@@ -5,13 +5,18 @@
   "__editorExtras__": {},
   "_native": "",
   "_effectAsset": {
-    "__uuid__": "17debcc3-0a6b-4b8a-b00b-dc58b885581e",
+    "__uuid__": "c204b44b-0d0c-4b7f-9a31-73f8dbb35a2b",
     "__expectedType__": "cc.EffectAsset"
   },
   "_techIdx": 0,
   "_defines": [
-    {},
-    {}
+    {
+      "USE_INSTANCING": true
+    },
+    {
+      "USE_OUTLINE_PASS": true,
+      "USE_INSTANCING": true
+    }
   ],
   "_states": [
     {
@@ -24,7 +29,6 @@
       }
     },
     {
-      "priority": 2000,
       "rasterizerState": {},
       "depthStencilState": {},
       "blendState": {
@@ -36,14 +40,26 @@
   ],
   "_props": [
     {
-      "tintColor": {
+      "_Color": {
         "__type__": "cc.Color",
-        "r": 255,
-        "g": 255,
-        "b": 255,
-        "a": 128
-      }
+        "r": 228,
+        "g": 228,
+        "b": 228,
+        "a": 255
+      },
+      "_ColorDark": {
+        "__type__": "cc.Color",
+        "r": 146,
+        "g": 146,
+        "b": 146,
+        "a": 255
+      },
+      "_Shininess": 25,
+      "_FresnelPower": 1.4,
+      "_FresnelStrength": 1
     },
-    {}
+    {
+      "lineWidth": 27.6
+    }
   ]
 }
