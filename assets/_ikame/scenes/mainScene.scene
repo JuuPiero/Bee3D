@@ -2326,9 +2326,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 253,
-      "g": 174,
-      "b": 174,
+      "r": 255,
+      "g": 194,
+      "b": 87,
       "a": 255
     },
     "_spriteFrame": {
@@ -6650,9 +6650,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 122,
-      "g": 255,
-      "b": 0,
+      "r": 84,
+      "g": 101,
+      "b": 145,
       "a": 255
     },
     "_spriteFrame": {

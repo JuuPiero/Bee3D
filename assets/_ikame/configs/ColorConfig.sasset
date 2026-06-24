@@ -146,23 +146,23 @@
     },
     "blockShadow": {
       "__type__": "cc.Color",
-      "r": 187,
-      "g": 27,
-      "b": 31,
+      "r": 173,
+      "g": 29,
+      "b": 12,
       "a": 255
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 227,
-      "g": 23,
+      "r": 240,
+      "g": 49,
       "b": 27,
       "a": 255
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 162,
-      "g": 31,
-      "b": 31,
+      "r": 118,
+      "g": 44,
+      "b": 46,
       "a": 255
     }
   },
@@ -192,9 +192,9 @@
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 172,
-      "g": 79,
-      "b": 32,
+      "r": 199,
+      "g": 102,
+      "b": 53,
       "a": 255
     }
   },
@@ -235,30 +235,30 @@
     "colorEnum": 3,
     "blockColor": {
       "__type__": "cc.Color",
-      "r": 189,
-      "g": 129,
-      "b": 93,
+      "r": 136,
+      "g": 82,
+      "b": 50,
       "a": 255
     },
     "blockShadow": {
       "__type__": "cc.Color",
-      "r": 172,
-      "g": 109,
-      "b": 72,
+      "r": 106,
+      "g": 50,
+      "b": 16,
       "a": 255
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 189,
-      "g": 129,
-      "b": 93,
+      "r": 151,
+      "g": 101,
+      "b": 77,
       "a": 255
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 141,
-      "g": 83,
-      "b": 48,
+      "r": 129,
+      "g": 81,
+      "b": 58,
       "a": 255
     }
   },
@@ -544,9 +544,9 @@
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 7,
-      "g": 37,
-      "b": 151,
+      "r": 12,
+      "g": 49,
+      "b": 192,
       "a": 255
     }
   },
@@ -619,30 +619,30 @@
     "colorEnum": 16,
     "blockColor": {
       "__type__": "cc.Color",
-      "r": 231,
-      "g": 106,
-      "b": 181,
+      "r": 229,
+      "g": 72,
+      "b": 165,
       "a": 255
     },
     "blockShadow": {
       "__type__": "cc.Color",
-      "r": 211,
-      "g": 69,
-      "b": 154,
+      "r": 156,
+      "g": 36,
+      "b": 107,
       "a": 255
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 238,
-      "g": 114,
-      "b": 188,
+      "r": 224,
+      "g": 78,
+      "b": 164,
       "a": 255
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 168,
-      "g": 50,
-      "b": 121,
+      "r": 136,
+      "g": 36,
+      "b": 96,
       "a": 255
     }
   },
@@ -651,30 +651,30 @@
     "colorEnum": 17,
     "blockColor": {
       "__type__": "cc.Color",
-      "r": 245,
-      "g": 196,
-      "b": 228,
+      "r": 231,
+      "g": 175,
+      "b": 212,
       "a": 255
     },
     "blockShadow": {
       "__type__": "cc.Color",
-      "r": 219,
-      "g": 146,
-      "b": 194,
+      "r": 194,
+      "g": 93,
+      "b": 133,
       "a": 255
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 245,
-      "g": 196,
-      "b": 228,
+      "r": 231,
+      "g": 175,
+      "b": 212,
       "a": 255
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 189,
-      "g": 101,
-      "b": 159,
+      "r": 180,
+      "g": 90,
+      "b": 126,
       "a": 255
     }
   },
@@ -704,9 +704,9 @@
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 152,
-      "g": 184,
-      "b": 184,
+      "r": 143,
+      "g": 156,
+      "b": 156,
       "a": 255
     }
   },
@@ -811,30 +811,30 @@
     "colorEnum": 22,
     "blockColor": {
       "__type__": "cc.Color",
-      "r": 209,
-      "g": 85,
-      "b": 67,
+      "r": 221,
+      "g": 78,
+      "b": 80,
       "a": 255
     },
     "blockShadow": {
       "__type__": "cc.Color",
-      "r": 202,
-      "g": 68,
-      "b": 49,
+      "r": 190,
+      "g": 58,
+      "b": 60,
       "a": 255
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 209,
-      "g": 85,
-      "b": 67,
+      "r": 221,
+      "g": 78,
+      "b": 80,
       "a": 255
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 179,
-      "g": 68,
-      "b": 51,
+      "r": 199,
+      "g": 64,
+      "b": 66,
       "a": 255
     }
   },
@@ -1024,9 +1024,9 @@
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 113,
-      "g": 143,
-      "b": 38,
+      "r": 143,
+      "g": 171,
+      "b": 73,
       "a": 255
     }
   },
@@ -1056,9 +1056,9 @@
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 7,
-      "g": 82,
-      "b": 46,
+      "r": 24,
+      "g": 102,
+      "b": 65,
       "a": 255
     }
   },
@@ -1067,30 +1067,30 @@
     "colorEnum": 30,
     "blockColor": {
       "__type__": "cc.Color",
-      "r": 36,
-      "g": 71,
-      "b": 162,
+      "r": 24,
+      "g": 88,
+      "b": 128,
       "a": 255
     },
     "blockShadow": {
       "__type__": "cc.Color",
-      "r": 25,
-      "g": 60,
-      "b": 150,
+      "r": 0,
+      "g": 56,
+      "b": 91,
       "a": 255
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 36,
-      "g": 71,
-      "b": 162,
+      "r": 38,
+      "g": 106,
+      "b": 148,
       "a": 255
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 28,
-      "g": 56,
-      "b": 128,
+      "r": 23,
+      "g": 71,
+      "b": 100,
       "a": 255
     }
   },
@@ -1355,30 +1355,30 @@
     "colorEnum": 39,
     "blockColor": {
       "__type__": "cc.Color",
-      "r": 32,
-      "g": 155,
-      "b": 18,
+      "r": 0,
+      "g": 86,
+      "b": 0,
       "a": 255
     },
     "blockShadow": {
       "__type__": "cc.Color",
-      "r": 40,
-      "g": 141,
-      "b": 40,
+      "r": 31,
+      "g": 89,
+      "b": 31,
       "a": 255
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 32,
-      "g": 155,
-      "b": 18,
+      "r": 44,
+      "g": 128,
+      "b": 44,
       "a": 255
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 34,
-      "g": 117,
-      "b": 34,
+      "r": 9,
+      "g": 100,
+      "b": 9,
       "a": 255
     }
   },
