@@ -526,10 +526,6 @@
     "debugDraw": false,
     "coordX": 0,
     "coordZ": 0,
-    "impactSound": {
-      "__uuid__": "3b1bd7fd-a342-42d3-bd3a-2454aaf41d71",
-      "__expectedType__": "cc.AudioClip"
-    },
     "particleNode": null,
     "cubeRoot": {
       "__id__": 2

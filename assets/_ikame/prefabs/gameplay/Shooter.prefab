@@ -2946,6 +2946,7 @@
     "characterRoot": {
       "__id__": 2
     },
+    "ammoCount": 0,
     "animator": {
       "__id__": 87
     },
@@ -2961,11 +2962,11 @@
       "__expectedType__": "cc.AudioClip"
     },
     "finishSound1": {
-      "__uuid__": "4caa6ea2-eebc-4016-9326-ebfb7d2490fb",
+      "__uuid__": "fba90a98-bd28-4b27-b26e-eeeece7c5bfa",
       "__expectedType__": "cc.AudioClip"
     },
     "finishSound2": {
-      "__uuid__": "fea1b496-82ef-428b-b7c0-4f15457a0fe4",
+      "__uuid__": "fba90a98-bd28-4b27-b26e-eeeece7c5bfa",
       "__expectedType__": "cc.AudioClip"
     },
     "retrieveSound": {

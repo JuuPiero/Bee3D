@@ -5,18 +5,13 @@ import { IPixelBlock } from './IPixelBlock';
 import { IGridTile } from '../MapTiles/IGridTile';
 import { ILevelController } from '../../controllers/ILevelController';
 import { BulletPooling } from '../../../pooling/BulletPooling';
-import { EventDispatcher } from '../../../designPatterns/observer/EventDispatcher';
-import { EventName } from '../../../designPatterns/observer/EventName';
 import { TweenBurstGroup } from '../../../commons/TweenBurstGroup';
 const { ccclass, property } = _decorator;
 
-const OUT_SCALE = new Vec3(1.12, 2.4, 1.12);
+const OUT_SCALE = new Vec3(1.1, 2, 1.1);
 
-const BULLET_SPEED = 9.8;
-const LOWER_SCALE = new Vec3(1, 0.25, 1);
-
-export const BLOCK_HEIGHT = 1;
-
+const BULLET_SPEED = 7.8;
+const LOWER_SCALE = new Vec3(1, 0.5, 1);
 
 @ccclass('PixelBlock')
 export class PixelBlock extends Component implements IPixelBlock
@@ -54,20 +49,6 @@ export class PixelBlock extends Component implements IPixelBlock
     @property(TweenBurstGroup) public particleNode: TweenBurstGroup = null;
     @property(Node) public cubeRoot: Node = null;
 
-    public _floorIndex: number = 0;
-    
-    @property(CCInteger)
-    public get floorIndex(): number
-    {
-        this._floorIndex = this._gridTile?.getFloorIndex();
-        return this._floorIndex;
-    }
-
-    public set floorIndex(value: number)
-    {
-        this._floorIndex = value;
-    }
-
     init(colorID: number, level: ILevelController, bulletPool: BulletPooling): void 
     {
         const color = this.colorData.getPixelBlockMaterialById(colorID);
@@ -94,21 +75,6 @@ export class PixelBlock extends Component implements IPixelBlock
                 this._debugCamera.camera.initGeometryRenderer();
             }
         }
-
-        EventDispatcher.addListener(EventName.ClearLayer, this.onClearLayer, this);
-    }
-
-    private onClearLayer(layerIndex: number): void
-    {
-        if (this.floorIndex === layerIndex - 1)
-        {
-            this.meshRenderer.setSharedMaterial(this.colorData.getPixelBlockMaterialById(this.colorID), 0);
-        }
-    }
-
-    protected onDestroy(): void
-    {
-        EventDispatcher.removeListener(EventName.ClearLayer, this.onClearLayer, this);
     }
 
     getColorID(): number
@@ -121,13 +87,6 @@ export class PixelBlock extends Component implements IPixelBlock
         this._gridTile = tile;
         this.coordX = tile.getCoordX();
         this.coordZ = tile.getCoordZ();
-
-        if (this.floorIndex > 0)
-        {
-            this.meshRenderer.setSharedMaterial(this.colorData.transparentShadowMaterial, 1);
-        }
-        const isTopFloor = this.floorIndex === this._level.getFloorCount() - 1;
-        this.meshRenderer.setSharedMaterial(isTopFloor ? this.colorData.getPixelBlockMaterialById(this.colorID) : this.colorData.getDarkPixelBlockMaterialById(this.colorID), 0);
     }
 
     getUid(): string
@@ -137,18 +96,9 @@ export class PixelBlock extends Component implements IPixelBlock
 
     public markForDestroy(barrolPosition: Vec3): boolean
     {
-        if (this._level.isHasBlockOnTop(this.coordX, this.coordZ, this._gridTile.getFloorIndex()))
-        {
+        if (this._isMarkedForDestroy) {
             return false;
         }
-
-        if (this._isMarkedForDestroy)
-           
-        {
-            return false;
-        }
-       
-
         this._isMarkedForDestroy = true;
         this._gridTile.removePixelBlock();
         this._level.checkWinCondition();
@@ -179,27 +129,21 @@ export class PixelBlock extends Component implements IPixelBlock
             })
         .start();
         tween(this.cubeRoot)
-           .delay(travelTime - (travelTime * 0.3))
+           .delay(travelTime)
             .call(() => {
                 this.particleNode.node.active = true;
             })
             .to(0.12, { scale: OUT_SCALE }, { easing: easing.backOut })
-            // .to(0.1, { scale: LOWER_SCALE }, { easing: easing.quadIn })
+            .to(0.1, { scale: LOWER_SCALE }, { easing: easing.quadIn })
             .to(0.1, { scale: Vec3.ZERO }, { easing: easing.smooth })
             .call(() =>
             {
-                this.cubeRoot.setScale(Vec3.ZERO)
                 particles.forEach(p =>
                 {
                     p.stop();
                     p.clear();
                 });
                 this._bulletPool.returnBullet(this.bulletNode);
-
-                this.scheduleOnce(() => 
-                {
-                    this.node.destroy()
-                }, 2)
             })
             .start();
         return true;
