@@ -1,4 +1,4 @@
-import { _decorator, Camera, CCBoolean, CCInteger, Node, Component, director, MeshRenderer, Vec3, tween, Scene, easing, ParticleSystem, game, AudioClip } from 'cc';
+import { _decorator, Camera, CCBoolean, CCInteger, Node, Component, director, MeshRenderer, Vec3, tween, Scene, easing, ParticleSystem, game } from 'cc';
 import { ColorConfig } from '../../../configData/ColorConfig';
 import { EDITOR } from 'cc/env';
 import { IPixelBlock } from './IPixelBlock';
@@ -12,7 +12,7 @@ const { ccclass, property } = _decorator;
 
 const OUT_SCALE = new Vec3(1.12, 2.4, 1.12);
 
-const BULLET_SPEED = 7.8;
+const BULLET_SPEED = 9.8;
 const LOWER_SCALE = new Vec3(1, 0.25, 1);
 
 export const BLOCK_HEIGHT = 1;
@@ -50,8 +50,6 @@ export class PixelBlock extends Component implements IPixelBlock
     private _bulletPool: BulletPooling;
 
     private bulletNode: Node = null;
-
-    @property(AudioClip) private impactSound: AudioClip;
 
     @property(TweenBurstGroup) public particleNode: TweenBurstGroup = null;
     @property(Node) public cubeRoot: Node = null;
@@ -184,8 +182,6 @@ export class PixelBlock extends Component implements IPixelBlock
            .delay(travelTime - (travelTime * 0.3))
             .call(() => {
                 this.particleNode.node.active = true;
-
-                EventDispatcher.dispatch(EventName.PlaySFX, this.impactSound);
             })
             .to(0.12, { scale: OUT_SCALE }, { easing: easing.backOut })
             // .to(0.1, { scale: LOWER_SCALE }, { easing: easing.quadIn })
