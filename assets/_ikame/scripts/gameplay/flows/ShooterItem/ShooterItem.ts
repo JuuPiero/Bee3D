@@ -104,8 +104,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     @property(AudioClip)
     public finishSound1: AudioClip = null;
-    @property(AudioClip)
-    public finishSound2: AudioClip = null;
+
     @property(AudioClip)
     public retrieveSound: AudioClip = null;
 
@@ -748,8 +747,8 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         const rot = isRight ? RIGHT_ROT : LEFT_ROT;
         this.characterRoot.setWorldRotationFromEuler(rot.x, rot.y, rot.z);
         this.changeAnimation(ShooterAnimationName.Jump, true);
-        const winSound = isRight ? this.finishSound1 : this.finishSound2;
-        EventDispatcher.dispatch(EventName.PlaySFX, winSound, 0.5);
+
+        EventDispatcher.dispatch(EventName.PlaySFX, this.finishSound1, 0.5);
         const jumpHeight = 2;
         const tweenObj = { progress: 0 };
         this.ammoLabel.node.active = false;
