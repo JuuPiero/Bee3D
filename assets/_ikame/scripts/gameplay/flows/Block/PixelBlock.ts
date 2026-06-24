@@ -119,7 +119,7 @@ export class PixelBlock extends Component implements IPixelBlock
     
         this.bulletNode.setWorldPosition(barrolPosition);
         const targetPos = this.node.getWorldPosition();
-        targetPos.y = barrolPosition.y;
+        // targetPos.y = barrolPosition.y;
 
         const distance = barrolPosition.subtract(targetPos).length();
         const travelTime = (distance / BULLET_SPEED);
