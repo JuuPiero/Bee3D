@@ -3,7 +3,7 @@ import { SplineSmooth } from "../../splines/SplineSmooth"
 import { ICacheSlotController } from "../cacheSlots/ICacheSlotController"
 import { PixelBlock } from "../flows/Block/PixelBlock"
 import { IGridTile } from "../flows/MapTiles/IGridTile"
-import { Node } from "cc"
+import { Node, Vec3 } from "cc"
 import { IShooterItem } from "../flows/ShooterItem/IShooterItem"
 import { Floater } from "../flows/Floater/Floater"
 import { IPixelBlock } from "../flows/Block/IPixelBlock"
@@ -48,6 +48,8 @@ export interface ILevelController
     removePixelFromColumn(colIndex: number, pixel: IPixelBlock): void
 
     getSurroundingPixels(grid : IGridTile , pixel : IPixelBlock, out: IPixelBlock[]): void
+
+    getTutorialPosition(): Vec3;
 }
 
 

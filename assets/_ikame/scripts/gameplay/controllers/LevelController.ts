@@ -57,6 +57,9 @@ export class LevelController extends Component implements ILevelController
     @property({ type: [JsonAsset] , group: 'LevelData' })
     public levelJsonAssets: JsonAsset[] = [];
 
+    @property({ type: CCInteger, group: 'LevelData' })
+    public tutQueueIndex: number;
+
     @property(BulletPooling) public bulletPool: BulletPooling;
 
     @property(LevelScaler) public levelScaler: LevelScaler;
@@ -798,6 +801,10 @@ export class LevelController extends Component implements ILevelController
         {
             this.collectNearestPixelsInColumn(rightCol, targetWorldZ, out);
         }
+    }
+    
+    public getTutorialPosition(): Vec3 {
+        return this.colorQueueControllers.getQueueTopPosition(this.tutQueueIndex);
     }
 }
 

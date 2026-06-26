@@ -32,6 +32,10 @@ export class IdleScreen extends ScreenBase
 
     onShow(): void
     {
+        const tutWorldPos = this.levelController.getTutorialPosition();
+        const uiPos = this.mainCamera.convertToUINode(tutWorldPos, this.canvasNode);
+        this.tutorialHand.setPosition(uiPos)
+        console.log(uiPos);
         this.tutorialHand.active = true;
     }
 
