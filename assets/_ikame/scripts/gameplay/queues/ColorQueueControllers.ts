@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Prefab } from 'cc';
+import { _decorator, Component, Node, Prefab, Vec3 } from 'cc';
 import { IColorQueueControllers } from './IColorQueueControllers';
 import { ColorQueue } from './ColorQueue';
 import { ShooterQueue } from '../../configData/LevelData';
@@ -54,6 +54,11 @@ export class ColorQueueControllers extends Component implements IColorQueueContr
             count += queue.getRemainCount();
         }
         return count;
+    }
+
+    public getQueueTopPosition(index: number): Vec3
+    {
+        return this._activeQueues[index].node.getWorldPosition();
     }
 }
 

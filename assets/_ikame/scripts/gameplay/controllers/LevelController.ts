@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, Color, Component, EventKeyboard, EventTouch, Input, input, instantiate, JsonAsset, KeyCode, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, EventKeyboard, EventTouch, Input, input, instantiate, JsonAsset, KeyCode, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
 import { LevelData } from '../../configData/LevelData';
 import { EDITOR } from 'cc/env';
 import { PixelBlock } from '../flows/Block/PixelBlock';
@@ -54,6 +54,9 @@ export class LevelController extends Component implements ILevelController
 
     @property({ type: JsonAsset , group: 'LevelData' })
     public levelJsonAsset: JsonAsset
+
+    @property({ type: CCInteger, group: 'LevelData' })
+    public tutQueueIndex: number;
 
     @property(BulletPooling) public bulletPool: BulletPooling;
 
@@ -585,6 +588,10 @@ export class LevelController extends Component implements ILevelController
     public getResetProgress(): number
     {
         return this.conveyor.resetProgress;
+    }
+
+    public getTutorialPosition(): Vec3 {
+        return this.colorQueueControllers.getQueueTopPosition(this.tutQueueIndex);
     }
 }
 

@@ -3,7 +3,7 @@ import { SplineSmooth } from "../../splines/SplineSmooth"
 import { ICacheSlotController } from "../cacheSlots/ICacheSlotController"
 import { PixelBlock } from "../flows/Block/PixelBlock"
 import { IGridTile } from "../flows/MapTiles/IGridTile"
-import { Node } from "cc"
+import { Node, Vec3 } from "cc"
 import { IShooterItem } from "../flows/ShooterItem/IShooterItem"
 import { Floater } from "../flows/Floater/Floater"
 
@@ -39,6 +39,8 @@ export interface ILevelController
     scaleLevel(): void
 
     getResetProgress(): number
+
+    getTutorialPosition(): Vec3;
 }
 
 
