@@ -353,10 +353,7 @@
     "bgm": {
       "__id__": 8
     },
-    "bgmClip": {
-      "__uuid__": "9dc98bda-059c-41ec-8fce-d453958ce8bf",
-      "__expectedType__": "cc.AudioClip"
-    },
+    "bgmClip": null,
     "_id": "a5Y4BpqhJHD5IItvmDheVS"
   },
   {
@@ -632,7 +629,7 @@
     },
     "_depth": 8.2,
     "_stencil": 0,
-    "_clearFlags": 7,
+    "_clearFlags": 0,
     "_rect": {
       "__type__": "cc.Rect",
       "x": 0,
@@ -3828,7 +3825,7 @@
         "__id__": 111
       }
     ],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 115
@@ -4496,7 +4493,7 @@
     },
     "debugDrawMapBorder": true,
     "levelJsonAsset": {
-      "__uuid__": "2bf39314-59e2-4576-b924-17d934e2301b",
+      "__uuid__": "4594abc0-19c5-4898-88e3-68d9cef78309",
       "__expectedType__": "cc.JsonAsset"
     },
     "bulletPool": {
@@ -10754,7 +10751,7 @@
         "__id__": 483
       }
     ],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 487
@@ -10975,13 +10972,13 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 84,
-      "g": 101,
-      "b": 145,
+      "r": 255,
+      "g": 255,
+      "b": 255,
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "e4f2ac24-29f5-45ac-bb3b-7fb6984db6ed@f9941",
+      "__uuid__": "2ef8d4a8-6316-4aa1-90d4-9642839176f8@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,
