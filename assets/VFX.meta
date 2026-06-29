@@ -2,8 +2,11 @@
   "ver": "1.2.0",
   "importer": "directory",
   "imported": true,
-  "uuid": "19093dbf-a8cd-47b7-9dd9-444483f37098",
+  "uuid": "ab260eea-8c42-4a11-b80b-a509934660fa",
   "files": [],
   "subMetas": {},
-  "userData": {}
+  "userData": {
+    "compressionType": {},
+    "isRemoteBundle": {}
+  }
 }
