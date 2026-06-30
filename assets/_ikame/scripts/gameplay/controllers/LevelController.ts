@@ -201,6 +201,7 @@ export class LevelController extends Component implements ILevelController
         //#region Spawn Pixel Blocks
         var textJson = JSON.stringify(this.levelJsonAssets[this.levelIndex].json);
         this.levelData = new LevelData(textJson);
+        this.levelData.correctLevelData();
         this._pixelColumn.length = 0;
         this._columnHolders.length = 0;
         this._columnFallSpeeds.length = 0;
