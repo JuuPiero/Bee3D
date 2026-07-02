@@ -5,6 +5,46 @@
   "uuid": "754e5d39-d566-4da6-807d-9e3ea2ad1085",
   "files": [],
   "subMetas": {
+    "fd73d": {
+      "importer": "gltf-embeded-image",
+      "uuid": "754e5d39-d566-4da6-807d-9e3ea2ad1085@fd73d",
+      "displayName": "",
+      "id": "fd73d",
+      "name": "DiffuseColor_Texture.image",
+      "userData": {
+        "gltfIndex": 0,
+        "fixAlphaTransparencyArtifacts": true,
+        "hasAlpha": true,
+        "type": "texture"
+      },
+      "ver": "1.0.3",
+      "imported": true,
+      "files": [
+        ".json",
+        ".png"
+      ],
+      "subMetas": {}
+    },
+    "ca721": {
+      "importer": "gltf-embeded-image",
+      "uuid": "754e5d39-d566-4da6-807d-9e3ea2ad1085@ca721",
+      "displayName": "",
+      "id": "ca721",
+      "name": "DiffuseColor_Texture_1.image",
+      "userData": {
+        "gltfIndex": 1,
+        "fixAlphaTransparencyArtifacts": true,
+        "hasAlpha": true,
+        "type": "texture"
+      },
+      "ver": "1.0.3",
+      "imported": true,
+      "files": [
+        ".json",
+        ".png"
+      ],
+      "subMetas": {}
+    },
     "99d6c": {
       "importer": "gltf-mesh",
       "uuid": "754e5d39-d566-4da6-807d-9e3ea2ad1085@99d6c",
