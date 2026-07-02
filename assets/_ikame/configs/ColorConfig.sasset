@@ -131,6 +131,30 @@
       },
       {
         "__id__": 42
+      },
+      {
+        "__id__": 43
+      },
+      {
+        "__id__": 44
+      },
+      {
+        "__id__": 45
+      },
+      {
+        "__id__": 46
+      },
+      {
+        "__id__": 47
+      },
+      {
+        "__id__": 48
+      },
+      {
+        "__id__": 49
+      },
+      {
+        "__id__": 50
       }
     ]
   },
@@ -635,6 +659,102 @@
     },
     "chracterMaterial": {
       "__uuid__": "7027ba52-3baf-4ba0-9d57-710923adf858",
+      "__expectedType__": "cc.Material"
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1080,
+    "pixelBlockMaterial": {
+      "__uuid__": "b36c53a2-4131-4ef9-9b81-189e0338525f",
+      "__expectedType__": "cc.Material"
+    },
+    "chracterMaterial": {
+      "__uuid__": "a8874523-f64e-4552-b630-adc791b46aec",
+      "__expectedType__": "cc.Material"
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1095,
+    "pixelBlockMaterial": {
+      "__uuid__": "372d1601-0f71-414a-9d31-1d42f1bf2b90",
+      "__expectedType__": "cc.Material"
+    },
+    "chracterMaterial": {
+      "__uuid__": "54000311-b366-454a-bdea-ee51a814589f",
+      "__expectedType__": "cc.Material"
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1096,
+    "pixelBlockMaterial": {
+      "__uuid__": "63081bf5-187d-424b-8fc8-d599448dc8b5",
+      "__expectedType__": "cc.Material"
+    },
+    "chracterMaterial": {
+      "__uuid__": "41a7aac1-b77b-4acd-930d-7c0be046f7f6",
+      "__expectedType__": "cc.Material"
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1097,
+    "pixelBlockMaterial": {
+      "__uuid__": "33ceae7c-393f-4987-9a67-66414a62bdd8",
+      "__expectedType__": "cc.Material"
+    },
+    "chracterMaterial": {
+      "__uuid__": "4d725893-906c-46dc-a0a9-7445c83c4413",
+      "__expectedType__": "cc.Material"
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1098,
+    "pixelBlockMaterial": {
+      "__uuid__": "4ef3e687-ad91-4262-b7af-68d800f774c0",
+      "__expectedType__": "cc.Material"
+    },
+    "chracterMaterial": {
+      "__uuid__": "11bd1f3b-91c8-4acb-9548-5d86415964d8",
+      "__expectedType__": "cc.Material"
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1099,
+    "pixelBlockMaterial": {
+      "__uuid__": "9e971519-17c0-4438-86ea-bf1408670440",
+      "__expectedType__": "cc.Material"
+    },
+    "chracterMaterial": {
+      "__uuid__": "62ed8a42-9497-4c4c-8a6f-db924e89056b",
+      "__expectedType__": "cc.Material"
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1100,
+    "pixelBlockMaterial": {
+      "__uuid__": "ea5883fb-86f3-421a-b534-105d294fe4ef",
+      "__expectedType__": "cc.Material"
+    },
+    "chracterMaterial": {
+      "__uuid__": "b51416ba-d029-417c-a3f8-6e304c3eba46",
+      "__expectedType__": "cc.Material"
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1101,
+    "pixelBlockMaterial": {
+      "__uuid__": "75c547ae-8eeb-4f4e-a1f6-8debc558b5a3",
+      "__expectedType__": "cc.Material"
+    },
+    "chracterMaterial": {
+      "__uuid__": "1fd25dbb-588b-4a55-ad97-2ba635a3c392",
       "__expectedType__": "cc.Material"
     }
   }
