@@ -981,7 +981,7 @@
       "__id__": 30
     },
     "_children": [],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 32
@@ -1081,7 +1081,7 @@
       "__id__": 30
     },
     "_children": [],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 35
@@ -1245,7 +1245,7 @@
       "__id__": 38
     },
     "_children": [],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 40
@@ -1345,7 +1345,7 @@
       "__id__": 38
     },
     "_children": [],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 43
@@ -1509,7 +1509,7 @@
       "__id__": 46
     },
     "_children": [],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 48
@@ -1609,7 +1609,7 @@
       "__id__": 46
     },
     "_children": [],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 51
@@ -1773,7 +1773,7 @@
       "__id__": 54
     },
     "_children": [],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 56
@@ -1873,7 +1873,7 @@
       "__id__": 54
     },
     "_children": [],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 59
@@ -2037,7 +2037,7 @@
       "__id__": 62
     },
     "_children": [],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 64
@@ -2137,7 +2137,7 @@
       "__id__": 62
     },
     "_children": [],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 67
@@ -2724,9 +2724,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 0,
-      "g": 0,
-      "b": 0,
+      "r": 255,
+      "g": 248,
+      "b": 241,
       "a": 255
     },
     "_string": "Only IQ 180+ Can Win",
@@ -2841,9 +2841,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 255,
-      "g": 194,
-      "b": 87,
+      "r": 6,
+      "g": 116,
+      "b": 41,
       "a": 255
     },
     "_spriteFrame": {
@@ -3250,11 +3250,11 @@
     "debugDrawMapBorder": false,
     "levelJsonAssets": [
       {
-        "__uuid__": "b880af5d-d2a7-493d-99b1-5e4acfff72bb",
+        "__uuid__": "a08a621b-4f3f-47dd-ae3c-7071920917b6",
         "__expectedType__": "cc.JsonAsset"
       }
     ],
-    "tutQueueIndex": 4,
+    "tutQueueIndex": 5,
     "bulletPool": {
       "__id__": 115
     },
@@ -7153,13 +7153,13 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 84,
-      "g": 101,
-      "b": 145,
+      "r": 255,
+      "g": 255,
+      "b": 255,
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "e4f2ac24-29f5-45ac-bb3b-7fb6984db6ed@f9941",
+      "__uuid__": "ef33d8fe-3396-40a7-adb0-1f5cfe901ad2@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,
