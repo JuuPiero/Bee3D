@@ -61,6 +61,7 @@ export class LevelController extends Component implements ILevelController
     public tutQueueIndex: number;
 
     @property(BulletPooling) public bulletPool: BulletPooling;
+    @property(BulletPooling) public particlePooling: BulletPooling;
 
     @property(LevelScaler) public levelScaler: LevelScaler;
 
@@ -252,7 +253,7 @@ export class LevelController extends Component implements ILevelController
             pixelNode.parent = this._columnHolders[pixelData.x];
             pixelNode.setPosition(0, 0, pixelData.y - bottomRowIndex);
             const pixelBlockComp = pixelNode.getComponent(PixelBlock);
-            pixelBlockComp.init(pixelData.material , this, this.bulletPool);
+            pixelBlockComp.init(pixelData.material , this, this.bulletPool, this.particlePooling);
             const key = Utils.generateKeyFromCoord(pixelData.x, pixelData.y);
             const gridTile = this._gridMap.get(key);
             gridTile.setPixelBlock(pixelBlockComp);

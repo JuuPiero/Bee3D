@@ -6,6 +6,7 @@ import { IGridTile } from '../MapTiles/IGridTile';
 import { ILevelController } from '../../controllers/ILevelController';
 import { BulletPooling } from '../../../pooling/BulletPooling';
 import { TweenShake } from '../../../commons/TweenShake';
+import { ParticlePlayer } from './ParticlePlayer';
 const { ccclass, property } = _decorator;
 
 const OUT_SCALE = new Vec3(1.1, 2.8, 1.1);
@@ -56,6 +57,9 @@ export class PixelBlock extends Component implements IPixelBlock
     private _underTile: IGridTile = null;
     
     private _isTargeted: boolean = false;
+    private _particlePool: BulletPooling = null;
+
+    @property(Node) public particleRoot: Node 
 
     public isTargeted(): boolean {
         return this._isTargeted;
@@ -67,7 +71,7 @@ export class PixelBlock extends Component implements IPixelBlock
 
     @property(TweenShake) public tweenShake: TweenShake = null;
 
-    init(colorID: number, level: ILevelController, bulletPool: BulletPooling): void 
+    init(colorID: number, level: ILevelController, bulletPool: BulletPooling, particlePool: BulletPooling): void 
     {
         const blockColors = this.colorData.getBlockColors(colorID);
         if (blockColors) {
@@ -78,7 +82,8 @@ export class PixelBlock extends Component implements IPixelBlock
         }
         this.colorID = colorID;
         this._level = level;
-        this._bulletPool = bulletPool;   
+        this._bulletPool = bulletPool;
+        this._particlePool = particlePool;
     }
 
     getWorldPosition(out: Vec3): void 
@@ -138,7 +143,13 @@ export class PixelBlock extends Component implements IPixelBlock
         this._level.removePixelFromColumn(this.coordX, this);
         this._gridTile.removePixelBlock();
         this._level.checkWinCondition();
-    
+
+        this.particleNode = this._particlePool.getBullet(); 
+        this.particleNode.active = false;
+        // const vfxScale = new Vec3(this.node.worldScale)
+        // vfxScale.multiplyScalar(19);
+        // this.particleNode.setWorldScale(this.node.worldScale);
+        const vfxPlayer = this.particleNode.getComponent(ParticlePlayer)
         // this.bulletNode.setWorldPosition(barrolPosition);
         const targetPos = new Vec3();
         const startPos = new Vec3();
@@ -165,7 +176,9 @@ export class PixelBlock extends Component implements IPixelBlock
         const t = tween(this.cubeRoot)
             .delay (travelTime)
             .call(() => {
+                this.particleNode.setWorldPosition(this.particleRoot.worldPosition);
                 this.particleNode.active = true;
+                vfxPlayer.play();
                 this.shakeEffect();
                 this.bulletNode.active = false;
             })
@@ -185,6 +198,7 @@ export class PixelBlock extends Component implements IPixelBlock
 
                 this.scheduleOnce(() =>
                 {
+                    this._particlePool.returnBullet(this.particleNode);
                     this.node.destroy();
                 }, 0.04);
 
