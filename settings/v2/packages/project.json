@@ -29,6 +29,10 @@
     {
       "name": "BACKGROUND",
       "value": 262144
+    },
+    {
+      "name": "VFX",
+      "value": 131072
     }
   ]
 }
