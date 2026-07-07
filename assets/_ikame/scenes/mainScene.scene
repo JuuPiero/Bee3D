@@ -3357,7 +3357,7 @@
         "__id__": 99
       }
     ],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 103
@@ -3373,7 +3373,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": 914.8365,
+      "y": 914.8364999999999,
       "z": 0
     },
     "_lrot": {
@@ -4013,7 +4013,7 @@
     "debugDrawMapBorder": false,
     "levelJsonAssets": [
       {
-        "__uuid__": "a08a621b-4f3f-47dd-ae3c-7071920917b6",
+        "__uuid__": "6d2b3430-88ba-42a5-b28e-c09ca509a549",
         "__expectedType__": "cc.JsonAsset"
       }
     ],
@@ -9491,7 +9491,7 @@
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "b1592410-9aaf-4f91-bf12-c6b85ee7114a@f9941",
+      "__uuid__": "7b708411-2032-449c-af6c-3537560ae019@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,
