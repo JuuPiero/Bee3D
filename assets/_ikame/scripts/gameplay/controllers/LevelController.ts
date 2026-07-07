@@ -42,10 +42,10 @@ export class LevelController extends Component implements ILevelController
     @property({ type: Node, group: 'MapBorder' })
     public botRight: Node = null;
 
-    public get maxX(): number { return this.botRight.worldPosition.x; }
-    public get minX(): number { return this.topLeft.worldPosition.x; }
-    public get maxZ(): number { return this.botRight.worldPosition.z; }
-    public get minZ(): number { return this.topLeft.worldPosition.z; }
+    public get maxX(): number { return this.botRight.position.x; }
+    public get minX(): number { return this.topLeft.position.x; }
+    public get maxZ(): number { return this.botRight.position.z; }
+    public get minZ(): number { return this.topLeft.position.z; }
 
     private _centerMap: Vec3 = undefined;
     @property({ type: Camera })
@@ -202,7 +202,7 @@ export class LevelController extends Component implements ILevelController
         //#region Spawn Pixel Blocks
         var textJson = JSON.stringify(this.levelJsonAssets[this.levelIndex].json);
         this.levelData = new LevelData(textJson);
-        this.levelData.correctLevelData();
+        // this.levelData.correctLevelData();
         this._pixelColumn.length = 0;
         this._columnHolders.length = 0;
         this._columnFallSpeeds.length = 0;
@@ -535,8 +535,8 @@ export class LevelController extends Component implements ILevelController
 
     public scaleLevel(): void
     {
-        this.levelScaler.scaleToFitScreen();
-        this.colorQueueControllers.node.setWorldPosition(this.levelScaler.lowerPoint.worldPosition);
+        // this.levelScaler.scaleToFitScreen();
+        // this.colorQueueControllers.node.setWorldPosition(this.levelScaler.lowerPoint.worldPosition);
     }
 
     public getResetProgress(): number

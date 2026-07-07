@@ -6,7 +6,7 @@ import { ILevelController } from '../controllers/ILevelController';
 import { Queue } from '../../commons/Queue';
 const { ccclass, property } = _decorator;
 
-const QUEUE_GAP = 1.56;
+const QUEUE_GAP = 2.0;
 const TRANSLATE_SPEED = 8;
 const ACTIVE_QUEUE_LIMIT = 5;
 

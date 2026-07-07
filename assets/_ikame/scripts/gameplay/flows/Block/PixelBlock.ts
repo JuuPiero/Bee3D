@@ -11,7 +11,7 @@ const { ccclass, property } = _decorator;
 
 const OUT_SCALE = new Vec3(1.1, 2.8, 1.1);
 
-const BULLET_SPEED = 36;
+const BULLET_SPEED = 16;
 const LOWER_SCALE = new Vec3(1, 0.5, 1);
 
 
@@ -200,7 +200,7 @@ export class PixelBlock extends Component implements IPixelBlock
                 {
                     this._particlePool.returnBullet(this.particleNode);
                     this.node.destroy();
-                }, 0.04);
+                }, .04);
 
             })
             .start();
