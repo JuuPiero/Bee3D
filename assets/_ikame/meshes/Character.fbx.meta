@@ -46,11 +46,10 @@
         "events": [],
         "speed": 2
       },
-      "ver": "1.0.17",
+      "ver": "1.0.18",
       "imported": true,
       "files": [
-        ".bin",
-        ".cconb"
+        ".bin"
       ],
       "subMetas": {}
     },
@@ -70,11 +69,10 @@
         },
         "events": []
       },
-      "ver": "1.0.17",
+      "ver": "1.0.18",
       "imported": true,
       "files": [
-        ".bin",
-        ".cconb"
+        ".bin"
       ],
       "subMetas": {}
     },
@@ -94,11 +92,10 @@
         },
         "events": []
       },
-      "ver": "1.0.17",
+      "ver": "1.0.18",
       "imported": true,
       "files": [
-        ".bin",
-        ".cconb"
+        ".bin"
       ],
       "subMetas": {}
     },
@@ -118,11 +115,10 @@
         },
         "events": []
       },
-      "ver": "1.0.17",
+      "ver": "1.0.18",
       "imported": true,
       "files": [
-        ".bin",
-        ".cconb"
+        ".bin"
       ],
       "subMetas": {}
     },
@@ -148,11 +144,10 @@
         },
         "auxiliaryCurves": {}
       },
-      "ver": "1.0.17",
+      "ver": "1.0.18",
       "imported": true,
       "files": [
-        ".bin",
-        ".cconb"
+        ".bin"
       ],
       "subMetas": {}
     },

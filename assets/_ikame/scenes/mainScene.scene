@@ -3551,7 +3551,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 591.32568359375,
+      "width": 584.482421875,
       "height": 77.742
     },
     "_anchorPoint": {
@@ -3581,7 +3581,7 @@
       "b": 0,
       "a": 255
     },
-    "_string": "Only Sharp Brains Win",
+    "_string": "Only IQ 180+ Can Win",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
     "_actualFontSize": 61.1,
@@ -3694,8 +3694,8 @@
     "_color": {
       "__type__": "cc.Color",
       "r": 255,
-      "g": 246,
-      "b": 181,
+      "g": 194,
+      "b": 87,
       "a": 255
     },
     "_spriteFrame": {
@@ -4102,7 +4102,7 @@
     "debugDrawMapBorder": false,
     "levelJsonAssets": [
       {
-        "__uuid__": "7f59af44-c013-4be9-a427-2ecb57d20b85",
+        "__uuid__": "d25f4c38-86db-4c36-aa59-9bad80065458",
         "__expectedType__": "cc.JsonAsset"
       }
     ],
