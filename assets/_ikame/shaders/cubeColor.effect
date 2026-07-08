@@ -134,7 +134,7 @@ CCProgram cubeColor-fs %{
     final += (final + 0.2) * mask.x * 0.2;
     final += final * sss * 0.22;
 
-    float lighting = dot(normalize(vec3(0.0, 0.75, -0.25)), normalize(v_worldNormal));
+    float lighting = dot(normalize(vec3(0.0, 0.5915, 0.5245)), normalize(v_worldNormal));
     lighting = smoothstep(1.0, 0.0, lighting);
     final = clamp(mix(final, shadowColor * final * 1.1, lighting * 0.67) , 0.0, 1.0);
 
