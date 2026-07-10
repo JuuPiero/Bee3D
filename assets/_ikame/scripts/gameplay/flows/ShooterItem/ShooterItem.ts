@@ -335,7 +335,7 @@ o
             this._cacheSlotIndex = -1;
             this._colorQueue.removeShooter(this);
             this.node.getWorldPosition(this._startJumpPosition);
-            this.node.setParent(this._floater.node, true);
+            this.node.setParent(this._floater.node.parent, true);
             const tweenObj = { progress: 0 }
             const tweenJump = tween(tweenObj)
                 .to(JUMP_DURATION, { progress: 1 }, { easing: easing.linear,

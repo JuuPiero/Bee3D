@@ -140,6 +140,16 @@ export class PixelBlock extends Component implements IPixelBlock
             p.play();
         });
 
+        const meshRender = this.bulletNode.getComponentInChildren(MeshRenderer)
+        const blockColors = this.colorData.getBlockColors(this.colorID);
+        if (blockColors && meshRender) {
+            const colorBytes = new Uint8Array([blockColors.color.r, blockColors.color.g, blockColors.color.b, blockColors.color.a]);
+            const darkBytes = new Uint8Array([blockColors.shadow.r, blockColors.shadow.g, blockColors.shadow.b, blockColors.shadow.a]);
+            meshRender.setInstancedAttribute('a_instColor', colorBytes);
+            meshRender.setInstancedAttribute('a_instColorDark', darkBytes);
+        }
+
+
         this._level.removePixelFromColumn(this.coordX, this);
         this._gridTile.removePixelBlock();
         this._level.checkWinCondition();

@@ -30,7 +30,7 @@ export class GameStartState extends GameStateBase {
             this.levelController.spawnLevel();
             TrackingManager.TrackEvent(ETrackingEvent.CHALLENGE_STARTED);
             await PromiseDelay.Wait(1.5);
-            this.stateMachine.changeState(EGameState.Intro);
+            this.stateMachine.changeState(EGameState.Idle);
         }
         catch (error) {
             console.error("Error during GameStartState setup:", error);
