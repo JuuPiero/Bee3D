@@ -26,6 +26,7 @@ import { LinkedConnection } from './LinkedConnection/LinkedCollection';
 import { PREVIEW } from 'cc/env';
 import { Floater } from '../Floater/Floater';
 import { IPixelBlock } from '../Block/IPixelBlock';
+import { IShooterConvey } from '../../queues/IShooterConvey';
 const { ccclass, property } = _decorator;
 
 const JUMP_DURATION = 0.3;
@@ -122,6 +123,13 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private connectionRoot: Node = null;
 
     @property(Node) shadowNode: Node;
+
+    private _conveyShooter: IShooterConvey;
+
+    public set ConveyShooter(value: IShooterConvey)
+    {
+        this._conveyShooter = value;
+    }
 
     public setLinkedShooters(shooterLeft: IShooterItem, shooterRight: IShooterItem, firstChainShooter: IShooterItem): void {
         console.log("Setting linked shooters for shooter ID:", this.id, "Left:", shooterLeft ? shooterLeft : "null", "Right:", shooterRight ? shooterRight : "null");
