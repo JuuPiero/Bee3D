@@ -340,7 +340,7 @@ o
                 })
                 .start();
             await PromiseDelay.Wait(tweenJump.duration);
-            await this._floater.floatDownAsync(.3);
+            // await this._floater.floatDownAsync(.3);
             // this.playWaterParticles();
         }
         catch (error) {
