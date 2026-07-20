@@ -1,6 +1,7 @@
 import { Vec3 , Node} from "cc";
 import { EShooterState } from "./states/EShooterState";
 import { IPixelBlock } from "../Block/IPixelBlock";
+import { IGridTile } from "../MapTiles/IGridTile";
 
 export interface IShooterItem {
     doNoTarget(): void;
@@ -30,10 +31,10 @@ export interface IShooterItem {
     shuffleToCacheUpdate(dt: number, pos: Vec3, index: number): void
     markPassedBlocks(): void
     getColorID(): number
-    findTarget(): IPixelBlock
+    findTargets(): IGridTile[][]
     rotateTowardsTargetAsync( deltaAngle: number): Promise<void>
     shootTarget(target: IPixelBlock): boolean
-    getTarget(): IPixelBlock
+    getTarget(): IGridTile[][]
     pauseAnimation(): void
     getAngleDeltaToTarget(target: IPixelBlock): number
     destroyShooter(): void

@@ -501,7 +501,7 @@
       "__id__": 11
     },
     "colorID": 0,
-    "debugDraw": false,
+    "debugDraw": true,
     "coordX": 0,
     "coordZ": 0,
     "particleNode": null,

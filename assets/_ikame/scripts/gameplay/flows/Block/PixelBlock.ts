@@ -1,12 +1,13 @@
-import { _decorator, Camera, CCBoolean, CCInteger, Node, Component, director, MeshRenderer, Vec3, tween, Scene, easing, ParticleSystem, game, Tween } from 'cc';
+import { _decorator, Camera, CCBoolean, CCInteger, Node, Component, director, MeshRenderer, Vec3, tween, Scene, easing, ParticleSystem, game, Tween, BoxCollider, Vec2 } from 'cc';
 import { ColorConfig } from '../../../configData/ColorConfig';
-import { EDITOR } from 'cc/env';
+import { EDITOR, PREVIEW } from 'cc/env';
 import { IPixelBlock } from './IPixelBlock';
 import { IGridTile } from '../MapTiles/IGridTile';
 import { ILevelController } from '../../controllers/ILevelController';
 import { BulletPooling } from '../../../pooling/BulletPooling';
 import { TweenShake } from '../../../commons/TweenShake';
 import { ParticlePlayer } from './ParticlePlayer';
+import { DEBUG_PATH } from 'cc/userland/macro';
 const { ccclass, property } = _decorator;
 
 const OUT_SCALE = new Vec3(1.1, 2.8, 1.1);
@@ -93,12 +94,17 @@ export class PixelBlock extends Component implements IPixelBlock
 
     protected start(): void
     {
-        if(EDITOR && this.debugDraw)
+        if( (EDITOR ||PREVIEW) && this.debugDraw)
         {
             this._debugCamera = director.getScene().getChildByName('Main Camera').getComponent(Camera);
             if (!this._debugCamera.camera.geometryRenderer)
             {
                 this._debugCamera.camera.initGeometryRenderer();
+            }
+
+            if (DEBUG_PATH) {
+                const colDebug = this.node.addComponent(BoxCollider)
+                colDebug.size = new Vec3(1, 2.3, 1)
             }
         }
     }
@@ -140,7 +146,6 @@ export class PixelBlock extends Component implements IPixelBlock
             p.play();
         });
 
-        this._level.removePixelFromColumn(this.coordX, this);
         this._gridTile.removePixelBlock();
         this._level.checkWinCondition();
 

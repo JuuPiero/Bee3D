@@ -7,6 +7,7 @@ import { Node, Vec3 } from "cc"
 import { IShooterItem } from "../flows/ShooterItem/IShooterItem"
 import { Floater } from "../flows/Floater/Floater"
 import { IPixelBlock } from "../flows/Block/IPixelBlock"
+import { GridTile } from "../flows/MapTiles/GridTile"
 
 export interface ILevelController
 {
@@ -40,16 +41,14 @@ export interface ILevelController
 
     getResetProgress(): number
     dropColumn(x: number): void
-
-    findTargetPixel(colorID: number, rowSign: number, startColIndex: number): {isRowChanged : boolean, pixelBlock: IPixelBlock, nextColIndex: number}
     
     setBottomPixel(block: IPixelBlock, colIndex: number, rowIndex: number): void
     
-    removePixelFromColumn(colIndex: number, pixel: IPixelBlock): void
-
     getSurroundingPixels(grid : IGridTile , pixel : IPixelBlock, out: IPixelBlock[]): void
 
     getTutorialPosition(): Vec3;
+
+    findTargetPixels(colorID: number, out: IGridTile[][], max: number) : void
 }
 
 

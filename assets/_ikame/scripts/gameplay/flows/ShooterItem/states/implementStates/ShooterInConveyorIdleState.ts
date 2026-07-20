@@ -12,46 +12,50 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
     {
         // this._shooter.faceTheMapDirection();    
         // this._shooter.clearPassedBlocks();
-        const target = this._shooter.findTarget();
-        if (target)
+        const targets = this._shooter.findTargets();
+        for (let tile of targets)
         {
-            this.stateMachine.changeState(EShooterState.InConveyor_Shot);
-            return;
+            tile[0].getPixelBlock().disable();
         }
+        // if (target)
+        // {
+        //     this.stateMachine.changeState(EShooterState.InConveyor_Shot);
+        //     return;
+        // }
 
-        if (!target)
-        {
-            this._shooter.doNoTarget();
-        }
+        // if (!target)
+        // {
+        //     this._shooter.doNoTarget();
+        // }
 
-        if (this.stateMachine.getLastStateName() !== EShooterState.Jump) 
-        {
-            this._shooter.pauseAnimation();
-        }
+        // if (this.stateMachine.getLastStateName() !== EShooterState.Jump) 
+        // {
+        //     this._shooter.pauseAnimation();
+        // }
     }
 
-    public onUpdate(dt: number): void
-    {
-        this._searchTimer += dt;
-        if (this._searchTimer < SEARCH_INTERVAL)
-        {
-            return;
-        }
-        this._searchTimer = 0;
-        const target = this._shooter.findTarget();
-        if (target)
-        {
-            this.stateMachine.changeState(EShooterState.InConveyor_Shot);
-        }
-        else if (this.stateMachine.getLastStateName() === EShooterState.InConveyor_Shot)
-        {
-            this._shooter.pauseAnimation();
-        }
-        if (!target)
-        {
-            this._shooter.doNoTarget();
-        }
-    }
+    // public onUpdate(dt: number): void
+    // {
+    //     this._searchTimer += dt;
+    //     if (this._searchTimer < SEARCH_INTERVAL)
+    //     {
+    //         return;
+    //     }
+    //     this._searchTimer = 0;
+    //     const target = this._shooter.findTarget();
+    //     if (target)
+    //     {
+    //         this.stateMachine.changeState(EShooterState.InConveyor_Shot);
+    //     }
+    //     else if (this.stateMachine.getLastStateName() === EShooterState.InConveyor_Shot)
+    //     {
+    //         this._shooter.pauseAnimation();
+    //     }
+    //     if (!target)
+    //     {
+    //         this._shooter.doNoTarget();
+    //     }
+    // }
 
 }
 

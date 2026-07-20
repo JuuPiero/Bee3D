@@ -4013,10 +4013,10 @@
     "cameraMain": {
       "__id__": 18
     },
-    "debugDrawMapBorder": false,
+    "debugDrawMapBorder": true,
     "levelJsonAssets": [
       {
-        "__uuid__": "bedefaa4-3f19-46e7-99b9-fe0c3aa3d40f",
+        "__uuid__": "9d668343-6391-4bc6-95dd-69e31604625d",
         "__expectedType__": "cc.JsonAsset"
       }
     ],

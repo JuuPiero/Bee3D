@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, EventKeyboard, EventTouch, Input, input, instantiate, JsonAsset, KeyCode, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, EventKeyboard, EventTouch, geometry, Input, input, instantiate, JsonAsset, KeyCode, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
 import { LevelData } from '../../configData/LevelData';
 import { EDITOR, PREVIEW } from 'cc/env';
 import { PixelBlock } from '../flows/Block/PixelBlock';
@@ -22,6 +22,7 @@ import { ETrackingEvent, TrackingManager } from '../../base-script/PlayableAds/T
 import { LevelScaler } from '../LevelScaler';
 import { IPixelBlock } from '../flows/Block/IPixelBlock';
 import { Queue } from '../../commons/Queue';
+import { DEBUG_PATH } from 'cc/userland/macro';
 const { ccclass, property } = _decorator;
 
 const PIXEL_BLOCK_SIZE = 1;
@@ -78,10 +79,6 @@ export class LevelController extends Component implements ILevelController
     }
 
     private _gridMap = new Map<string, GridTile>();
-    private _pixelColumn: Queue<IPixelBlock>[] = [];
-    private _columnHolders: Node[] = [];
-    private _columnFallSpeeds: number[] = [];
-    private _columnBaseZ: number = 0;
     
     public get CenterMap(): Vec3
     {
@@ -126,7 +123,7 @@ export class LevelController extends Component implements ILevelController
 
     protected _debugDrawSpline(): void
     {
-        if (!this.cameraMain || !EDITOR || !this.debugDrawMapBorder) return;
+        if (!this.cameraMain || !EDITOR || !PREVIEW || !this.debugDrawMapBorder) return;
 
         this._debugTopLeftMap.set(this.minX, 0, this.minZ);
         this._debugTopRightMap.set(this.maxX, 0, this.minZ);
@@ -143,7 +140,7 @@ export class LevelController extends Component implements ILevelController
 
     protected start(): void
     {
-        if (EDITOR && this.debugDrawMapBorder)
+        if ((EDITOR || PREVIEW) && this.debugDrawMapBorder)
         {
             if (!this.cameraMain.camera.geometryRenderer)
                 this.cameraMain.camera.initGeometryRenderer();
@@ -202,11 +199,7 @@ export class LevelController extends Component implements ILevelController
         //#region Spawn Pixel Blocks
         var textJson = JSON.stringify(this.levelJsonAssets[this.levelIndex].json);
         this.levelData = new LevelData(textJson);
-        // this.levelData.correctLevelData();
-        this._pixelColumn.length = 0;
-        this._columnHolders.length = 0;
-        this._columnFallSpeeds.length = 0;
-        
+
         this.pixelBlockHolder.setPosition(this.CenterMap);
         const scaleHorizontal = this.WidthMap / this.levelData.widthMap;
         const scaleVertical = this.HeightMap / this.levelData.heightMap;
@@ -216,23 +209,15 @@ export class LevelController extends Component implements ILevelController
         const offsetX = (-this.levelData.widthMap / 2) +  (PIXEL_BLOCK_SIZE / 2);
         const offsetZ = (-this.levelData.heightMap / 2) + (PIXEL_BLOCK_SIZE / 2);
         const bottomRowIndex = this.levelData.heightMap - 1;
-        this._columnBaseZ = bottomRowIndex + offsetZ;
         this._bottomPixels.length = this.levelData.widthMap;
         for (let i = 0; i < this.levelData.widthMap; i++)
         {
-            const columnHolder = new Node(`ColumnHolder_${i}`);
-            columnHolder.parent = this.pixelBlockHolder;
-            columnHolder.setPosition(i + offsetX, 0, this._columnBaseZ);
-            this._columnHolders[i] = columnHolder;
-            this._columnFallSpeeds[i] = 0;
-
             for (let j = 0; j < this.levelData.heightMap; j++)
             {
                 const key = Utils.generateKeyFromCoord(i, j);
                 const gridTile = new GridTile(i, j, this.pixelBlockHolder, new Vec3(i + offsetX, 0, j + offsetZ));
                 this._gridMap.set(key, gridTile);
             }
-            this._pixelColumn.push(new Queue<IPixelBlock>());
         }
 
         for (const [ key, tile ] of this._gridMap)
@@ -250,15 +235,13 @@ export class LevelController extends Component implements ILevelController
         {
             const pixelData = this.levelData.pixels[i];
             const pixelNode = instantiate(this.pixelBlockPrefab);
-            pixelNode.parent = this._columnHolders[pixelData.x];
-            pixelNode.setPosition(0, 0, pixelData.y - bottomRowIndex);
+            pixelNode.setParent(this.pixelBlockHolder)
             const pixelBlockComp = pixelNode.getComponent(PixelBlock);
             pixelBlockComp.init(pixelData.material , this, this.bulletPool, this.particlePooling);
             const key = Utils.generateKeyFromCoord(pixelData.x, pixelData.y);
             const gridTile = this._gridMap.get(key);
+            pixelNode.setWorldPosition(gridTile.getWorldPos());
             gridTile.setPixelBlock(pixelBlockComp);
-
-            this._pixelColumn[pixelData.x].enqueue(pixelBlockComp);
         }
         //#endregion
 
@@ -349,17 +332,31 @@ export class LevelController extends Component implements ILevelController
         this._gridMap.clear();
     }
 
+    private drawDebugPath(path : IGridTile[])
+    {
+        if (!DEBUG_PATH) return;
+        if (path.length <= 0) return;
+        const playPath = path.map(x => x.getWorldPos());
+        const debugSpline = new geometry.Spline()
+        debugSpline.setModeAndKnots(geometry.SplineMode.LINEAR, playPath);
+        this.cameraMain.camera.geometryRenderer.addSpline(debugSpline, Color.WHITE);
+    }
+
     private onTouchStart(event: EventTouch): void
     {
         if (this._isFinished) return;
-
-
 
         event.getLocation(this._screenPos);
         const ray = this.cameraMain.screenPointToRay(this._screenPos.x, this._screenPos.y);
         const isHit = PhysicsSystem.instance.raycastClosest(ray);
         if (!isHit) return;
         const hitResult = PhysicsSystem.instance.raycastClosestResult;
+        if (DEBUG_PATH) {
+
+            const pixelDebug = hitResult.collider.node.getComponent(PixelBlock)
+            const path = this.findPathOutOfMap(pixelDebug.coordX, pixelDebug.coordZ);
+            this.drawDebugPath(path)
+        }
         const shooter = hitResult.collider.node.getComponent(ShooterItem);
         if (!shooter) return;
 
@@ -465,6 +462,51 @@ export class LevelController extends Component implements ILevelController
         return this.conveyor.getNextEmpty();
     }
 
+    public findPathOutOfMap(x: number, z: number): IGridTile[]
+    {
+        const startTile = this._gridMap.get(Utils.generateKeyFromCoord(x, z));
+        if (!startTile) return null;
+
+        const isEdgeTile = (tile: IGridTile): boolean =>
+        {
+            return !tile.getTopLinkedTile() || !tile.getBottomLinkedTile() || !tile.getLeftLinkedTile() || !tile.getRightLinkedTile();
+        };
+
+        const startKey = Utils.generateKeyFromCoord(x, z);
+        const visited = new Set<string>([ startKey ]);
+        const parent = new Map<string, IGridTile>();
+        const queue: IGridTile[] = [ startTile ];
+
+        while (queue.length > 0)
+        {
+            const current = queue.shift();
+            if (isEdgeTile(current))
+            {
+                const path: IGridTile[] = [];
+                let node: IGridTile | undefined = current;
+                while (node)
+                {
+                    path.unshift(node);
+                    node = parent.get(Utils.generateKeyFromCoord(node.getCoordX(), node.getCoordZ()));
+                }
+                return path;
+            }
+
+            const neighbors = [ current.getTopLinkedTile(), current.getBottomLinkedTile(), current.getLeftLinkedTile(), current.getRightLinkedTile() ];
+            for (const neighbor of neighbors)
+            {
+                if (!neighbor || !neighbor.isEmpty()) continue;
+                const key = Utils.generateKeyFromCoord(neighbor.getCoordX(), neighbor.getCoordZ());
+                if (visited.has(key)) continue;
+                visited.add(key);
+                parent.set(key, current);
+                queue.push(neighbor);
+            }
+        }
+
+        return null;
+    }
+
     public getAllOutsideColor(): number[]
     {
         const colors = new Set<number>();
@@ -490,7 +532,6 @@ export class LevelController extends Component implements ILevelController
 
     public doUpdate(dt: number): void
     {
-        this.updateGravity(dt);
         this.colorQueueControllers.doUpdate(dt);
     }
 
@@ -558,102 +599,12 @@ export class LevelController extends Component implements ILevelController
         }
     }
 
-    findTargetPixel(colorID: number, rowSign: number, startColIndex: number): { isRowChanged: boolean; pixelBlock: IPixelBlock; nextColIndex: number } {
-
-        const isFlipped = rowSign % 2 !== 0;
-        const width = this.getLevelWidth();
-        let colIndex = startColIndex;
-        const step = isFlipped ? -1 : 1;
-        while (colIndex >= 0 && colIndex < width) {
-            const pixel = this.getBottomPixelAt(colIndex);
-            if (pixel && pixel.getColorID() === colorID && !pixel.isTargeted()) {
-                pixel.setTargeted(true);
-                const isRowChanged = (isFlipped ? colIndex === 0 : colIndex === width - 1) || !this.hasSameColorTilEndRow(colorID, colIndex, step, width);
-                const nextColIndex = isRowChanged ? colIndex : colIndex + step;
-                return { isRowChanged: isRowChanged, pixelBlock: pixel, nextColIndex: nextColIndex };
-            }
-            colIndex += step;
-        }
-        const isRowChanged = (isFlipped ? colIndex === 0 : colIndex === width - 1) || !this.hasSameColorTilEndRow(colorID, colIndex, step, width);
-        return { isRowChanged: isRowChanged, pixelBlock: undefined, nextColIndex : colIndex}
-    }
-    
-
-    private hasSameColorTilEndRow(colorID: number, colIndex: number, step: number, width)
-    {
-        let col: number = colIndex + step;
-        while (col >= 0 && col < width)
-        {
-            const pixel = this.getBottomPixelAt(col)
-            if (!pixel)
-            {
-                col += step;
-                continue;
-            }
-            if (pixel.getColorID() === colorID && !pixel.isTargeted())
-                return true;
-            col += step;
-        }
-        return false;
-    }
-
-
     setBottomPixel(block: IPixelBlock, colIndex: number, rowIndex: number): void {
         if (colIndex < 0 || colIndex >= this.getLevelWidth() || rowIndex < 0 || rowIndex !== this.getLevelHeight() - 1) {
             return;
         }
         this._bottomPixels[colIndex] = block;
     }    
-
-
-    public getBottomPixelAt(col : number): IPixelBlock
-    {
-        if (!this._pixelColumn[col]) console.log ("HHHHH", col)
-        return this._pixelColumn[col].peek();
-    }
-
-    public removePixelFromColumn(colIndex: number, pixel: IPixelBlock): void
-    {
-        const column = this._pixelColumn[colIndex];
-        if (column.peek() === pixel)
-        {
-            column.dequeue();
-        }
-    }
-
-    private _colIndex : number = 0;
-
-    public updateGravity(dt: number): void {
-        for (this._colIndex = 0; this._colIndex < this.getLevelWidth(); this._colIndex++)
-        {
-            const columnHolder = this._columnHolders[this._colIndex];
-
-            const emptySlotCount = this.getLevelHeight() - columnHolder.children.length;
-            const targetZ = this._columnBaseZ + emptySlotCount;
-            const currentPosition = columnHolder.position;
-            const deltaZ = targetZ - currentPosition.z;
-
-            if (deltaZ <= 0)
-            {
-                this._columnFallSpeeds[this._colIndex] = 0;
-                if (deltaZ < 0)
-                {
-                    columnHolder.setPosition(currentPosition.x, currentPosition.y, targetZ);
-                }
-                continue;
-            }
-
-            this._columnFallSpeeds[this._colIndex] += GRAVITY * dt;
-            const fallDistance = Math.min(deltaZ, this._columnFallSpeeds[this._colIndex] * dt);
-            const nextZ = currentPosition.z + fallDistance;
-            columnHolder.setPosition(currentPosition.x, currentPosition.y, nextZ);
-
-            if (nextZ >= targetZ)
-            {
-                this._columnFallSpeeds[this._colIndex] = 0;
-            }
-        }
-    }
 
     private _searchPixelWorldPos: Vec3 = new Vec3();
 
@@ -676,137 +627,63 @@ export class LevelController extends Component implements ILevelController
         out.push(pixel);
     }
 
-    private collectNearestPixelsInColumn(column: Queue<IPixelBlock> | undefined, targetWorldZ: number, out: IPixelBlock[]): void
-    {
-        if (!column || column.isEmpty())
-        {
-            return;
-        }
-
-        let nearestPixel: IPixelBlock = null;
-        let nearestDistance = Number.POSITIVE_INFINITY;
-        let abovePixel: IPixelBlock = null;
-        let aboveDistance = Number.POSITIVE_INFINITY;
-        let belowPixel: IPixelBlock = null;
-        let belowDistance = Number.POSITIVE_INFINITY;
-
-        for (const pixel of column.Items)
-        {
-            if (!pixel )
-            {
-                continue;
-            }
-
-            pixel.getWorldPosition(this._searchPixelWorldPos);
-            const pixelWorldZ = this._searchPixelWorldPos.z;
-            const distanceToTarget = Math.abs(pixelWorldZ - targetWorldZ);
-            if (distanceToTarget < nearestDistance)
-            {
-                nearestDistance = distanceToTarget;
-                nearestPixel = pixel;
-            }
-
-            if (pixelWorldZ < targetWorldZ)
-            {
-                const distanceAbove = targetWorldZ - pixelWorldZ;
-                if (distanceAbove < aboveDistance)
-                {
-                    aboveDistance = distanceAbove;
-                    abovePixel = pixel;
-                }
-            }
-            else if (pixelWorldZ > targetWorldZ)
-            {
-                const distanceBelow = pixelWorldZ - targetWorldZ;
-                if (distanceBelow < belowDistance)
-                {
-                    belowDistance = distanceBelow;
-                    belowPixel = pixel;
-                }
-            }
-        }
-
-        if (!nearestPixel)
-        {
-            return;
-        }
-
-        nearestPixel.getWorldPosition(this._searchPixelWorldPos);
-        const nearestWorldZ = this._searchPixelWorldPos.z;
-
-        let topNeighbor: IPixelBlock = null;
-        let topNeighborDistance = Number.POSITIVE_INFINITY;
-        let bottomNeighbor: IPixelBlock = null;
-        let bottomNeighborDistance = Number.POSITIVE_INFINITY;
-
-        for (const pixel of column.Items)
-        {
-            if (!pixel || pixel === nearestPixel)
-            {
-                continue;
-            }
-
-            pixel.getWorldPosition(this._searchPixelWorldPos);
-            const pixelWorldZ = this._searchPixelWorldPos.z;
-
-            if (pixelWorldZ < nearestWorldZ)
-            {
-                const distance = nearestWorldZ - pixelWorldZ;
-                if (distance < topNeighborDistance)
-                {
-                    topNeighborDistance = distance;
-                    topNeighbor = pixel;
-                }
-            }
-            else if (pixelWorldZ > nearestWorldZ)
-            {
-                const distance = pixelWorldZ - nearestWorldZ;
-                if (distance < bottomNeighborDistance)
-                {
-                    bottomNeighborDistance = distance;
-                    bottomNeighbor = pixel;
-                }
-            }
-        }
-
-        this.pushUniquePixel(out, nearestPixel);
-        this.pushUniquePixel(out, topNeighbor || abovePixel);
-        this.pushUniquePixel(out, bottomNeighbor || belowPixel);
-    }
-
-    private _tempPixelPos : Vec3 = new Vec3();
-
     public getSurroundingPixels(grid: IGridTile, pixel : IPixelBlock, out: IPixelBlock[]): void {
         
         const botTile = grid.getBottomLinkedTile();
         const topTile = grid.getTopLinkedTile();
-        if (botTile && botTile.isContainBlock())
-        {
-            out.push(botTile.getPixelBlock());
-        }
-        if (topTile && topTile.isContainBlock())
-        {
-            out.push(topTile.getPixelBlock());
-        }
-        const curX = grid.getCoordX();
-        const leftCol = this._pixelColumn[curX - 1];
-        const rightCol = this._pixelColumn[curX + 1];
-        pixel.getWorldPosition(this._tempPixelPos);
-        const targetWorldZ = this._tempPixelPos.z;
-
-        if (leftCol)
-        {
-            this.collectNearestPixelsInColumn(leftCol, targetWorldZ, out);
-        }
-
-        if (rightCol)
-        {
-            this.collectNearestPixelsInColumn(rightCol, targetWorldZ, out);
-        }
+        const leftTile = grid.getLeftLinkedTile();
+        const rightTile = grid.getRightLinkedTile();
+        out.length = 0;
+        if (botTile && botTile.getPixelBlock())
+            out.push(botTile.getPixelBlock())
+        if (topTile && topTile.getPixelBlock())
+            out.push(topTile.getPixelBlock())
+        if (leftTile && leftTile.getPixelBlock())
+            out.push(leftTile.getPixelBlock())
+        if (rightTile && rightTile.getPixelBlock())
+            out.push(rightTile.getPixelBlock())
     }
     
     public getTutorialPosition(): Vec3 {
         return this.colorQueueControllers.getQueueTopPosition(this.tutQueueIndex);
+    }
+
+    public findTargetPixels(colorID: number, out: IGridTile[][], max: number): void {
+        out.length = 0;
+        let y = this.getLevelHeight() - 1;
+        let x = 0;
+        const row : IGridTile[] = []
+        while (y >= 0)
+        {
+            row.length = 0;
+            while (x < this.getLevelWidth())
+            {
+                const tile = this.getTileAtCoord(x, y);
+                if (tile && tile.getPixelBlock() && tile.getPixelBlock().getColorID() === colorID)
+                {
+                    let path = this.findPathOutOfMap(tile.getCoordX(), tile.getCoordZ())
+                    if (path)
+                    {
+                        path.unshift(tile)
+                        out.push(path)
+                        row.push(path[0])
+                    }
+                    if (out.length >= max)
+                    {
+                        y = -1
+                        x = this.getLevelWidth() + 1;
+                        break;
+                    }
+                }
+                x++
+            }
+            x = 0;
+            y--
+            for (const tile of row)
+            {
+                tile.markEmpty();
+            }
+        }
     }
 }
 

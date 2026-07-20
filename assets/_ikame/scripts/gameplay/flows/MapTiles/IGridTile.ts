@@ -12,7 +12,7 @@ export interface IGridTile {
     getWorldPos(): Vec3;
 
     setPixelBlock(pixelBlock: IPixelBlock): void;
-    removePixelBlock(): void;
+    removePixelBlock(): IPixelBlock;
     isContainBlock(): boolean;
     getPixelBlock(): IPixelBlock;
     getOccupyingColorID(): number;
@@ -24,6 +24,9 @@ export interface IGridTile {
     getRightLinkedTile(): IGridTile
 
     isMatchingColorID(colorID: number): boolean;
+
+    isEmpty(): boolean
+    markEmpty(): void 
 }
 
 

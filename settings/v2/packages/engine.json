@@ -222,6 +222,10 @@
     {
       "key": "TO_STORE_AFTER_PLAYNOW",
       "value": false
+    },
+    {
+      "key": "DEBUG_PATH",
+      "value": false
     }
   ]
 }

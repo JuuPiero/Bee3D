@@ -26,6 +26,7 @@ import { LinkedConnection } from './LinkedConnection/LinkedCollection';
 import { PREVIEW } from 'cc/env';
 import { Floater } from '../Floater/Floater';
 import { IPixelBlock } from '../Block/IPixelBlock';
+import { IGridTile } from '../MapTiles/IGridTile';
 const { ccclass, property } = _decorator;
 
 const JUMP_DURATION = 0.3;
@@ -85,7 +86,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private _lerpPos = new Vec3();
 
     private _targetCount: number = 0;
-    private _target: IPixelBlock;
+    private _target: IGridTile[][] = [];
 
     private _floater: Floater = null;
     
@@ -204,15 +205,8 @@ o
         return this._targetCount;
     }
 
-    public findTarget(): IPixelBlock {
-        const res = this._levelController.findTargetPixel(this.colorID, this._rowSign, this._colIndex);
-        this._rowSign += res.isRowChanged ? 1 : 0;
-        this._target = res.pixelBlock;
-        this._colIndex = res.nextColIndex;
-        if (!res.pixelBlock) {
-            const isFlipped = this. _rowSign % 2 !== 0;
-            this._colIndex = isFlipped ? this._levelController.getLevelWidth() - 1 : 0;
-        }   
+    public findTargets(): IGridTile[][] {
+        this._levelController.findTargetPixels(this.colorID, this._target, 30); 
         return this._target;
     }
 
@@ -968,7 +962,7 @@ o
         return this.colorID;
     }
 
-    public getTarget(): IPixelBlock {
+    public getTarget(): IGridTile[][] {
         return this._target;
     }
 
