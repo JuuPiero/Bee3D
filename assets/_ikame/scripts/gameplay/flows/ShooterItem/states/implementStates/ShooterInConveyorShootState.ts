@@ -6,42 +6,27 @@ import { ShooterStateBase } from "../ShooterStateBase";
 import { game } from "cc";
 import { IGridTile } from "../../../MapTiles/IGridTile";
 
-const FIRE_INTERVAL = 0.02
+const FIRE_INTERVAL = 0.2
 export class ShooterInConveyorShootState extends ShooterStateBase {
 
-    private _target: IGridTile[][];
+    private _target: Map<IPixelBlock, IGridTile[]>;
     private _lastFireTime = Number.MIN_VALUE;
 
     public onEnter(): void
     {
-        this._target = this._shooter.getTarget();
+        this._target = this._shooter.getTargets();
         this.rotateAndShoot();
     }
 
-    // public onUpdate(dt: number): void {
-    //     if (this._targets.length <= 0)
-    //     {
-    //         this.finishShootState();
-    //         return;
-    //     }
-    // }
-
     private async rotateAndShoot()
     {
-        // if (this._target) {
-        //     this._shooter.pauseAnimation();
-        //     const angle = this._shooter.getAngleDeltaToTarget(this._target);
-        //     if (Math.abs(angle) > 10)
-        //         this._shooter.pauseAnimation();
-        //     await this._shooter.rotateTowardsTargetAsync(angle);
-        //     this._shooter.changeAnimation(ShooterAnimationName.Attack, true);
-        //     const delayTime = Math.max(0, FIRE_INTERVAL - (game.totalTime - this._lastFireTime) * 1000);
-        //     // await PromiseDelay.Wait(delayTime);
-        //     this._shooter.shootTarget(this._target);
-        //     this._lastFireTime = game.totalTime;
-        //     // if (this._targets.length > 0)
-        //     //     await PromiseDelay.Wait(0.01);
-        // }
+        for (let [block, path] of this._target) {
+            this._shooter.pauseAnimation();
+            this._shooter.changeAnimation(ShooterAnimationName.Attack, true);
+            this._shooter.moveByPathToTarget(block, path);
+            await PromiseDelay.Wait(FIRE_INTERVAL);
+        }
+        this._target.clear();
         this.finishShootState();
     }
 

@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, EventKeyboard, EventTouch, geometry, Input, input, instantiate, JsonAsset, KeyCode, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, Director, EventKeyboard, EventTouch, geometry, Input, input, instantiate, JsonAsset, KeyCode, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
 import { LevelData } from '../../configData/LevelData';
 import { EDITOR, PREVIEW } from 'cc/env';
 import { PixelBlock } from '../flows/Block/PixelBlock';
@@ -23,6 +23,7 @@ import { LevelScaler } from '../LevelScaler';
 import { IPixelBlock } from '../flows/Block/IPixelBlock';
 import { Queue } from '../../commons/Queue';
 import { DEBUG_PATH } from 'cc/userland/macro';
+import { lerpMultiplePoints } from '../../utils/MathUtils';
 const { ccclass, property } = _decorator;
 
 const PIXEL_BLOCK_SIZE = 1;
@@ -30,6 +31,7 @@ const GRAVITY = 32.8;
 @ccclass('LevelController')
 export class LevelController extends Component implements ILevelController
 {
+
     private _isFinished: boolean = false;
 
     @property({ type: Prefab, group: 'Pixel Map' })
@@ -119,7 +121,10 @@ export class LevelController extends Component implements ILevelController
     private _bottomPixels: IPixelBlock[] = [];
 
     @property({ type: CCInteger, group: 'LevelData' })
-    private levelIndex : number = 0;
+    private levelIndex: number = 0;
+    
+    private  _topLeftBoundTile: GridTile;
+    private  _botRightBoundTile: GridTile;
 
     protected _debugDrawSpline(): void
     {
@@ -220,6 +225,9 @@ export class LevelController extends Component implements ILevelController
             }
         }
 
+        this._topLeftBoundTile = new GridTile(-1, -1, this.pixelBlockHolder, new Vec3(-1 + offsetX, 0, -1 + offsetZ))
+        this._botRightBoundTile = new GridTile(this.getLevelWidth(), this.getLevelHeight(), this.pixelBlockHolder, new Vec3(this.getLevelWidth() + offsetX, 0, this.getLevelHeight() + offsetZ));
+
         for (const [ key, tile ] of this._gridMap)
         {
             const x = tile.getCoordX();
@@ -256,8 +264,12 @@ export class LevelController extends Component implements ILevelController
         this._is50Completed = false;
         this._is75Completed = false;
 
-        if(PREVIEW || EDITOR)
+        if (PREVIEW || EDITOR)
+        {
             this.logAllColorIDs();
+            this.topLeft.setWorldPosition(this._topLeftBoundTile.getWorldPos());
+            this.botRight.setWorldPosition(this._botRightBoundTile.getWorldPos());
+        }
     }
 
     private logAllColorIDs(): void
@@ -648,8 +660,8 @@ export class LevelController extends Component implements ILevelController
         return this.colorQueueControllers.getQueueTopPosition(this.tutQueueIndex);
     }
 
-    public findTargetPixels(colorID: number, out: IGridTile[][], max: number): void {
-        out.length = 0;
+    public findTargetPixels(colorID: number, out: Map<IPixelBlock, IGridTile[]>, max: number): void {
+        out.clear();
         let y = this.getLevelHeight() - 1;
         let x = 0;
         const row : IGridTile[] = []
@@ -664,11 +676,11 @@ export class LevelController extends Component implements ILevelController
                     let path = this.findPathOutOfMap(tile.getCoordX(), tile.getCoordZ())
                     if (path)
                     {
-                        path.unshift(tile)
-                        out.push(path)
+                        // path.unshift(tile)
+                        out.set(tile.getPixelBlock(), path);
                         row.push(path[0])
                     }
-                    if (out.length >= max)
+                    if (out.size >= max)
                     {
                         y = -1
                         x = this.getLevelWidth() + 1;
@@ -681,9 +693,66 @@ export class LevelController extends Component implements ILevelController
             y--
             for (const tile of row)
             {
-                tile.markEmpty();
+                tile.removePixelBlock();
             }
         }
+    }
+
+    moveBulletByPathToTarget(block: IPixelBlock, path: IGridTile[], startPos: Vec3)
+    {
+        const exitTile = path[path.length - 1];
+        const newWaypoints : Vec3[] = []
+        if (exitTile.getCoordZ() === 0) // TOP
+        {
+            const waypoint = new Vec3(exitTile.getWorldPosX(),  exitTile.getWorldPos().y, this._topLeftBoundTile.getWorldPos().z)
+            newWaypoints.push(waypoint);
+            if (exitTile.getCoordX() < this.getLevelWidth() * 0.5)
+            {
+                newWaypoints.push(this._topLeftBoundTile.getWorldPos());
+                newWaypoints.push(new Vec3(this._topLeftBoundTile.getWorldPosX(), exitTile.getWorldPos().y, this._botRightBoundTile.getWorldPosZ()))
+            }
+            else 
+            {
+                newWaypoints.push(new Vec3(this._botRightBoundTile.getWorldPos().x, exitTile.getWorldPos().y, this._topLeftBoundTile.getWorldPos().z))
+                newWaypoints.push(this._botRightBoundTile.getWorldPos())
+            }
+        }
+        else if (exitTile.getCoordZ() === this.getLevelHeight() - 1) // Bottom
+        {
+            const waypoint = new Vec3(exitTile.getWorldPosX(), exitTile.getWorldPos().y, this._botRightBoundTile.getWorldPos().z)
+            newWaypoints.push(waypoint);
+        }
+        else if (exitTile.getCoordX() === 0) // LEFT
+        {
+            const waypoint = new Vec3(this._topLeftBoundTile.getWorldPos().x, exitTile.getWorldPos().y, exitTile.getWorldPosZ())
+            newWaypoints.push(waypoint);
+            newWaypoints.push(new Vec3(this._topLeftBoundTile.getWorldPosX(), exitTile.getWorldPos().y, this._botRightBoundTile.getWorldPosZ()));
+        }
+        else if (exitTile.getCoordX() === this.getLevelWidth() - 1) //RIGHT
+        {
+            const waypoint = new Vec3(this._botRightBoundTile.getWorldPos().x, exitTile.getWorldPos().y, exitTile.getWorldPosZ())
+            newWaypoints.push(waypoint);
+            newWaypoints.push(this._botRightBoundTile.getWorldPos());
+        }
+        
+        const enterMapWaypoint = new Vec3(startPos.x, this._botRightBoundTile.getWorldPos().y, this._botRightBoundTile.getWorldPosZ())
+        newWaypoints.push(enterMapWaypoint)
+        newWaypoints.push(startPos)
+
+        const definitiveWaypoints = (path.map(x => x.getWorldPos())).concat(newWaypoints);
+        const bullet = this.bulletPool.getBullet();
+        const translationPos = new Vec3();
+        const progressObj = { x: 1 };
+        tween(progressObj).to(1, { x: 0 }, {
+            onUpdate: () => {
+                lerpMultiplePoints(translationPos, definitiveWaypoints, progressObj.x)
+                bullet.setWorldPosition(translationPos);
+            },
+            onComplete: () => {
+                block.disable();
+                this.bulletPool.returnBullet(bullet);
+            }
+        }).start();
     }
 }
 

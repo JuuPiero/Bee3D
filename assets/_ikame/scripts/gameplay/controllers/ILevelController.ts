@@ -48,7 +48,10 @@ export interface ILevelController
 
     getTutorialPosition(): Vec3;
 
-    findTargetPixels(colorID: number, out: IGridTile[][], max: number) : void
+    findTargetPixels(colorID: number, out: Map<IPixelBlock, IGridTile[]>, max: number): void
+    
+    moveBulletByPathToTarget(block: IPixelBlock, path: IGridTile[], startPos: Vec3)
+
 }
 
 

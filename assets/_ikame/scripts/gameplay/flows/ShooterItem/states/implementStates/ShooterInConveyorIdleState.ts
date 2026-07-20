@@ -10,52 +10,48 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
 
     public onEnter(): void
     {
-        // this._shooter.faceTheMapDirection();    
-        // this._shooter.clearPassedBlocks();
         const targets = this._shooter.findTargets();
-        for (let tile of targets)
+        // for (let [x, d] of targets){
+        //     x.disable()
+        // }
+        if (targets.size)
         {
-            tile[0].getPixelBlock().disable();
+            this.stateMachine.changeState(EShooterState.InConveyor_Shot);
+            return;
         }
-        // if (target)
-        // {
-        //     this.stateMachine.changeState(EShooterState.InConveyor_Shot);
-        //     return;
-        // }
 
-        // if (!target)
-        // {
-        //     this._shooter.doNoTarget();
-        // }
+        if (!targets.size)
+        {
+            this._shooter.doNoTarget();
+        }
 
-        // if (this.stateMachine.getLastStateName() !== EShooterState.Jump) 
-        // {
-        //     this._shooter.pauseAnimation();
-        // }
+        if (this.stateMachine.getLastStateName() !== EShooterState.Jump) 
+        {
+            this._shooter.pauseAnimation();
+        }
     }
 
-    // public onUpdate(dt: number): void
-    // {
-    //     this._searchTimer += dt;
-    //     if (this._searchTimer < SEARCH_INTERVAL)
-    //     {
-    //         return;
-    //     }
-    //     this._searchTimer = 0;
-    //     const target = this._shooter.findTarget();
-    //     if (target)
-    //     {
-    //         this.stateMachine.changeState(EShooterState.InConveyor_Shot);
-    //     }
-    //     else if (this.stateMachine.getLastStateName() === EShooterState.InConveyor_Shot)
-    //     {
-    //         this._shooter.pauseAnimation();
-    //     }
-    //     if (!target)
-    //     {
-    //         this._shooter.doNoTarget();
-    //     }
-    // }
+    public onUpdate(dt: number): void
+    {
+        this._searchTimer += dt;
+        if (this._searchTimer < SEARCH_INTERVAL)
+        {
+            return;
+        }
+        this._searchTimer = 0;
+        let targets = this._shooter.getTargets()
+        if (targets.size) return;
+        
+        targets = this._shooter.findTargets();
+        if (targets.size) {
+            this.stateMachine.changeState(EShooterState.InConveyor_Shot);
+            return;
+        }
+
+        if (!targets.size) {
+            this._shooter.doNoTarget();
+        }
+    }
 
 }
 

@@ -26,7 +26,6 @@ export interface IGridTile {
     isMatchingColorID(colorID: number): boolean;
 
     isEmpty(): boolean
-    markEmpty(): void 
 }
 
 

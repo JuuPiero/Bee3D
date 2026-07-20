@@ -86,7 +86,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private _lerpPos = new Vec3();
 
     private _targetCount: number = 0;
-    private _target: IGridTile[][] = [];
+    private _target: Map<IPixelBlock, IGridTile[]> = new Map()
 
     private _floater: Floater = null;
     
@@ -205,8 +205,8 @@ o
         return this._targetCount;
     }
 
-    public findTargets(): IGridTile[][] {
-        this._levelController.findTargetPixels(this.colorID, this._target, 30); 
+    public findTargets(): Map<IPixelBlock, IGridTile[]> {
+        this._levelController.findTargetPixels(this.colorID, this._target, 1); 
         return this._target;
     }
 
@@ -962,7 +962,7 @@ o
         return this.colorID;
     }
 
-    public getTarget(): IGridTile[][] {
+    public getTargets(): Map<IPixelBlock, IGridTile[]> {
         return this._target;
     }
 
@@ -992,6 +992,11 @@ o
     destroyShooter(): void
     {
         this.node.destroy();
+    }
+
+    moveByPathToTarget(block : IPixelBlock, path: IGridTile[]): void {
+        this.reduceAmmoCount(1);
+        this._levelController.moveBulletByPathToTarget(block, path, this.firePointNode.getWorldPosition())
     }
 }
 

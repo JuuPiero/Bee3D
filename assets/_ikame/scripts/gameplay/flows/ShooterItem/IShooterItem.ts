@@ -31,10 +31,11 @@ export interface IShooterItem {
     shuffleToCacheUpdate(dt: number, pos: Vec3, index: number): void
     markPassedBlocks(): void
     getColorID(): number
-    findTargets(): IGridTile[][]
+    findTargets(): Map<IPixelBlock, IGridTile[]>
     rotateTowardsTargetAsync( deltaAngle: number): Promise<void>
     shootTarget(target: IPixelBlock): boolean
-    getTarget(): IGridTile[][]
+    moveByPathToTarget (block: IPixelBlock, path : IGridTile[]): void
+    getTargets(): Map<IPixelBlock, IGridTile[]>
     pauseAnimation(): void
     getAngleDeltaToTarget(target: IPixelBlock): number
     destroyShooter(): void

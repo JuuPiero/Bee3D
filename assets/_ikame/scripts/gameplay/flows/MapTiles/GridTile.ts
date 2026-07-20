@@ -18,8 +18,6 @@ export class GridTile implements IGridTile
     private _leftLinkedTile: IGridTile = null;
     private _rightLinkedTile: IGridTile = null;
 
-    private _isEmpty: boolean = false;
-
     constructor(public xCoord: number, public zCoord: number, parent: Node, localPos: Vec3)
     {
         this._coordX = xCoord;
@@ -66,7 +64,6 @@ export class GridTile implements IGridTile
     {
         this._pixelBlock = pixelBlock;
         this._pixelBlock.setTile(this);
-        this._isEmpty = false;
     }
 
     getPixelBlock(): IPixelBlock
@@ -130,12 +127,7 @@ export class GridTile implements IGridTile
 
     isEmpty(): boolean
     {
-        if (!this._pixelBlock) return true;
-        return this._isEmpty;
-    }
-
-    markEmpty(): void{
-        this._isEmpty = true;
+        return !this.isContainBlock()
     }
 }
 
