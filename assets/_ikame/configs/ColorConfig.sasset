@@ -11058,16 +11058,16 @@
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 31,
-      "g": 206,
-      "b": 254,
+      "r": 28,
+      "g": 177,
+      "b": 218,
       "a": 255
     },
     "characterShadow": {
       "__type__": "cc.Color",
-      "r": 19,
-      "g": 124,
-      "b": 152,
+      "r": 33,
+      "g": 136,
+      "b": 163,
       "a": 255
     }
   },
@@ -11090,9 +11090,9 @@
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 91,
-      "g": 239,
-      "b": 255,
+      "r": 106,
+      "g": 231,
+      "b": 245,
       "a": 255
     },
     "characterShadow": {

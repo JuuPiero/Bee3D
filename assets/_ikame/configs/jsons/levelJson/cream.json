@@ -4,18 +4,6 @@
       {
         "shooters": [
           {
-            "id": 0,
-            "ammo": 33,
-            "material": 1274,
-            "isLock": false,
-            "isIced": false,
-            "iceShardCount": 0
-          }
-        ]
-      },
-      {
-        "shooters": [
-          {
             "id": 1,
             "ammo": 50,
             "material": 1276,
@@ -35,6 +23,14 @@
             "id": 3,
             "ammo": 45,
             "material": 1271,
+            "isLock": false,
+            "isIced": false,
+            "iceShardCount": 0
+          },
+          {
+            "id": 0,
+            "ammo": 33,
+            "material": 1274,
             "isLock": false,
             "isIced": false,
             "iceShardCount": 0
