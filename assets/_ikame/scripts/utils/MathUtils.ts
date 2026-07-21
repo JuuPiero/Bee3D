@@ -1,7 +1,26 @@
 import { math, Vec3 } from "cc";
 
+// Cache cumulative arc-length tables per points array so repeated calls (eg. every tween update)
+// don't recompute distances each frame. Keyed by array identity, so callers must not mutate
+// the points array in place while reusing it across calls.
+const cumulativeDistanceCache = new WeakMap<Vec3[], number[]>();
+
+function getCumulativeDistances(points: Vec3[]): number[]
+{
+    let cumulative = cumulativeDistanceCache.get(points);
+    if (cumulative) return cumulative;
+
+    cumulative = [0];
+    for (let i = 1; i < points.length; i++)
+    {
+        cumulative.push(cumulative[i - 1] + Vec3.distance(points[i - 1], points[i]));
+    }
+    cumulativeDistanceCache.set(points, cumulative);
+    return cumulative;
+}
+
 export function lerpMultiplePoints(out: Vec3, points: Vec3[], t: number): void
-{    
+{
     // Early return if not enough points
     if (points.length < 2) {
         if (points.length === 1) {
@@ -19,17 +38,31 @@ export function lerpMultiplePoints(out: Vec3, points: Vec3[], t: number): void
         return;
     }
 
-    // Find the segment the t value is in
-    const segmentLength = 1 / (points.length - 1);
-    const segmentIndex = Math.floor(t / segmentLength);
-    const segmentT = (t % segmentLength) / segmentLength;
+    // Use cumulative arc length instead of equal index-based segments, so speed stays
+    // consistent even when waypoints are unevenly spaced.
+    const cumulative = getCumulativeDistances(points);
+    const totalLength = cumulative[cumulative.length - 1];
 
-    // Ensure we don't go out of bounds
-    const clampedIndex = Math.min(segmentIndex, points.length - 2);
-    
+    if (totalLength === 0) {
+        Vec3.copy(out, points[0]);
+        return;
+    }
+
+    const targetDist = t * totalLength;
+
+    // Find the segment containing targetDist
+    let segmentIndex = 0;
+    while (segmentIndex < cumulative.length - 2 && cumulative[segmentIndex + 1] < targetDist) {
+        segmentIndex++;
+    }
+
+    const segmentStartDist = cumulative[segmentIndex];
+    const segmentLength = cumulative[segmentIndex + 1] - segmentStartDist;
+    const segmentT = segmentLength > 0 ? (targetDist - segmentStartDist) / segmentLength : 0;
+
     // Perform linear interpolation between the two points
-    const start = points[clampedIndex];
-    const end = points[clampedIndex + 1];
+    const start = points[segmentIndex];
+    const end = points[segmentIndex + 1];
     Vec3.lerp(out, start, end, segmentT);
 }
 
@@ -76,4 +109,14 @@ export function lerp3Vec3(A: Vec3, B: Vec3, C: Vec3, t: number, out: Vec3): Vec3
         out = Vec3.lerp(out, B, C, lerpT);
     }
     return out
+}
+
+export function pathLength(path: Vec3[])
+{
+    let length = 0;
+    for (let i = 1; i < path.length - 1; i++)
+    {
+        length += Vec3.distance(path[i - 1], path[i]);
+    }
+    return length;
 }

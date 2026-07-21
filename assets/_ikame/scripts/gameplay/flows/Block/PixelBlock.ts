@@ -50,7 +50,7 @@ export class PixelBlock extends Component implements IPixelBlock
 
     private _bulletPool: BulletPooling;
 
-    private bulletNode: Node = null;
+    // private bulletNode: Node = null;
 
     @property(Node) public particleNode: Node = null;
     @property(Node) public cubeRoot: Node = null;
@@ -72,6 +72,19 @@ export class PixelBlock extends Component implements IPixelBlock
 
     @property(TweenShake) public tweenShake: TweenShake = null;
 
+    private _colorBytes: Uint8Array;
+    private _shadowBytes: Uint8Array;
+
+    public get ColorBytes(): Uint8Array
+    {
+        return this._colorBytes;
+    }
+
+    public get ShadowBytes(): Uint8Array
+    {
+        return this._shadowBytes;
+    }
+
     init(colorID: number, level: ILevelController, bulletPool: BulletPooling, particlePool: BulletPooling): void 
     {
         const blockColors = this.colorData.getBlockColors(colorID);
@@ -80,6 +93,9 @@ export class PixelBlock extends Component implements IPixelBlock
             const shadowBytes = new Uint8Array([blockColors.shadow.r, blockColors.shadow.g, blockColors.shadow.b, blockColors.shadow.a]);
             this.meshRenderer.setInstancedAttribute('a_instColor', colorBytes);
             this.meshRenderer.setInstancedAttribute('a_instColorShadow', shadowBytes);
+            
+            this._colorBytes = colorBytes;
+            this._shadowBytes = shadowBytes;
         }
         this.colorID = colorID;
         this._level = level;
@@ -134,73 +150,24 @@ export class PixelBlock extends Component implements IPixelBlock
         }
         this._isMarkedForDestroy = true;
 
-
-        // this.node.active = false; // Hide the block immediately
-
-        this.bulletNode = this._bulletPool.getBullet();
-        const particles = this.bulletNode.getComponentsInChildren(ParticleSystem)
-        particles.forEach(p =>
-        {
-            p.stop();
-            p.clear();
-            p.play();
-        });
-
         this._gridTile.removePixelBlock();
         this._level.checkWinCondition();
 
         this.particleNode = this._particlePool.getBullet(); 
         this.particleNode.active = false;
-        // const vfxScale = new Vec3(this.node.worldScale)
-        // vfxScale.multiplyScalar(19);
-        // this.particleNode.setWorldScale(this.node.worldScale);
+
         const vfxPlayer = this.particleNode.getComponent(ParticlePlayer)
-        // this.bulletNode.setWorldPosition(barrolPosition);
-        const targetPos = new Vec3();
-        const startPos = new Vec3();
-        const distance = Vec3.distance(barrolPosition, targetPos);
-        const travelTime = (distance / BULLET_SPEED);
-        this.bulletNode.setWorldPosition(barrolPosition);
-        const bulletPos = new Vec3();
-        startPos.set(barrolPosition);
-        // const targetNode = this.node;
-        tween(this.bulletNode)
-            .to(travelTime, { worldPosition: targetPos }, {
-                easing: easing.sineOut,
-                onUpdate : (target, ratio) =>
-                {
-                    this.node.getWorldPosition(targetPos);
-                    Vec3.lerp(bulletPos, startPos, targetPos, ratio);
-                    this.bulletNode.setWorldPosition(bulletPos);
-                },
-                onComplete: () => {
-                }
-            })
-            .start();
         
-        const t = tween(this.cubeRoot)
-            .delay (travelTime)
-            .call(() => {
-                this.particleNode.setWorldPosition(this.particleRoot.worldPosition);
-                this.particleNode.active = true;
-                vfxPlayer.play();
-                this.shakeEffect();
-                this.bulletNode.active = false;
-            })
+        vfxPlayer.play();
+        this.particleNode.setWorldPosition(this.particleRoot.worldPosition);
+        this.particleNode.active = true;
+        this.shakeEffect();
+        tween(this.cubeRoot)
             .to(0.12, { scale: OUT_SCALE }, { easing: easing.backOut })
             .to(0.1, { scale: LOWER_SCALE }, { easing: easing.quadIn })
             .to(0.1, { scale: Vec3.ZERO }, { easing: easing.smooth })
             .call(() =>
             {
-
-                particles.forEach(p =>
-                {
-                    p.stop();
-                    p.clear();
-                });
-                this._bulletPool.returnBullet(this.bulletNode);
-                this._level.dropColumn(this.coordX);
-
                 this.scheduleOnce(() =>
                 {
                     this._particlePool.returnBullet(this.particleNode);

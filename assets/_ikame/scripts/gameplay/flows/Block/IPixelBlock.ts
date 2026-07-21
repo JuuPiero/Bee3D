@@ -13,6 +13,9 @@ export interface IPixelBlock {
     isTargeted(): boolean;
     setTargeted(targeted: boolean): void;
     disable(): void;
-    shakeLite(strength : number);
+    shakeLite(strength: number);
+    
+    get ColorBytes(): Uint8Array
+    get ShadowBytes(): Uint8Array
 }
 

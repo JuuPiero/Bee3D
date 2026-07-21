@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, Director, EventKeyboard, EventTouch, geometry, Input, input, instantiate, JsonAsset, KeyCode, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, Director, EventKeyboard, EventTouch, geometry, Input, input, instantiate, JsonAsset, KeyCode, MeshRenderer, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
 import { LevelData } from '../../configData/LevelData';
 import { EDITOR, PREVIEW } from 'cc/env';
 import { PixelBlock } from '../flows/Block/PixelBlock';
@@ -23,7 +23,7 @@ import { LevelScaler } from '../LevelScaler';
 import { IPixelBlock } from '../flows/Block/IPixelBlock';
 import { Queue } from '../../commons/Queue';
 import { DEBUG_PATH } from 'cc/userland/macro';
-import { lerpMultiplePoints } from '../../utils/MathUtils';
+import { lerpMultiplePoints, pathLength } from '../../utils/MathUtils';
 const { ccclass, property } = _decorator;
 
 const PIXEL_BLOCK_SIZE = 1;
@@ -67,6 +67,8 @@ export class LevelController extends Component implements ILevelController
     @property(BulletPooling) public particlePooling: BulletPooling;
 
     @property(LevelScaler) public levelScaler: LevelScaler;
+
+    @property(AudioClip) public breakBlockBreak: AudioClip;
 
     private _shooterCount : number = 0;
 
@@ -525,17 +527,21 @@ export class LevelController extends Component implements ILevelController
         const width = this.getLevelWidth();
         const height = this.getLevelHeight();
 
-        // From BOTTOM edge (z = height - 1), scan upward
-        for (let x = 0; x < width; x++)
+        for (let z = 0; z < height; z++)
         {
-            let tile: IGridTile | null = this.getTileAtCoord(x, height - 1);
-            while (tile && !tile.isContainBlock())
+            for (let x = 0; x < width; x++)
             {
-                tile = tile.getTopLinkedTile();
-            }
-            if (tile && tile.isContainBlock())
-            {
-                colors.add(tile.getOccupyingColorID());
+                const tile = this.getTileAtCoord(x, z);
+                if (!tile || !tile.isContainBlock()) continue;
+
+                const colorID = tile.getOccupyingColorID();
+                if (colors.has(colorID)) continue;
+
+                const path = this.findPathOutOfMap(x, z);
+                if (path)
+                {
+                    colors.add(colorID);
+                }
             }
         }
 
@@ -743,14 +749,22 @@ export class LevelController extends Component implements ILevelController
         const bullet = this.bulletPool.getBullet();
         const translationPos = new Vec3();
         const progressObj = { x: 1 };
-        tween(progressObj).to(1, { x: 0 }, {
+        const duration = pathLength(definitiveWaypoints) / 3;
+
+        const meshRenderer = bullet.getComponentInChildren(MeshRenderer);
+        meshRenderer.setInstancedAttribute('a_instColor', block.ColorBytes);
+        meshRenderer.setInstancedAttribute('a_instColorShadow', block.ShadowBytes);
+
+        tween(progressObj).to(duration, { x: 0 }, {
             onUpdate: () => {
                 lerpMultiplePoints(translationPos, definitiveWaypoints, progressObj.x)
                 bullet.setWorldPosition(translationPos);
             },
             onComplete: () => {
-                block.disable();
+                block.markForDestroy(null)
                 this.bulletPool.returnBullet(bullet);
+
+                EventDispatcher.dispatch(EventName.PlaySFX, this.breakBlockBreak, 0.45)
             }
         }).start();
     }
