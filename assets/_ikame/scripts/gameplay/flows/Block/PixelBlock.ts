@@ -7,7 +7,6 @@ import { ILevelController } from '../../controllers/ILevelController';
 import { BulletPooling } from '../../../pooling/BulletPooling';
 import { TweenShake } from '../../../commons/TweenShake';
 import { ParticlePlayer } from './ParticlePlayer';
-import { DEBUG_PATH } from 'cc/userland/macro';
 const { ccclass, property } = _decorator;
 
 const OUT_SCALE = new Vec3(1.1, 2.8, 1.1);
@@ -116,11 +115,6 @@ export class PixelBlock extends Component implements IPixelBlock
             if (!this._debugCamera.camera.geometryRenderer)
             {
                 this._debugCamera.camera.initGeometryRenderer();
-            }
-
-            if (DEBUG_PATH) {
-                const colDebug = this.node.addComponent(BoxCollider)
-                colDebug.size = new Vec3(1, 2.3, 1)
             }
         }
     }

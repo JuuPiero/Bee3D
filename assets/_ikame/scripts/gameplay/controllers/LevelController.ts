@@ -22,7 +22,6 @@ import { ETrackingEvent, TrackingManager } from '../../base-script/PlayableAds/T
 import { LevelScaler } from '../LevelScaler';
 import { IPixelBlock } from '../flows/Block/IPixelBlock';
 import { Queue } from '../../commons/Queue';
-import { DEBUG_PATH } from 'cc/userland/macro';
 import { lerpMultiplePoints, pathLength } from '../../utils/MathUtils';
 const { ccclass, property } = _decorator;
 
@@ -69,6 +68,7 @@ export class LevelController extends Component implements ILevelController
     @property(LevelScaler) public levelScaler: LevelScaler;
 
     @property(AudioClip) public breakBlockBreak: AudioClip;
+    @property(AudioClip) public shootOutClip: AudioClip;
 
     private _shooterCount : number = 0;
 
@@ -346,16 +346,6 @@ export class LevelController extends Component implements ILevelController
         this._gridMap.clear();
     }
 
-    private drawDebugPath(path : IGridTile[])
-    {
-        if (!DEBUG_PATH) return;
-        if (path.length <= 0) return;
-        const playPath = path.map(x => x.getWorldPos());
-        const debugSpline = new geometry.Spline()
-        debugSpline.setModeAndKnots(geometry.SplineMode.LINEAR, playPath);
-        this.cameraMain.camera.geometryRenderer.addSpline(debugSpline, Color.WHITE);
-    }
-
     private onTouchStart(event: EventTouch): void
     {
         if (this._isFinished) return;
@@ -365,12 +355,6 @@ export class LevelController extends Component implements ILevelController
         const isHit = PhysicsSystem.instance.raycastClosest(ray);
         if (!isHit) return;
         const hitResult = PhysicsSystem.instance.raycastClosestResult;
-        if (DEBUG_PATH) {
-
-            const pixelDebug = hitResult.collider.node.getComponent(PixelBlock)
-            const path = this.findPathOutOfMap(pixelDebug.coordX, pixelDebug.coordZ);
-            this.drawDebugPath(path)
-        }
         const shooter = hitResult.collider.node.getComponent(ShooterItem);
         if (!shooter) return;
 
@@ -670,21 +654,19 @@ export class LevelController extends Component implements ILevelController
         out.clear();
         let y = this.getLevelHeight() - 1;
         let x = 0;
-        const row : IGridTile[] = []
         while (y >= 0)
         {
-            row.length = 0;
             while (x < this.getLevelWidth())
             {
                 const tile = this.getTileAtCoord(x, y);
-                if (tile && tile.getPixelBlock() && tile.getPixelBlock().getColorID() === colorID)
+                if (tile && tile.getPixelBlock() && tile.getPixelBlock().getColorID() === colorID && !tile.getPixelBlock().isTargeted())
                 {
                     let path = this.findPathOutOfMap(tile.getCoordX(), tile.getCoordZ())
                     if (path)
                     {
                         // path.unshift(tile)
                         out.set(tile.getPixelBlock(), path);
-                        row.push(path[0])
+                        tile.getPixelBlock().setTargeted(true);
                     }
                     if (out.size >= max)
                     {
@@ -697,10 +679,10 @@ export class LevelController extends Component implements ILevelController
             }
             x = 0;
             y--
-            for (const tile of row)
-            {
-                tile.removePixelBlock();
-            }
+            // for (const tile of row)
+            // {
+            //     tile.removePixelBlock();
+            // }
         }
     }
 
@@ -755,6 +737,8 @@ export class LevelController extends Component implements ILevelController
         meshRenderer.setInstancedAttribute('a_instColor', block.ColorBytes);
         meshRenderer.setInstancedAttribute('a_instColorShadow', block.ShadowBytes);
 
+        EventDispatcher.dispatch(EventName.PlaySFX, this.shootOutClip, 0.5)
+
         tween(progressObj).to(duration, { x: 0 }, {
             onUpdate: () => {
                 lerpMultiplePoints(translationPos, definitiveWaypoints, progressObj.x)
@@ -763,7 +747,6 @@ export class LevelController extends Component implements ILevelController
             onComplete: () => {
                 block.markForDestroy(null)
                 this.bulletPool.returnBullet(bullet);
-
                 EventDispatcher.dispatch(EventName.PlaySFX, this.breakBlockBreak, 0.45)
             }
         }).start();
