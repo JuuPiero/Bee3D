@@ -8907,9 +8907,9 @@
     "colorEnum": 1204,
     "blockColor": {
       "__type__": "cc.Color",
-      "r": 5,
-      "g": 5,
-      "b": 4,
+      "r": 51,
+      "g": 51,
+      "b": 51,
       "a": 255
     },
     "blockShadow": {
@@ -8921,9 +8921,9 @@
     },
     "characterColor": {
       "__type__": "cc.Color",
-      "r": 5,
-      "g": 5,
-      "b": 4,
+      "r": 99,
+      "g": 99,
+      "b": 99,
       "a": 255
     },
     "characterShadow": {

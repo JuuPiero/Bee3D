@@ -3933,11 +3933,11 @@
     "debugDrawMapBorder": false,
     "levelJsonAssets": [
       {
-        "__uuid__": "ee10afa5-87cc-40f2-9648-d92af6f1915b",
+        "__uuid__": "1d244889-ffa7-4aa4-bd62-bedfd31c0485",
         "__expectedType__": "cc.JsonAsset"
       }
     ],
-    "tutQueueIndex": 3,
+    "tutQueueIndex": 5,
     "bulletPool": {
       "__id__": 126
     },
@@ -9360,9 +9360,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 135,
-      "g": 164,
-      "b": 241,
+      "r": 83,
+      "g": 100,
+      "b": 144,
       "a": 255
     },
     "_spriteFrame": {
