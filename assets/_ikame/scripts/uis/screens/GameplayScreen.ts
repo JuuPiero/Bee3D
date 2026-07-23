@@ -15,6 +15,8 @@ export class GameplayScreen extends ScreenBase
 
     private _isX2Speed: boolean = false;
 
+    @property(Node) tutorialNode: Node; 
+
     protected onEnable(): void {
         this.speedX2Button.on(Node.EventType.TOUCH_START, this.onX2SpeedClick, this);
         this.speedX2Button.getComponent(Sprite).color = this._isX2Speed ? Color.WHITE : GRAY_COLOR 
@@ -29,6 +31,9 @@ export class GameplayScreen extends ScreenBase
         this._isX2Speed = !this._isX2Speed;
         director.getScheduler().setTimeScale(this._isX2Speed ? 3 : 1);
         this.speedX2Button.getComponent(Sprite).color = this._isX2Speed ? Color.WHITE : GRAY_COLOR
+
+        this.unschedule(this.playTutorial)
+        this.tutorialNode.active = false;
     }
     
     onShow(): void
@@ -49,6 +54,13 @@ export class GameplayScreen extends ScreenBase
                 PlayableAdsManager.Instance().ForceOpenStore();
             }, 10);
         }
+
+        this.scheduleOnce(this.playTutorial, 10)
+    }
+
+    playTutorial()
+    {
+        this.tutorialNode.active = true
     }
 
     onHide(): void
