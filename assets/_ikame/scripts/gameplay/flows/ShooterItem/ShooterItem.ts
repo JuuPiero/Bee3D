@@ -323,7 +323,7 @@ o
             this.node.getWorldPosition(this._startJumpPosition);
             this.node.setParent(this._floater.node, true);
             const tweenObj = { progress: 0 }
-            const tweenJump = tween(tweenObj)
+            const tweenJump = tween(tweenObj).timeScale(director.getScheduler().getTimeScale())
                 .to(JUMP_DURATION, { progress: 1 }, { easing: easing.linear,
                     onUpdate: (target: any, ratio: number) => {
                         this._floater.node.getWorldPosition(this._jumpToPosition);

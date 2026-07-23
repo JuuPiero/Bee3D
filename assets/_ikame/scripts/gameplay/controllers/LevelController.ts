@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, Director, EventKeyboard, EventTouch, geometry, Input, input, instantiate, JsonAsset, KeyCode, MeshRenderer, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, director, Director, EventKeyboard, EventTouch, geometry, Input, input, instantiate, JsonAsset, KeyCode, MeshRenderer, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
 import { LevelData } from '../../configData/LevelData';
 import { EDITOR, PREVIEW } from 'cc/env';
 import { PixelBlock } from '../flows/Block/PixelBlock';
@@ -739,7 +739,7 @@ export class LevelController extends Component implements ILevelController
 
         // EventDispatcher.dispatch(EventName.PlaySFX, this.shootOutClip, 0.5)
 
-        tween(progressObj).to(duration, { x: 0 }, {
+        tween(progressObj).timeScale(director.getScheduler().getTimeScale()).to(duration, { x: 0 }, {
             onUpdate: () => {
                 lerpMultiplePoints(translationPos, definitiveWaypoints, progressObj.x)
                 bullet.setWorldPosition(translationPos);
