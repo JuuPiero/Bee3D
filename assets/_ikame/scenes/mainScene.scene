@@ -3612,7 +3612,7 @@
       "r": 255,
       "g": 194,
       "b": 87,
-      "a": 255
+      "a": 138
     },
     "_spriteFrame": {
       "__uuid__": "e4f2ac24-29f5-45ac-bb3b-7fb6984db6ed@f9941",
@@ -4033,7 +4033,7 @@
       "__id__": 87
     },
     "breakBlockBreak": {
-      "__uuid__": "ee494525-eb6e-400b-a07e-112ee8decceb",
+      "__uuid__": "d424ee25-ba47-4d8c-9f0f-43130644d2fa",
       "__expectedType__": "cc.AudioClip"
     },
     "shootOutClip": {

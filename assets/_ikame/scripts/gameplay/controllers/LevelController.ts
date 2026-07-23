@@ -737,7 +737,7 @@ export class LevelController extends Component implements ILevelController
         meshRenderer.setInstancedAttribute('a_instColor', block.ColorBytes);
         meshRenderer.setInstancedAttribute('a_instColorShadow', block.ShadowBytes);
 
-        EventDispatcher.dispatch(EventName.PlaySFX, this.shootOutClip, 0.5)
+        // EventDispatcher.dispatch(EventName.PlaySFX, this.shootOutClip, 0.5)
 
         tween(progressObj).to(duration, { x: 0 }, {
             onUpdate: () => {
