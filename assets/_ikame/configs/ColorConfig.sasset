@@ -1052,6 +1052,141 @@
       },
       {
         "__id__": 349
+      },
+      {
+        "__id__": 350
+      },
+      {
+        "__id__": 351
+      },
+      {
+        "__id__": 352
+      },
+      {
+        "__id__": 353
+      },
+      {
+        "__id__": 354
+      },
+      {
+        "__id__": 355
+      },
+      {
+        "__id__": 356
+      },
+      {
+        "__id__": 357
+      },
+      {
+        "__id__": 358
+      },
+      {
+        "__id__": 359
+      },
+      {
+        "__id__": 360
+      },
+      {
+        "__id__": 361
+      },
+      {
+        "__id__": 362
+      },
+      {
+        "__id__": 363
+      },
+      {
+        "__id__": 364
+      },
+      {
+        "__id__": 365
+      },
+      {
+        "__id__": 366
+      },
+      {
+        "__id__": 367
+      },
+      {
+        "__id__": 368
+      },
+      {
+        "__id__": 369
+      },
+      {
+        "__id__": 370
+      },
+      {
+        "__id__": 371
+      },
+      {
+        "__id__": 372
+      },
+      {
+        "__id__": 373
+      },
+      {
+        "__id__": 374
+      },
+      {
+        "__id__": 375
+      },
+      {
+        "__id__": 376
+      },
+      {
+        "__id__": 377
+      },
+      {
+        "__id__": 378
+      },
+      {
+        "__id__": 379
+      },
+      {
+        "__id__": 380
+      },
+      {
+        "__id__": 381
+      },
+      {
+        "__id__": 382
+      },
+      {
+        "__id__": 383
+      },
+      {
+        "__id__": 384
+      },
+      {
+        "__id__": 385
+      },
+      {
+        "__id__": 386
+      },
+      {
+        "__id__": 387
+      },
+      {
+        "__id__": 388
+      },
+      {
+        "__id__": 389
+      },
+      {
+        "__id__": 390
+      },
+      {
+        "__id__": 391
+      },
+      {
+        "__id__": 392
+      },
+      {
+        "__id__": 393
+      },
+      {
+        "__id__": 394
       }
     ]
   },
@@ -12220,6 +12355,1446 @@
       "r": 28,
       "g": 19,
       "b": 19,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1309,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 141,
+      "b": 143,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 204,
+      "g": 113,
+      "b": 114,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 141,
+      "b": 143,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 204,
+      "g": 113,
+      "b": 114,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1310,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 247,
+      "g": 178,
+      "b": 106,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 198,
+      "g": 142,
+      "b": 85,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 247,
+      "g": 178,
+      "b": 106,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 198,
+      "g": 142,
+      "b": 85,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1311,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 70,
+      "b": 84,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 204,
+      "g": 56,
+      "b": 67,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 70,
+      "b": 84,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 204,
+      "g": 56,
+      "b": 67,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1312,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 78,
+      "g": 44,
+      "b": 44,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 62,
+      "g": 35,
+      "b": 35,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 78,
+      "g": 44,
+      "b": 44,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 62,
+      "g": 35,
+      "b": 35,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1313,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 118,
+      "g": 86,
+      "b": 176,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 94,
+      "g": 69,
+      "b": 141,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 118,
+      "g": 86,
+      "b": 176,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 94,
+      "g": 69,
+      "b": 141,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1314,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 241,
+      "g": 178,
+      "b": 51,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 193,
+      "g": 142,
+      "b": 41,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 241,
+      "g": 178,
+      "b": 51,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 193,
+      "g": 142,
+      "b": 41,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1315,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 247,
+      "g": 117,
+      "b": 42,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 198,
+      "g": 94,
+      "b": 34,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 247,
+      "g": 117,
+      "b": 42,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 198,
+      "g": 94,
+      "b": 34,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1316,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 55,
+      "g": 154,
+      "b": 255,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 44,
+      "g": 123,
+      "b": 204,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 55,
+      "g": 154,
+      "b": 255,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 44,
+      "g": 123,
+      "b": 204,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1317,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 68,
+      "g": 32,
+      "b": 32,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 54,
+      "g": 26,
+      "b": 26,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 68,
+      "g": 32,
+      "b": 32,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 54,
+      "g": 26,
+      "b": 26,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1318,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 208,
+      "b": 98,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 204,
+      "g": 166,
+      "b": 78,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 208,
+      "b": 98,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 204,
+      "g": 166,
+      "b": 78,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1319,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 178,
+      "g": 206,
+      "b": 218,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 142,
+      "g": 165,
+      "b": 174,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 178,
+      "g": 206,
+      "b": 218,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 142,
+      "g": 165,
+      "b": 174,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1320,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 188,
+      "b": 164,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 204,
+      "g": 150,
+      "b": 131,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 188,
+      "b": 164,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 204,
+      "g": 150,
+      "b": 131,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1321,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 64,
+      "g": 77,
+      "b": 145,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 51,
+      "g": 62,
+      "b": 116,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 64,
+      "g": 77,
+      "b": 145,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 51,
+      "g": 62,
+      "b": 116,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1322,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 129,
+      "g": 205,
+      "b": 235,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 103,
+      "g": 164,
+      "b": 188,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 129,
+      "g": 205,
+      "b": 235,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 103,
+      "g": 164,
+      "b": 188,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1323,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 171,
+      "g": 65,
+      "b": 15,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 137,
+      "g": 52,
+      "b": 12,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 171,
+      "g": 65,
+      "b": 15,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 137,
+      "g": 52,
+      "b": 12,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1324,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 252,
+      "g": 170,
+      "b": 95,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 136,
+      "b": 76,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 252,
+      "g": 170,
+      "b": 95,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 136,
+      "b": 76,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1325,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 1,
+      "g": 1,
+      "b": 3,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 1,
+      "g": 1,
+      "b": 2,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 1,
+      "g": 1,
+      "b": 3,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 1,
+      "g": 1,
+      "b": 2,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1326,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 253,
+      "g": 254,
+      "b": 254,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 203,
+      "b": 203,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 253,
+      "g": 254,
+      "b": 254,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 203,
+      "b": 203,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1327,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 210,
+      "g": 227,
+      "b": 241,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 168,
+      "g": 182,
+      "b": 193,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 210,
+      "g": 227,
+      "b": 241,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 168,
+      "g": 182,
+      "b": 193,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1328,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 207,
+      "g": 112,
+      "b": 57,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 166,
+      "g": 90,
+      "b": 46,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 207,
+      "g": 112,
+      "b": 57,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 166,
+      "g": 90,
+      "b": 46,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1329,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 127,
+      "g": 60,
+      "b": 57,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 102,
+      "g": 48,
+      "b": 46,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 127,
+      "g": 60,
+      "b": 57,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 102,
+      "g": 48,
+      "b": 46,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1330,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 69,
+      "g": 27,
+      "b": 43,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 55,
+      "g": 22,
+      "b": 34,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 69,
+      "g": 27,
+      "b": 43,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 55,
+      "g": 22,
+      "b": 34,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1331,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 252,
+      "g": 197,
+      "b": 151,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 158,
+      "b": 121,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 252,
+      "g": 197,
+      "b": 151,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 158,
+      "b": 121,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1332,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 246,
+      "b": 236,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 204,
+      "g": 197,
+      "b": 189,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 246,
+      "b": 236,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 204,
+      "g": 197,
+      "b": 189,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1333,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 251,
+      "g": 226,
+      "b": 42,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 201,
+      "g": 181,
+      "b": 34,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 251,
+      "g": 226,
+      "b": 42,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 201,
+      "g": 181,
+      "b": 34,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1334,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 150,
+      "g": 217,
+      "b": 18,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 120,
+      "g": 174,
+      "b": 14,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 150,
+      "g": 217,
+      "b": 18,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 120,
+      "g": 174,
+      "b": 14,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1335,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 81,
+      "g": 212,
+      "b": 255,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 65,
+      "g": 170,
+      "b": 204,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 81,
+      "g": 212,
+      "b": 255,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 65,
+      "g": 170,
+      "b": 204,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1336,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 194,
+      "g": 245,
+      "b": 255,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 155,
+      "g": 196,
+      "b": 204,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 194,
+      "g": 245,
+      "b": 255,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 155,
+      "g": 196,
+      "b": 204,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1337,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 13,
+      "g": 76,
+      "b": 20,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 10,
+      "g": 61,
+      "b": 16,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 13,
+      "g": 76,
+      "b": 20,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 10,
+      "g": 61,
+      "b": 16,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1338,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 229,
+      "g": 155,
+      "b": 78,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 183,
+      "g": 124,
+      "b": 62,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 229,
+      "g": 155,
+      "b": 78,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 183,
+      "g": 124,
+      "b": 62,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1339,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 189,
+      "g": 105,
+      "b": 34,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 151,
+      "g": 84,
+      "b": 27,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 189,
+      "g": 105,
+      "b": 34,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 151,
+      "g": 84,
+      "b": 27,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1340,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 55,
+      "g": 141,
+      "b": 17,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 44,
+      "g": 113,
+      "b": 14,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 55,
+      "g": 141,
+      "b": 17,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 44,
+      "g": 113,
+      "b": 14,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1341,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 87,
+      "g": 38,
+      "b": 9,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 70,
+      "g": 30,
+      "b": 7,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 87,
+      "g": 38,
+      "b": 9,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 70,
+      "g": 30,
+      "b": 7,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1342,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 252,
+      "g": 143,
+      "b": 5,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 114,
+      "b": 4,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 252,
+      "g": 143,
+      "b": 5,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 114,
+      "b": 4,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1343,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 245,
+      "g": 114,
+      "b": 0,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 196,
+      "g": 91,
+      "b": 0,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 245,
+      "g": 114,
+      "b": 0,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 196,
+      "g": 91,
+      "b": 0,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1344,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 253,
+      "g": 241,
+      "b": 213,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 193,
+      "b": 170,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 253,
+      "g": 241,
+      "b": 213,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 193,
+      "b": 170,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1345,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 250,
+      "g": 191,
+      "b": 64,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 200,
+      "g": 153,
+      "b": 51,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 250,
+      "g": 191,
+      "b": 64,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 200,
+      "g": 153,
+      "b": 51,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1346,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 199,
+      "g": 125,
+      "b": 78,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 159,
+      "g": 100,
+      "b": 62,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 199,
+      "g": 125,
+      "b": 78,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 159,
+      "g": 100,
+      "b": 62,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1347,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 207,
+      "g": 72,
+      "b": 2,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 166,
+      "g": 58,
+      "b": 2,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 207,
+      "g": 72,
+      "b": 2,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 166,
+      "g": 58,
+      "b": 2,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1348,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 253,
+      "g": 191,
+      "b": 50,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 153,
+      "b": 40,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 253,
+      "g": 191,
+      "b": 50,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 153,
+      "b": 40,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1349,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 252,
+      "g": 241,
+      "b": 214,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 193,
+      "b": 171,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 252,
+      "g": 241,
+      "b": 214,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 193,
+      "b": 171,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1350,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 168,
+      "g": 95,
+      "b": 59,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 134,
+      "g": 76,
+      "b": 47,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 168,
+      "g": 95,
+      "b": 59,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 134,
+      "g": 76,
+      "b": 47,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1351,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 119,
+      "g": 62,
+      "b": 40,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 95,
+      "g": 50,
+      "b": 32,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 119,
+      "g": 62,
+      "b": 40,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 95,
+      "g": 50,
+      "b": 32,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1352,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 196,
+      "g": 124,
+      "b": 82,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 157,
+      "g": 99,
+      "b": 66,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 196,
+      "g": 124,
+      "b": 82,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 157,
+      "g": 99,
+      "b": 66,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "ColorData",
+    "colorEnum": 1353,
+    "blockColor": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 212,
+      "b": 214,
+      "a": 255
+    },
+    "blockShadow": {
+      "__type__": "cc.Color",
+      "r": 162,
+      "g": 170,
+      "b": 171,
+      "a": 255
+    },
+    "characterColor": {
+      "__type__": "cc.Color",
+      "r": 202,
+      "g": 212,
+      "b": 214,
+      "a": 255
+    },
+    "characterShadow": {
+      "__type__": "cc.Color",
+      "r": 162,
+      "g": 170,
+      "b": 171,
       "a": 255
     }
   }
