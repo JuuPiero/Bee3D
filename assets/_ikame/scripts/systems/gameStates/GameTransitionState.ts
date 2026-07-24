@@ -1,4 +1,4 @@
-import { EGameState } from "./EGameState";
+import { EGameState } from "../../designPatterns/stateMachine/EGameState";
 import { GameStateBase } from "./GameStateBase";
 
 export class GameTransitionState extends GameStateBase

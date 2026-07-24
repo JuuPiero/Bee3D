@@ -1,8 +1,8 @@
 import { PlayableAdsManager } from "../../base-script/PlayableAds/PlayableAdsManager";
 import { IChangeState } from "../../designPatterns/stateMachine/BaseStateMachine";
+import { EGameState } from "../../designPatterns/stateMachine/EGameState";
 import { ILevelController } from "../../gameplay/controllers/ILevelController";
 import { TimerView } from "../TimerView";
-import { EGameState } from "./EGameState";
 import { GameStateBase } from "./GameStateBase";
 
 

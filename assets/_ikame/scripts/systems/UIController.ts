@@ -8,9 +8,9 @@ import { TransitionScreen } from '../uis/screens/TransitionScreen';
 import { ScreenBase } from '../uis/screens/ScreenBase';
 import { EventDispatcher } from '../designPatterns/observer/EventDispatcher';
 import { EventName } from '../designPatterns/observer/EventName';
-import { EGameState } from './gameStates/EGameState';
 import { PromiseDelay } from '../commons/PromiseDelay';
 import { Stack } from '../commons/Stack';
+import { EGameState } from '../designPatterns/stateMachine/EGameState';
 
 
 
@@ -39,6 +39,9 @@ export class UIController extends Component {
 
     @property(TransitionScreen)
     public transitionScreen: TransitionScreen = null;
+
+    @property(EmptyScreen)
+    public introScreen: EmptyScreen;
 
     private stackStates: Stack<ScreenBase> = new Stack<ScreenBase>();
 
@@ -122,6 +125,9 @@ export class UIController extends Component {
                 break;
             case EGameState.Transition:
                 this.showScreen(this.transitionScreen);
+                break;
+            case EGameState.Intro:
+                this.showScreen(this.introScreen);
                 break;
         }
     }

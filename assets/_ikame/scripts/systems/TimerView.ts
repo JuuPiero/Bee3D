@@ -1,7 +1,6 @@
 import { _decorator, AudioSource, Component, easing, Label, Node, tween, Tween, Vec3 } from 'cc';
 import { EventDispatcher } from '../designPatterns/observer/EventDispatcher';
 import { EventName } from '../designPatterns/observer/EventName';
-import { LevelDataConfig } from '../data/levelData/LevelDataConfig';
 const { ccclass, property } = _decorator;
 
 @ccclass('TimerView')

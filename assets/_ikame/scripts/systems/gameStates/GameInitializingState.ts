@@ -1,9 +1,9 @@
 import { _decorator, Component, game, Game, Node } from 'cc';
 import { GameStateBase } from './GameStateBase';
-import { EGameState } from './EGameState';
 import { IChangeState } from '../../designPatterns/stateMachine/BaseStateMachine';
 import { ILevelController } from '../../gameplay/controllers/ILevelController';
 import { ETrackingEvent, TrackingManager } from '../../base-script/PlayableAds/Tracking/TrackingManager';
+import { EGameState } from '../../designPatterns/stateMachine/EGameState';
 
 const { ccclass, property } = _decorator;
 

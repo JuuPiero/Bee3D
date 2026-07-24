@@ -50,6 +50,8 @@ export interface ILevelController
     getSurroundingPixels(grid : IGridTile , pixel : IPixelBlock, out: IPixelBlock[]): void
 
     getTutorialPosition(): Vec3;
+
+    lerpCameraIntro(delta: number): void;
 }
 
 

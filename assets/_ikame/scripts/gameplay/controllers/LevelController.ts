@@ -26,6 +26,10 @@ const { ccclass, property } = _decorator;
 
 const PIXEL_BLOCK_SIZE = 1;
 const GRAVITY = 32.8;
+
+const CAMERA_START: Vec3 = new Vec3(0, 39.678, 7.93); 
+const CAMERA_END: Vec3 = new Vec3(0, 15.737, 24.305); 
+
 @ccclass('LevelController')
 export class LevelController extends Component implements ILevelController
 {
@@ -807,6 +811,12 @@ export class LevelController extends Component implements ILevelController
     
     public getTutorialPosition(): Vec3 {
         return this.colorQueueControllers.getQueueTopPosition(this.tutQueueIndex);
+    }
+
+    private _cameraWorldPos: Vec3 = new Vec3();
+    public lerpCameraIntro(delta: number): void {
+        Vec3.lerp(this._cameraWorldPos, CAMERA_START, CAMERA_END, delta);
+        this.cameraMain.node.setWorldPosition(this._cameraWorldPos);
     }
 }
 

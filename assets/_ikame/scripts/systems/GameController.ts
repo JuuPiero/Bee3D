@@ -1,5 +1,4 @@
 import { _decorator, Component, Node } from 'cc';
-import { EGameState } from './gameStates/EGameState';
 import { GameStateMachine } from './gameStates/GameStateMachine';
 import { GameInitializingState } from './gameStates/GameInitializingState';
 import { GameStartState } from './gameStates/GameStartState';
@@ -16,6 +15,8 @@ import { EventDispatcher } from '../designPatterns/observer/EventDispatcher';
 import { ETrackingEvent, TrackingManager } from '../base-script/PlayableAds/Tracking/TrackingManager';
 import { TimerView } from './TimerView';
 import { LevelController } from '../gameplay/controllers/LevelController';
+import { GameIntroState } from './gameStates/GameIntroState';
+import { EGameState } from '../designPatterns/stateMachine/EGameState';
 
 const { ccclass, property } = _decorator;
 
@@ -32,6 +33,7 @@ export class GameController extends Component implements IStateHolder<EGameState
     gameOverState: GameOverState;
     winGameState: WinState;
     transitionState: GameTransitionState;
+    introState: GameIntroState;
 
     @property(LevelController)
     public levelController: LevelController;
@@ -54,6 +56,7 @@ export class GameController extends Component implements IStateHolder<EGameState
         this.gameOverState = new GameOverState(EGameState.Lose, this.stateMachine);
         this.winGameState = new WinState(EGameState.Win, this.stateMachine);
         this.transitionState = new GameTransitionState(EGameState.Transition, this.stateMachine);
+        this.introState = new GameIntroState(EGameState.Intro, this.stateMachine, this.levelController);
         const map = new Map<EGameState, GameStateBase>();
         map.set(EGameState.Initializing, this.initializingState);
         map.set(EGameState.Idle, this.idleState);
@@ -63,6 +66,7 @@ export class GameController extends Component implements IStateHolder<EGameState
         map.set(EGameState.Lose, this.gameOverState);
         map.set(EGameState.Win, this.winGameState);
         map.set(EGameState.Transition, this.transitionState);
+        map.set(EGameState.Intro, this.introState);
         this.stateMachine.init(EGameState.Initializing, map);
     }
 

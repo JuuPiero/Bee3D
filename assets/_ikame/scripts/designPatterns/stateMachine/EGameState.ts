@@ -8,5 +8,6 @@ export enum EGameState
     Paused,
     Win,
     Transition,
-    Lose
+    Lose,
+    Intro
 }
