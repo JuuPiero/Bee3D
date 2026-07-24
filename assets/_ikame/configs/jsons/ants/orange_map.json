@@ -98,7 +98,7 @@
           {
             "id": 11,
             "ammo": 52,
-            "material": 1349,
+            "material": 1344,
             "isLock": false,
             "isIced": false,
             "iceShardCount": 0
@@ -106,7 +106,7 @@
           {
             "id": 12,
             "ammo": 50,
-            "material": 1349,
+            "material": 1344,
             "isLock": false,
             "isIced": false,
             "iceShardCount": 0
@@ -246,7 +246,7 @@
           {
             "id": 29,
             "ammo": 1,
-            "material": 1353,
+            "material": 1344,
             "isLock": false,
             "isIced": false,
             "iceShardCount": 0
@@ -1976,7 +1976,7 @@
       {
         "x": 46,
         "y": 6,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -2326,7 +2326,7 @@
       {
         "x": 45,
         "y": 7,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -2690,7 +2690,7 @@
       {
         "x": 44,
         "y": 8,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -3054,7 +3054,7 @@
       {
         "x": 43,
         "y": 9,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -3418,7 +3418,7 @@
       {
         "x": 42,
         "y": 10,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -3782,7 +3782,7 @@
       {
         "x": 41,
         "y": 11,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -4510,7 +4510,7 @@
       {
         "x": 40,
         "y": 13,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -4867,7 +4867,7 @@
       {
         "x": 39,
         "y": 14,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -5224,7 +5224,7 @@
       {
         "x": 38,
         "y": 15,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -5371,21 +5371,21 @@
       {
         "x": 6,
         "y": 16,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 7,
         "y": 16,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 8,
         "y": 16,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -5588,7 +5588,7 @@
       {
         "x": 37,
         "y": 16,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -5959,7 +5959,7 @@
       {
         "x": 36,
         "y": 17,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -6337,7 +6337,7 @@
       {
         "x": 35,
         "y": 18,
-        "material": 1353,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -7429,14 +7429,14 @@
       {
         "x": 23,
         "y": 21,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 24,
         "y": 21,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -7835,14 +7835,14 @@
       {
         "x": 24,
         "y": 22,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 25,
         "y": 22,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -8248,7 +8248,7 @@
       {
         "x": 26,
         "y": 23,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -9074,14 +9074,14 @@
       {
         "x": 27,
         "y": 25,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 28,
         "y": 25,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -9487,14 +9487,14 @@
       {
         "x": 27,
         "y": 26,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 28,
         "y": 26,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -9508,7 +9508,7 @@
       {
         "x": 30,
         "y": 26,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -9907,21 +9907,21 @@
       {
         "x": 28,
         "y": 27,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 29,
         "y": 27,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 30,
         "y": 27,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -9935,7 +9935,7 @@
       {
         "x": 32,
         "y": 27,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -10320,21 +10320,21 @@
       {
         "x": 28,
         "y": 28,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 29,
         "y": 28,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 30,
         "y": 28,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -10348,7 +10348,7 @@
       {
         "x": 32,
         "y": 28,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -10733,42 +10733,42 @@
       {
         "x": 28,
         "y": 29,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 29,
         "y": 29,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 30,
         "y": 29,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 31,
         "y": 29,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 32,
         "y": 29,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 33,
         "y": 29,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -11146,70 +11146,70 @@
       {
         "x": 28,
         "y": 30,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 29,
         "y": 30,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 30,
         "y": 30,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 31,
         "y": 30,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 32,
         "y": 30,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 33,
         "y": 30,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 34,
         "y": 30,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 35,
         "y": 30,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 36,
         "y": 30,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 37,
         "y": 30,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -11552,35 +11552,35 @@
       {
         "x": 27,
         "y": 31,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 28,
         "y": 31,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 29,
         "y": 31,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 30,
         "y": 31,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 31,
         "y": 31,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -11615,35 +11615,35 @@
       {
         "x": 36,
         "y": 31,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 37,
         "y": 31,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 38,
         "y": 31,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 39,
         "y": 31,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 40,
         "y": 31,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -11965,21 +11965,21 @@
       {
         "x": 27,
         "y": 32,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 28,
         "y": 32,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 29,
         "y": 32,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -12042,28 +12042,28 @@
       {
         "x": 38,
         "y": 32,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 39,
         "y": 32,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 40,
         "y": 32,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 41,
         "y": 32,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -12371,14 +12371,14 @@
       {
         "x": 26,
         "y": 33,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 27,
         "y": 33,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -12476,14 +12476,14 @@
       {
         "x": 41,
         "y": 33,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 42,
         "y": 33,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -12903,7 +12903,7 @@
       {
         "x": 43,
         "y": 34,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -13316,14 +13316,14 @@
       {
         "x": 43,
         "y": 35,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 44,
         "y": 35,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -13736,14 +13736,14 @@
       {
         "x": 44,
         "y": 36,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 45,
         "y": 36,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -14156,14 +14156,14 @@
       {
         "x": 45,
         "y": 37,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 46,
         "y": 37,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -14569,7 +14569,7 @@
       {
         "x": 46,
         "y": 38,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -14800,7 +14800,7 @@
       {
         "x": 22,
         "y": 39,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -14968,7 +14968,7 @@
       {
         "x": 46,
         "y": 39,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -15192,7 +15192,7 @@
       {
         "x": 21,
         "y": 40,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -15374,7 +15374,7 @@
       {
         "x": 47,
         "y": 40,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -15584,7 +15584,7 @@
       {
         "x": 20,
         "y": 41,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -15773,7 +15773,7 @@
       {
         "x": 47,
         "y": 41,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -16732,7 +16732,7 @@
       {
         "x": 18,
         "y": 44,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -17103,7 +17103,7 @@
       {
         "x": 17,
         "y": 45,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -18566,14 +18566,14 @@
       {
         "x": 13,
         "y": 49,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 14,
         "y": 49,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -18916,7 +18916,7 @@
       {
         "x": 12,
         "y": 50,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -19049,7 +19049,7 @@
       {
         "x": 31,
         "y": 50,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -19259,7 +19259,7 @@
       {
         "x": 11,
         "y": 51,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -19595,14 +19595,14 @@
       {
         "x": 10,
         "y": 52,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 11,
         "y": 52,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -19924,14 +19924,14 @@
       {
         "x": 9,
         "y": 53,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 10,
         "y": 53,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -20246,21 +20246,21 @@
       {
         "x": 8,
         "y": 54,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 9,
         "y": 54,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 10,
         "y": 54,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -20568,14 +20568,14 @@
       {
         "x": 8,
         "y": 55,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 9,
         "y": 55,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -20869,14 +20869,14 @@
       {
         "x": 6,
         "y": 56,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
       {
         "x": 7,
         "y": 56,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
@@ -21177,7 +21177,7 @@
       {
         "x": 6,
         "y": 57,
-        "material": 1349,
+        "material": 1344,
         "areaX": 1,
         "areaY": 1
       },
