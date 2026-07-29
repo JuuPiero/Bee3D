@@ -2873,7 +2873,7 @@
     "node": {
       "__id__": 78
     },
-    "_enabled": true,
+    "_enabled": false,
     "__prefab": null,
     "_materials": [],
     "_visFlags": 0,
@@ -2968,7 +2968,7 @@
     "node": {
       "__id__": 81
     },
-    "_enabled": true,
+    "_enabled": false,
     "__prefab": null,
     "_materials": [],
     "_visFlags": 0,
