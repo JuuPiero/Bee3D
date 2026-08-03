@@ -2832,7 +2832,7 @@
       "__type__": "cc.Vec3",
       "x": -6.853,
       "y": 0,
-      "z": -14.787
+      "z": -14.935
     },
     "_lrot": {
       "__type__": "cc.Quat",
@@ -4690,11 +4690,11 @@
     "debugDrawMapBorder": true,
     "levelJsonAssets": [
       {
-        "__uuid__": "1302978d-8e47-4b98-b0d9-0402f8e9b6a6",
+        "__uuid__": "d88791c9-1c04-454c-8a02-6e8cfd0411eb",
         "__expectedType__": "cc.JsonAsset"
       }
     ],
-    "tutQueueIndex": 4,
+    "tutQueueIndex": 5,
     "bulletPool": {
       "__id__": 180
     },
