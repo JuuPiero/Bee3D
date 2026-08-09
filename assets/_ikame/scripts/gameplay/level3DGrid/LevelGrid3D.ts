@@ -1,8 +1,9 @@
-import { _decorator, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, JsonAsset, Node, Quat, Vec3 } from 'cc';
+import { _decorator, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, EventKeyboard, Input, input, instantiate, JsonAsset, KeyCode, MeshRenderer, Node, Prefab, Quat, Vec3 } from 'cc';
 import { LevelData3D } from '../../configData/LevelData3D';
 import { GridTile3D } from './GridTile3D';
 import { IGridTile3D } from './IGridTile3D';
-import { GridMapMesh3D, ICubePlacement } from './GridMapMesh3D';
+import { ColorConfig } from '../../configData/ColorConfig';
+import { EColor } from '../../enums/EColor';
 import { ScreenProjector } from '../../cube-occlusion/core/ScreenProjector';
 import { ProjectedTriangle } from './ProjectedTriangle';
 const { ccclass, property } = _decorator;
@@ -13,8 +14,11 @@ export class LevelGrid3D extends Component
     @property({ type: Node, group: 'Cube Map' })
     public cubeBlockHolder: Node = null;
 
-    @property({ type: GridMapMesh3D, group: 'Cube Map' })
-    public gridMapMesh: GridMapMesh3D = null;
+    @property({ type: Prefab, group: 'Cube Map' })
+    public cubePrefab: Prefab = null;
+
+    @property({ type: ColorConfig, group: 'Cube Map' })
+    public colorData: ColorConfig = null;
 
     @property({ type: [ JsonAsset ], group: 'LevelData' })
     public levelJsonAssets: JsonAsset[] = [];
@@ -53,13 +57,27 @@ export class LevelGrid3D extends Component
     @property({ type: CCInteger, min: 0, group: 'Reachability' })
     public reachabilityTurnCap: number = 2;
 
+    // Debug-only: press number keys 0-9 to call findTargetTile(colorID) and remove it, like a
+    // bee pulling that cube out, so the peel-order logic can be sanity-checked directly in the
+    // running scene.
+    @property({ type: CCBoolean, group: 'Debug' })
+    public debugFindTargetOnNumberKeys: boolean = true;
+
+    @property({ type: CCInteger, group: 'Debug' })
+    public debugRemoveID: number;
+
     public levelData: LevelData3D = null;
 
     private _gridMap = new Map<string, GridTile3D>();
 
-    // Every tile currently holding a cube. Hiding by topology (all 6 neighbours filled) is
-    // handled entirely by GridMapMesh3D itself, event-driven off removeCube() - nothing here
-    // needs to poll it every frame. This list only feeds the debug visibility computation.
+    // One prefab instance per spawned cube, keyed the same way as _gridMap. Simple and correct
+    // over clever: no merged mesh, no enclosure culling - every cube is a real node, shown or
+    // destroyed directly.
+    private _cubeNodes = new Map<string, Node>();
+    private _cubeRenderers = new Map<string, MeshRenderer>();
+
+    // Every tile currently holding a cube. This list feeds the debug visibility computation
+    // and the camera-occlusion show/hide below.
     private _solidTiles: GridTile3D[] = [];
 
     private readonly _occlusionHalfExtents = new Vec3();
@@ -69,6 +87,12 @@ export class LevelGrid3D extends Component
     // Reused by findTargetTile()'s camera-depth ranking, to avoid a per-candidate allocation.
     private readonly _targetCameraForwardScratch = new Vec3();
     private readonly _targetCameraToTileScratch = new Vec3();
+
+    // Digit key -> colorID, index-aligned (KEY_DIGIT_0 -> colorID 0, etc.).
+    private static readonly DEBUG_COLOR_KEYS: readonly number[] = [
+        KeyCode.DIGIT_0, KeyCode.DIGIT_1, KeyCode.DIGIT_2, KeyCode.DIGIT_3, KeyCode.DIGIT_4,
+        KeyCode.DIGIT_5, KeyCode.DIGIT_6, KeyCode.DIGIT_7, KeyCode.DIGIT_8, KeyCode.DIGIT_9,
+    ];
 
     // Reused every lateUpdate(): every solid tile's occlusion box projected into up to 12
     // triangles each, concatenated into one shared array. _tileTriangleStart/_tileTriangleCount
@@ -83,6 +107,33 @@ export class LevelGrid3D extends Component
     {
         this.spawnLevel();
         this.camera?.camera?.initGeometryRenderer();
+
+        input.on(Input.EventType.KEY_DOWN, this.onDebugKeyDown, this);
+    }
+
+    onDestroy(): void
+    {
+        input.off(Input.EventType.KEY_DOWN, this.onDebugKeyDown, this);
+    }
+
+    /** Debug: number keys 0-9 call findTargetTile(colorID) and remove it, like a bee pulling that cube out. */
+    private onDebugKeyDown(event: EventKeyboard): void
+    {
+        if (!this.debugFindTargetOnNumberKeys || event.keyCode !== KeyCode.SPACE) return;
+
+        const colorID = this.debugRemoveID
+        if (colorID === -1) return;
+
+        const target = this.findTargetTile(colorID);
+        if (!target)
+        {
+            console.log(`[LevelGrid3D] findTargetTile(${colorID}): no reachable+visible cube found.`);
+            return;
+        }
+
+        const x = target.getCoordX(), y = target.getCoordY(), z = target.getCoordZ();
+        const removed = this.removeCube(x, y, z);
+        console.log(`[LevelGrid3D] findTargetTile(${colorID}) -> (${x}, ${y}, ${z}), removeCube: ${removed}`);
     }
 
     public spawnLevel(): void
@@ -131,7 +182,12 @@ export class LevelGrid3D extends Component
         );
         GridTile3D.configureOcclusion(this.occlusionBoxSize, this.occlusionSampleGridSize, this.occlusionSampleMargin);
 
-        const placements: ICubePlacement[] = [];
+        if (!this.cubePrefab)
+        {
+            console.error('[LevelGrid3D] cubePrefab is not assigned.');
+            return;
+        }
+
         let spawnedCount = 0;
         for (let i = 0; i < this.levelData.cubes.length; i++)
         {
@@ -145,14 +201,7 @@ export class LevelGrid3D extends Component
             }
 
             gridTile.setCubeData(cubeData.color, cubeData.health);
-
-            placements.push({
-                x: cubeData.x,
-                y: cubeData.y,
-                z: cubeData.z,
-                colorID: cubeData.color,
-                localPos: gridTile.getLocalPos(),
-            });
+            this.spawnCubeNode(key, cubeData.color, gridTile.getLocalPos());
 
             spawnedCount++;
         }
@@ -168,39 +217,80 @@ export class LevelGrid3D extends Component
             this._tileTriangleCount.push(0);
         }
 
-        if (!this.gridMapMesh)
-        {
-            console.error('[LevelGrid3D] gridMapMesh is not assigned.');
-            return;
-        }
-
-        this.gridMapMesh.build(placements, gridSize);
-
         this.computeReachabilityForSolidTiles();
 
-        const stats = this.gridMapMesh.getStats();
-        console.log(`[LevelGrid3D] Grid ${gridSize.x}x${gridSize.y}x${gridSize.z}, tiles: ${this._gridMap.size}, merged mesh: ${stats.drawn}/${stats.cubes} cubes drawn across ${stats.chunks} chunk(s), ${stats.triangles} tris (spawned ${spawnedCount}/${this.levelData.cubes.length})`);
+        console.log(`[LevelGrid3D] Grid ${gridSize.x}x${gridSize.y}x${gridSize.z}, tiles: ${this._gridMap.size}, spawned ${spawnedCount}/${this.levelData.cubes.length} cube nodes`);
     }
 
-    /**
-     * Removes a cube from the merged mesh. Neighbours that the removal exposes are revealed
-     * automatically.
-     */
+    /** Instantiates one cube prefab at `localPos`, colors it, and caches it under `key`. */
+    private spawnCubeNode(key: string, colorID: number, localPos: Vec3): void
+    {
+        const node = instantiate(this.cubePrefab);
+        node.setParent(this.cubeBlockHolder);
+        node.setPosition(localPos);
+
+        const meshRenderer = node.getComponent(MeshRenderer);
+        const blockColors = this.colorData ? this.colorData.getBlockColors(colorID as EColor) : null;
+        if (meshRenderer && blockColors)
+        {
+            this.scheduleOnce( () => 
+            {
+                const colorBytes = new Uint8Array([blockColors.color.r, blockColors.color.g, blockColors.color.b, blockColors.color.a]);
+                const shadowBytes = new Uint8Array([blockColors.shadow.r, blockColors.shadow.g, blockColors.shadow.b, blockColors.shadow.a]);
+                meshRenderer.setInstancedAttribute('a_instColor', colorBytes);
+                meshRenderer.setInstancedAttribute('a_instColorShadow', shadowBytes);
+            }, 0.2)
+        }
+
+        this._cubeNodes.set(key, node);
+        if (meshRenderer) this._cubeRenderers.set(key, meshRenderer);
+    }
+
+    /** Destroys the cube's node at (x, y, z) and clears its tile data. */
     public removeCube(x: number, y: number, z: number): boolean
     {
-        if (!this.gridMapMesh) return false;
+        const key = LevelData3D.gridKey(x, y, z);
+        const tile = this._gridMap.get(key);
+        const node = this._cubeNodes.get(key);
 
-        const tile = this._gridMap.get(LevelData3D.gridKey(x, y, z));
+        if (!node)
+        {
+            // GridTile3D and _cubeNodes are two independent data stores keyed the same way -
+            // if the tile thinks it holds a cube but there's no node for it, they've desynced.
+            // Surface it loudly instead of returning a silent false.
+            if (tile?.isContainBlock())
+            {
+                console.warn(`[LevelGrid3D] removeCube(${x}, ${y}, ${z}): GridTile3D reports a block here but no cube node was found - data is desynced.`);
+            }
+            return false;
+        }
+
+        node.destroy();
+        this._cubeNodes.delete(key);
+        this._cubeRenderers.delete(key);
+
         tile?.clearCubeData();
 
-        const removed = this.gridMapMesh.removeCube(x, y, z);
+        // Drop the emptied tile from _solidTiles (and its index-aligned triangle-bookkeeping
+        // slots) - otherwise lateUpdate() keeps projecting an occlusion box for a cell that no
+        // longer holds a cube, permanently blocking line-of-sight to whatever is behind it.
+        if (tile)
+        {
+            const index = this._solidTiles.indexOf(tile);
+            if (index !== -1)
+            {
+                this._solidTiles.splice(index, 1);
+                this._tileTriangleStart.splice(index, 1);
+                this._tileTriangleCount.splice(index, 1);
+            }
+        }
 
         // Removing a cube can open a corridor for its neighbours, so recompute reachability
         // for every remaining solid tile - the same full-rebuild approach _solidTiles itself
         // already uses, and cheap enough at these grid sizes.
-        if (removed) this.computeReachabilityForSolidTiles();
+        this.computeReachabilityForSolidTiles();
 
-        return removed;
+        return true;
     }
 
     private computeReachabilityForSolidTiles(): void
@@ -256,7 +346,14 @@ export class LevelGrid3D extends Component
 
             tile.computeVisibility(this.camera, this._screenProjector, this._triangles, excludeStart, excludeEnd);
 
-            if (debugRenderer && this.isTileVisible(tile))
+            // Feed the camera-visibility result straight into the cube's own MeshRenderer -
+            // no merged mesh, no enclosure culling, just toggle whether this node draws.
+            const visible = this.isTileVisible(tile);
+            const key = LevelData3D.gridKey(tile.getCoordX(), tile.getCoordY(), tile.getCoordZ());
+            const renderer = this._cubeRenderers.get(key);
+            if (renderer) renderer.enabled = visible;
+
+            if (debugRenderer && visible)
             {
                 debugRenderer.addCross(tile.getWorldPos(), this.debugPointRadius,  Color.WHITE, true);
             }
@@ -270,7 +367,9 @@ export class LevelGrid3D extends Component
         this._tileTriangleStart.length = 0;
         this._tileTriangleCount.length = 0;
 
-        this.gridMapMesh?.clear();
+        for (const node of this._cubeNodes.values()) node.destroy();
+        this._cubeNodes.clear();
+        this._cubeRenderers.clear();
 
         this._gridMap.clear();
     }

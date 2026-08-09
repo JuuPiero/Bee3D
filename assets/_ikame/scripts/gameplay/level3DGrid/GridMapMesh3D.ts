@@ -86,7 +86,6 @@ export class GridMapMesh3D extends Component
     private _cubeCount = 0;
     private _keyStrideY = 1;
     private _keyStrideX = 1;
-    private _hasDirtyChunk = false;
 
     public build (cubes: ICubePlacement[], gridSize: Vec3): boolean
     {
@@ -136,9 +135,10 @@ export class GridMapMesh3D extends Component
     }
 
     /**
-     * Hides a cube and reveals any neighbour that its removal just exposed. The GPU upload
-     * is deferred to the end of the frame, so removing many cubes at once costs one upload
-     * per affected chunk rather than one per cube.
+     * Marks a cube removed. The actual index-buffer rebuild happens unconditionally every
+     * frame in lateUpdate() (see _rebuildAllChunks()) - no dirty-flag or incremental-patch
+     * bookkeeping to get out of sync, at the cost of redoing every chunk's index buffer every
+     * frame rather than only on a real change.
      */
     public removeCube (x: number, y: number, z: number): boolean
     {
@@ -146,15 +146,11 @@ export class GridMapMesh3D extends Component
         if (ordinal === undefined || this._removed[ordinal]) return false;
 
         this._removed[ordinal] = 1;
-        this._hideCube(ordinal);
 
-        for (const offset of NEIGHBOUR_OFFSETS)
-        {
-            const neighbour = this._ordinalByKey.get(this._key(x + offset[0], y + offset[1], z + offset[2]));
-            if (neighbour === undefined || this._removed[neighbour]) continue;
-            if (this._slotOfCube[neighbour] >= 0) continue;
-            this._showCube(neighbour);
-        }
+        // Also rebuild immediately, same as lateUpdate() would, so a caller that reads mesh
+        // state (getStats(), isCubeVisible()) right after removeCube() sees it already applied
+        // instead of having to wait for the next frame.
+        this._rebuildAllChunks();
 
         return true;
     }
@@ -243,22 +239,65 @@ export class GridMapMesh3D extends Component
         this._slotOfCube = this._cubeOfSlot = null;
         this._removed = null;
         this._cubeCount = 0;
-        this._hasDirtyChunk = false;
     }
 
+    /**
+     * Unconditionally rebuilds and re-uploads every chunk's index buffer every frame, from the
+     * current _removed/_isEnclosed data - the same "regenerate from source data" approach
+     * spawnLevel()/build() use, just repeated continuously instead of once. No dirty flag, no
+     * incremental patch bookkeeping: whatever GridTile3D/_removed says right now is exactly
+     * what gets drawn next frame, guaranteed.
+     */
     protected lateUpdate (): void
     {
-        if (!this._hasDirtyChunk || !this._mesh || !this._builder) return;
+        this._rebuildAllChunks();
+    }
+
+    /**
+     * Fully recomputes every chunk's packed draw range from scratch - every cube is
+     * re-evaluated against the current _removed/_isEnclosed state and either given the next
+     * contiguous slot or left out - then uploads the resulting index buffer to the GPU.
+     */
+    private _rebuildAllChunks (): void
+    {
+        if (!this._mesh || !this._builder) return;
 
         const chunks = this._builder.chunks;
-        for (let i = 0; i < chunks.length; i++)
-        {
-            if (!chunks[i].dirty) continue;
-            this._mesh.updateSubMesh(i, buildIndexOnlyGeometry(chunks[i], this._builder.indicesPerCube));
-            chunks[i].dirty = false;
-        }
+        const cubesPerChunk = this._builder.cubesPerChunk;
 
-        this._hasDirtyChunk = false;
+        for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++)
+        {
+            const chunk = chunks[chunkIndex];
+            const slotBase = chunkIndex * cubesPerChunk;
+
+            let liveCount = 0;
+            for (let localOrdinal = 0; localOrdinal < chunk.cubeCount; localOrdinal++)
+            {
+                const ordinal = chunkIndex * cubesPerChunk + localOrdinal;
+
+                if (this._removed[ordinal] || this._isEnclosed(ordinal))
+                {
+                    this._slotOfCube[ordinal] = -1;
+                    continue;
+                }
+
+                this._builder.writeIndices(chunk, localOrdinal, liveCount);
+                this._cubeOfSlot[slotBase + liveCount] = ordinal;
+                this._slotOfCube[ordinal] = liveCount;
+                liveCount++;
+            }
+
+            // Slots beyond the new liveCount are no longer live - drop their stale cube mapping
+            // so isCubeVisible()/removeRandomVisibleCube() never see one that isn't drawn.
+            for (let slot = liveCount; slot < cubesPerChunk; slot++)
+            {
+                this._cubeOfSlot[slotBase + slot] = -1;
+            }
+
+            chunk.liveCount = liveCount;
+
+            this._mesh.updateSubMesh(chunkIndex, buildIndexOnlyGeometry(chunk, this._builder.indicesPerCube));
+        }
     }
 
     protected onDestroy (): void
@@ -306,10 +345,6 @@ export class GridMapMesh3D extends Component
             if (this._isEnclosed(ordinal)) continue;
             this._showCube(ordinal);
         }
-
-        // The initial fill is the mesh's creation geometry, not an incremental edit.
-        for (const chunk of this._builder.chunks) chunk.dirty = false;
-        this._hasDirtyChunk = false;
     }
 
     private _isEnclosed (ordinal: number): boolean
@@ -340,8 +375,6 @@ export class GridMapMesh3D extends Component
         this._cubeOfSlot[chunkIndex * cubesPerChunk + slot] = ordinal;
         this._slotOfCube[ordinal] = slot;
         chunk.liveCount = slot + 1;
-        chunk.dirty = true;
-        this._hasDirtyChunk = true;
     }
 
     /** Frees a slot by moving the last live cube into it, keeping the draw range contiguous. */
@@ -367,8 +400,6 @@ export class GridMapMesh3D extends Component
         this._cubeOfSlot[slotBase + lastSlot] = -1;
         this._slotOfCube[ordinal] = -1;
         chunk.liveCount = lastSlot;
-        chunk.dirty = true;
-        this._hasDirtyChunk = true;
     }
 
     private _createMesh (): boolean

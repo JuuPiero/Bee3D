@@ -22,13 +22,10 @@
     "_components": [
       {
         "__id__": 2
-      },
-      {
-        "__id__": 4
       }
     ],
     "_prefab": {
-      "__id__": 7
+      "__id__": 5
     },
     "_lpos": {
       "__type__": "cc.Vec3",
@@ -60,7 +57,7 @@
     "_id": ""
   },
   {
-    "__type__": "c8915imbW9JyIRyzJqaq2gU",
+    "__type__": "cc.MeshRenderer",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
@@ -71,39 +68,6 @@
     "__prefab": {
       "__id__": 3
     },
-    "colorData": {
-      "__uuid__": "7842e53d-33a4-4b97-b73b-0f157ca26cec",
-      "__expectedType__": "1499b0p04JIm57eqyewzwKE"
-    },
-    "meshRenderer": {
-      "__id__": 4
-    },
-    "colorID": 0,
-    "debugDraw": true,
-    "coordX": 0,
-    "coordZ": 0,
-    "particleNode": null,
-    "cubeRoot": null,
-    "particleRoot": null,
-    "tweenShake": null,
-    "_id": ""
-  },
-  {
-    "__type__": "cc.CompPrefabInfo",
-    "fileId": "fdEjtCR3pJ/rmOwGQB5tSO"
-  },
-  {
-    "__type__": "cc.MeshRenderer",
-    "_name": "",
-    "_objFlags": 0,
-    "__editorExtras__": {},
-    "node": {
-      "__id__": 1
-    },
-    "_enabled": true,
-    "__prefab": {
-      "__id__": 5
-    },
     "_materials": [
       {
         "__uuid__": "b0eaf903-17aa-4b85-94b8-04b090fb9d59",
@@ -112,14 +76,14 @@
     ],
     "_visFlags": 0,
     "bakeSettings": {
-      "__id__": 6
+      "__id__": 4
     },
     "_mesh": {
       "__uuid__": "c350b087-9503-48d2-a537-c1ca9d4ade37@2f6d1",
       "__expectedType__": "cc.Mesh"
     },
     "_shadowCastingMode": 0,
-    "_shadowReceivingMode": 1,
+    "_shadowReceivingMode": 0,
     "_shadowBias": 0,
     "_shadowNormalBias": 0,
     "_reflectionProbeId": -1,
