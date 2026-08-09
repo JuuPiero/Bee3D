@@ -12,6 +12,8 @@ const _directionScratch = new Vec3();
 const _rotatedVectorScratch = new Vec3();
 const _localCornerScratch = new Vec3();
 const _cornerScratch = new Vec3();
+const _reachCameraDirScratch = new Vec3();
+const _reachCandidateWorldScratch = new Vec3();
 const _screenCorners: Vec3[] = Array.from({ length: 8 }, () => new Vec3());
 const _cornerInFront: boolean[] = new Array(8).fill(false);
 
@@ -63,6 +65,7 @@ export class GridTile3D implements IGridTile3D
     private _rightLinkedTile: IGridTile3D = null;
 
     private readonly _visibilityResult = new VisibilityResult();
+    private _isReachable: boolean = false;
 
     private _parentWorldMatrix = new Mat4();
     private _parentNode: Node;
@@ -373,6 +376,155 @@ export class GridTile3D implements IGridTile3D
 
         result.recalculate();
         return result;
+    }
+
+    isReachable(): boolean
+    {
+        return this._isReachable;
+    }
+
+    /**
+     * Recomputes whether a bee has a clear way in and out of this tile: a straight corridor
+     * out to the pile edge along a camera-facing face, or - if every straight corridor is
+     * blocked - a greedy L-shaped route that turns around blockers (up to `turnCap` turns)
+     * until it clears the pile. Both checks are pure occupancy scans over the linked-tile
+     * chain, so a chosen path never crosses another cube. `extractionRadius` and `cellSize`
+     * are world units; internally everything is converted to, and walked in, integer cells.
+     */
+    computeReachability(camera: Camera, extractionRadius: number, cellSize: number, turnCap: number): boolean
+    {
+        this._isReachable = false;
+
+        const faceSamplesByFace = GridTile3D._faceSamplesByFace;
+        if (!this.isContainBlock() || !faceSamplesByFace || cellSize <= 0) return this._isReachable;
+
+        const rotation = this.getWorldRotation();
+
+        // ceil(R / cellSize) + 2 cells, per the straight-corridor spec.
+        const cellsForR = extractionRadius / cellSize;
+        const straightHops = Math.ceil(cellsForR) + 2;
+        // R + cellSize expressed in cells (cellSize / cellSize = 1).
+        const exitThresholdCells = cellsForR + 1;
+        // Generous backstop against any pathological greedy loop.
+        const hardStepCap = straightHops * 3;
+
+        for (const entry of GridTile3D.FACE_NEIGHBORS)
+        {
+            const neighbor = entry.getNeighbor(this);
+            if (neighbor && neighbor.isContainBlock()) continue; // sealed face, not a candidate exit
+
+            const faceSamples = faceSamplesByFace.get(entry.face);
+            if (!faceSamples || !this.isFaceFacingCamera(camera, faceSamples.normal, rotation)) continue;
+
+            if (this.isStraightPathClear(entry, straightHops) ||
+                this.isLRoutePathClear(camera, rotation, entry, exitThresholdCells, turnCap, hardStepCap))
+            {
+                this._isReachable = true;
+                break;
+            }
+        }
+
+        return this._isReachable;
+    }
+
+    /** Walks the linked-tile chain in `entry`'s direction; true if every cell out to `hops` is empty. */
+    private isStraightPathClear(entry: (typeof GridTile3D.FACE_NEIGHBORS)[number], hops: number): boolean
+    {
+        let current: GridTile3D = this;
+        for (let i = 0; i < hops; i++)
+        {
+            const next = entry.getNeighbor(current) as GridTile3D | null;
+            if (!next) return true; // exited the pile/grid
+            if (next.isContainBlock()) return false; // blocked
+            current = next;
+        }
+        return true;
+    }
+
+    /**
+     * Greedy L-route: walk out through empty cells starting in `primaryEntry`'s direction;
+     * when blocked, 90°-turn toward whichever perpendicular side scores highest on
+     * "clearest outward" + "camera-ward", up to `turnCap` turns, until the path exits the
+     * pile (radial distance from this tile ≥ `exitThresholdCells`).
+     */
+    private isLRoutePathClear(camera: Camera, rotation: Readonly<Quat>, primaryEntry: (typeof GridTile3D.FACE_NEIGHBORS)[number], exitThresholdCells: number, turnCap: number, hardStepCap: number): boolean
+    {
+        const faceSamplesByFace = GridTile3D._faceSamplesByFace;
+        const primaryNormal = faceSamplesByFace.get(primaryEntry.face)!.normal;
+
+        // Every face whose local normal is perpendicular to the primary direction - i.e. every
+        // face except the primary one and its opposite.
+        const perpendicularEntries = GridTile3D.FACE_NEIGHBORS.filter(e =>
+        {
+            const normal = faceSamplesByFace.get(e.face)?.normal;
+            return normal && Math.abs(Vec3.dot(normal, primaryNormal)) < FACING_EPSILON;
+        });
+
+        const originX = this.getCoordX(), originY = this.getCoordY(), originZ = this.getCoordZ();
+
+        // Camera-ward direction, from this tile toward the camera (world space) - reused for
+        // every turn decision below.
+        const originWorldPos = this.getWorldPos();
+        _reachCameraDirScratch.set(
+            camera.node.worldPosition.x - originWorldPos.x,
+            camera.node.worldPosition.y - originWorldPos.y,
+            camera.node.worldPosition.z - originWorldPos.z,
+        );
+        _reachCameraDirScratch.normalize();
+
+        let currentEntry = primaryEntry;
+        let current: GridTile3D = this;
+        let turnsUsed = 0;
+
+        for (let step = 0; step < hardStepCap; step++)
+        {
+            const next = currentEntry.getNeighbor(current) as GridTile3D | null;
+
+            if (!next) return true; // exited the pile/grid
+
+            if (!next.isContainBlock())
+            {
+                current = next;
+                const dx = current.getCoordX() - originX;
+                const dy = current.getCoordY() - originY;
+                const dz = current.getCoordZ() - originZ;
+                if (Math.hypot(dx, dy, dz) >= exitThresholdCells) return true;
+                continue;
+            }
+
+            // Blocked: turn toward the clearest-outward + camera-ward perpendicular side.
+            if (turnsUsed >= turnCap) return false;
+
+            let bestEntry: (typeof GridTile3D.FACE_NEIGHBORS)[number] | null = null;
+            let bestScore = -Infinity;
+            for (const candidate of perpendicularEntries)
+            {
+                const candidateNext = candidate.getNeighbor(current) as GridTile3D | null;
+                if (candidateNext && candidateNext.isContainBlock()) continue; // immediately blocked too
+
+                const localNormal = faceSamplesByFace.get(candidate.face)!.normal;
+                Vec3.transformQuat(_reachCandidateWorldScratch, localNormal, rotation);
+
+                const outwardDot = localNormal.x * (current.getCoordX() - originX)
+                    + localNormal.y * (current.getCoordY() - originY)
+                    + localNormal.z * (current.getCoordZ() - originZ);
+                const cameraDot = Vec3.dot(_reachCandidateWorldScratch, _reachCameraDirScratch);
+                const score = outwardDot + cameraDot;
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestEntry = candidate;
+                }
+            }
+
+            if (!bestEntry) return false; // dead end, no viable turn
+
+            currentEntry = bestEntry;
+            turnsUsed++;
+        }
+
+        return false; // exceeded the hard step cap without exiting
     }
 
     private isFaceFacingCamera(camera: Camera, localNormal: Readonly<Vec3>, rotation: Readonly<Quat>): boolean

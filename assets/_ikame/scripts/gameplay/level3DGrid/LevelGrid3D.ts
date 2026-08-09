@@ -43,6 +43,16 @@ export class LevelGrid3D extends Component
     @property({ type: CCFloat, min: 0.001, group: 'Occlusion' })
     public debugPointRadius: number = 0.05;
 
+    // How far (world units) a bee needs to pull a cube straight out to dock and extract it.
+    // Drives both the straight-corridor length (ceil(R / cellSize) + 2 cells) and the
+    // L-route exit distance (R + cellSize) in GridTile3D.computeReachability().
+    @property({ type: CCFloat, min: 0, group: 'Reachability' })
+    public extractionRadius: number = 0.5;
+
+    // Max 90° turns a greedy L-route is allowed before giving up on a candidate exit face.
+    @property({ type: CCInteger, min: 0, group: 'Reachability' })
+    public reachabilityTurnCap: number = 2;
+
     public levelData: LevelData3D = null;
 
     private _gridMap = new Map<string, GridTile3D>();
@@ -55,6 +65,10 @@ export class LevelGrid3D extends Component
     private readonly _occlusionHalfExtents = new Vec3();
     private readonly _screenProjector = new ScreenProjector();
     private readonly _holderWorldRotation = new Quat();
+
+    // Reused by findTargetTile()'s camera-depth ranking, to avoid a per-candidate allocation.
+    private readonly _targetCameraForwardScratch = new Vec3();
+    private readonly _targetCameraToTileScratch = new Vec3();
 
     // Reused every lateUpdate(): every solid tile's occlusion box projected into up to 12
     // triangles each, concatenated into one shared array. _tileTriangleStart/_tileTriangleCount
@@ -162,6 +176,8 @@ export class LevelGrid3D extends Component
 
         this.gridMapMesh.build(placements, gridSize);
 
+        this.computeReachabilityForSolidTiles();
+
         const stats = this.gridMapMesh.getStats();
         console.log(`[LevelGrid3D] Grid ${gridSize.x}x${gridSize.y}x${gridSize.z}, tiles: ${this._gridMap.size}, merged mesh: ${stats.drawn}/${stats.cubes} cubes drawn across ${stats.chunks} chunk(s), ${stats.triangles} tris (spawned ${spawnedCount}/${this.levelData.cubes.length})`);
     }
@@ -177,7 +193,34 @@ export class LevelGrid3D extends Component
         const tile = this._gridMap.get(LevelData3D.gridKey(x, y, z));
         tile?.clearCubeData();
 
-        return this.gridMapMesh.removeCube(x, y, z);
+        const removed = this.gridMapMesh.removeCube(x, y, z);
+
+        // Removing a cube can open a corridor for its neighbours, so recompute reachability
+        // for every remaining solid tile - the same full-rebuild approach _solidTiles itself
+        // already uses, and cheap enough at these grid sizes.
+        if (removed) this.computeReachabilityForSolidTiles();
+
+        return removed;
+    }
+
+    private computeReachabilityForSolidTiles(): void
+    {
+        if (!this.camera || !this.levelData) return;
+
+        for (const tile of this._solidTiles)
+        {
+            tile.computeReachability(this.camera, this.extractionRadius, this.levelData.cellSize, this.reachabilityTurnCap);
+        }
+    }
+
+    /**
+     * Whether `tile`'s last computeVisibility() result clears visibilitySampleCountHideThreshold.
+     * Single source of truth for "is this cube currently visible", shared by lateUpdate()'s
+     * debug draw and findTargetTile()'s eligibility filter.
+     */
+    private isTileVisible(tile: GridTile3D): boolean
+    {
+        return tile.getVisibilityResult().visibleSamples > this.visibilitySampleCountHideThreshold;
     }
 
     lateUpdate(): void
@@ -211,11 +254,9 @@ export class LevelGrid3D extends Component
             const excludeStart = this._tileTriangleStart[i];
             const excludeEnd = excludeStart + this._tileTriangleCount[i];
 
-            const result = tile.computeVisibility(this.camera, this._screenProjector, this._triangles, excludeStart, excludeEnd);
+            tile.computeVisibility(this.camera, this._screenProjector, this._triangles, excludeStart, excludeEnd);
 
-            const isVisible = result.visibleSamples > this.visibilitySampleCountHideThreshold;
-
-            if (debugRenderer && isVisible)
+            if (debugRenderer && this.isTileVisible(tile))
             {
                 debugRenderer.addCross(tile.getWorldPos(), this.debugPointRadius,  Color.WHITE, true);
             }
@@ -237,6 +278,93 @@ export class LevelGrid3D extends Component
     public getTileAtCoord(x: number, y: number, z: number): IGridTile3D | null
     {
         return this._gridMap.get( LevelData3D.gridKey(x, y, z) ) || null;
+    }
+
+    /**
+     * Picks the single best cube to target for `colorID`, among every currently reachable cube
+     * of that color, using the fixed peel order:
+     *   1st - top of the pile (highest row, i.e. highest Y)
+     *   2nd - nearest front slab (closest camera-facing Z layer)
+     *   3rd - right -> left across the row (highest X first)
+     *   4th - exact depth (precise camera depth, tie-break safety net - in practice unreachable
+     *         since (x, y, z) is unique per tile, so the first three keys already fully order
+     *         any two distinct candidates)
+     * A candidate must also currently be visible (its last computeVisibility() result clears
+     * visibilitySampleCountHideThreshold) - reachable-but-hidden cubes aren't pull-able yet.
+     * Returns null if no solid tile of that color is currently reachable and visible.
+     */
+    public findTargetTile(colorID: number): IGridTile3D | null
+    {
+        if (!this.camera) return null;
+
+        const candidates = this._solidTiles.filter(tile =>
+            tile.isMatchingColorID(colorID) &&
+            tile.isReachable() &&
+            this.isTileVisible(tile)
+        );
+        if (candidates.length === 0) return null;
+
+        const cameraPos = this.camera.node.worldPosition;
+        Vec3.transformQuat(this._targetCameraForwardScratch, Vec3.FORWARD, this.camera.node.worldRotation);
+
+        const cameraDepthOf = (tile: GridTile3D): number =>
+        {
+            const worldPos = tile.getWorldPos();
+            this._targetCameraToTileScratch.set(worldPos.x - cameraPos.x, worldPos.y - cameraPos.y, worldPos.z - cameraPos.z);
+            return Vec3.dot(this._targetCameraToTileScratch, this._targetCameraForwardScratch);
+        };
+
+        let best = candidates[0];
+        let bestDepth = cameraDepthOf(best);
+
+        for (let i = 1; i < candidates.length; i++)
+        {
+            const candidate = candidates[i];
+
+            // 1st: highest row wins outright.
+            if (candidate.getCoordY() !== best.getCoordY())
+            {
+                if (candidate.getCoordY() > best.getCoordY())
+                {
+                    best = candidate;
+                    bestDepth = cameraDepthOf(candidate);
+                }
+                continue;
+            }
+
+            const candidateDepth = cameraDepthOf(candidate);
+
+            // 2nd: same row - nearest-to-camera Z layer wins.
+            if (candidate.getCoordZ() !== best.getCoordZ())
+            {
+                if (candidateDepth < bestDepth)
+                {
+                    best = candidate;
+                    bestDepth = candidateDepth;
+                }
+                continue;
+            }
+
+            // 3rd: same row and slab - rightmost (highest X) wins.
+            if (candidate.getCoordX() !== best.getCoordX())
+            {
+                if (candidate.getCoordX() > best.getCoordX())
+                {
+                    best = candidate;
+                    bestDepth = candidateDepth;
+                }
+                continue;
+            }
+
+            // 4th: exact-depth safety net (row/slab/X all tied).
+            if (candidateDepth < bestDepth)
+            {
+                best = candidate;
+                bestDepth = candidateDepth;
+            }
+        }
+
+        return best;
     }
 
 

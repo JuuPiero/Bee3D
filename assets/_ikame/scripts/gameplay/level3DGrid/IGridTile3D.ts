@@ -51,4 +51,14 @@ export interface IGridTile3D {
      */
     computeVisibility(camera: Camera, projector: ScreenProjector, triangles: readonly ProjectedTriangle[], excludeStart: number, excludeEnd: number): VisibilityResult;
     getVisibilityResult(): VisibilityResult;
+
+    /**
+     * Recomputes and returns whether a bee has a clear way in and out of this tile: either a
+     * straight corridor out to the pile edge along a camera-facing face, or - if every straight
+     * corridor is blocked - a greedy L-shaped route that turns around blockers (up to `turnCap`
+     * turns) until it clears the pile. `extractionRadius` and `cellSize` are both world units;
+     * internally everything is converted to, and walked in, integer grid cells.
+     */
+    computeReachability(camera: Camera, extractionRadius: number, cellSize: number, turnCap: number): boolean;
+    isReachable(): boolean;
 }
