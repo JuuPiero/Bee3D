@@ -28,7 +28,9 @@
     ],
     "_active": true,
     "_components": [],
-    "_prefab": null,
+    "_prefab": {
+      "__id__": 11
+    },
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
@@ -58,7 +60,7 @@
     },
     "autoReleaseAssets": false,
     "_globals": {
-      "__id__": 10
+      "__id__": 12
     },
     "_id": "c24465d3-b0c2-4391-922a-6b1c29003c0c"
   },
@@ -264,6 +266,9 @@
         "__id__": 8
       },
       {
+        "__id__": 10
+      },
+      {
         "__id__": 9
       }
     ],
@@ -307,12 +312,11 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "cubeBlockPrefab": {
-      "__uuid__": "430c30ae-f31e-4323-a3d2-fb87b22bcfec",
-      "__expectedType__": "cc.Prefab"
-    },
     "cubeBlockHolder": {
       "__id__": 7
+    },
+    "gridMapMesh": {
+      "__id__": 9
     },
     "levelJsonAssets": [
       {
@@ -321,8 +325,8 @@
       }
     ],
     "levelIndex": 0,
-    "occlusionManager": {
-      "__id__": 9
+    "camera": {
+      "__id__": 6
     },
     "occlusionBoxSize": {
       "__type__": "cc.Vec3",
@@ -330,8 +334,55 @@
       "y": 1,
       "z": 1
     },
+    "occlusionSampleGridSize": 3,
+    "occlusionSampleMargin": 0.1,
     "visibilitySampleCountHideThreshold": 0,
+    "debugDrawVisibility": true,
+    "debugPointRadius": 1.15,
     "_id": "0aF2xPl1ZNhYJDfR8KyNKC"
+  },
+  {
+    "__type__": "f0f5cIoI6RMH4iDM3YvO/eV",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 7
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "sourceMesh": {
+      "__uuid__": "c350b087-9503-48d2-a537-c1ca9d4ade37@2f6d1",
+      "__expectedType__": "cc.Mesh"
+    },
+    "sourcePrimitiveIndex": 0,
+    "material": {
+      "__uuid__": "6a41d27e-0c95-4f3b-8d62-71ae5b0c93d4",
+      "__expectedType__": "cc.Material"
+    },
+    "colorData": {
+      "__uuid__": "7842e53d-33a4-4b97-b73b-0f157ca26cec",
+      "__expectedType__": "1499b0p04JIm57eqyewzwKE"
+    },
+    "cubeScale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "cubeRotationEuler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "cubePivotOffset": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "b1d1utwudAm4R6nBRP8X8/"
   },
   {
     "__type__": "76f2alYwotGF522kGO0lYM3",
@@ -351,30 +402,38 @@
     "_id": "aakupL4vhJnYcSPAeY0uwF"
   },
   {
+    "__type__": "cc.PrefabInfo",
+    "root": null,
+    "asset": null,
+    "fileId": "c24465d3-b0c2-4391-922a-6b1c29003c0c",
+    "instance": null,
+    "targetOverrides": null
+  },
+  {
     "__type__": "cc.SceneGlobals",
     "ambient": {
-      "__id__": 11
-    },
-    "shadows": {
-      "__id__": 12
-    },
-    "_skybox": {
       "__id__": 13
     },
-    "fog": {
+    "shadows": {
       "__id__": 14
     },
-    "octree": {
+    "_skybox": {
       "__id__": 15
     },
-    "skin": {
+    "fog": {
       "__id__": 16
     },
-    "lightProbeInfo": {
+    "octree": {
       "__id__": 17
     },
-    "postSettings": {
+    "skin": {
       "__id__": 18
+    },
+    "lightProbeInfo": {
+      "__id__": 19
+    },
+    "postSettings": {
+      "__id__": 20
     },
     "bakedWithStationaryMainLight": false,
     "bakedWithHighpLightmap": false

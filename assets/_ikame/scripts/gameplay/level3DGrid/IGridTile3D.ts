@@ -1,5 +1,7 @@
-import { Node, Vec3 } from 'cc';
-import { PixelBlock } from '../flows/Block/PixelBlock';
+import { Camera, Vec3 } from 'cc';
+import { ScreenProjector } from '../../cube-occlusion/core/ScreenProjector';
+import { VisibilityResult } from '../../cube-occlusion/data/VisibilityResult';
+import type { ProjectedTriangle } from './ProjectedTriangle';
 
 export interface IGridTile3D {
     getCoordX(): number;
@@ -9,18 +11,14 @@ export interface IGridTile3D {
     getLocalPos(): Vec3;
     getWorldPos(): Vec3;
 
-    setBlock(blockNode: Node, block: PixelBlock | null): void;
-    getBlockNode(): Node;
-    getBlock(): PixelBlock | null;
-    removeBlock(): Node;
-    isContainBlock(): boolean;
-    isEmpty(): boolean;
-
-    /** Cube data lives on the tile because the block component is not initialized yet. */
+    /** Cube data lives on the tile; there is no per-cube node/component anymore. */
     setCubeData(colorID: number, health: number): void;
+    clearCubeData(): void;
     getColorID(): number;
     getHealth(): number;
     isMatchingColorID(colorID: number): boolean;
+    isContainBlock(): boolean;
+    isEmpty(): boolean;
 
     setLinkedTiles(
         up: IGridTile3D,
@@ -42,4 +40,15 @@ export interface IGridTile3D {
     getLeftLinkedTile(): IGridTile3D;
     /** +X */
     getRightLinkedTile(): IGridTile3D;
+
+    /** True when all 6 neighbours are occupied, i.e. this cube can never be seen. */
+    isEnclosed(): boolean;
+
+    /**
+     * Recomputes and returns this tile's visibility against the given camera and the
+     * current frame's projected occluder triangles. [excludeStart, excludeEnd) marks this
+     * tile's own triangle range within `triangles`, which is skipped so it can't self-occlude.
+     */
+    computeVisibility(camera: Camera, projector: ScreenProjector, triangles: readonly ProjectedTriangle[], excludeStart: number, excludeEnd: number): VisibilityResult;
+    getVisibilityResult(): VisibilityResult;
 }

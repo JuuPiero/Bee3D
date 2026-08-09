@@ -1,28 +1,20 @@
-import { _decorator, CCInteger, Component, instantiate, JsonAsset, Node, Prefab, Vec3 } from 'cc';
+import { _decorator, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, JsonAsset, Node, Quat, Vec3 } from 'cc';
 import { LevelData3D } from '../../configData/LevelData3D';
 import { GridTile3D } from './GridTile3D';
 import { IGridTile3D } from './IGridTile3D';
-import { PixelBlock } from '../flows/Block/PixelBlock';
-import { OcclusionManager } from '../../cube-occlusion/manager/OcclusionManager';
-import { OcclusionTarget } from '../../cube-occlusion/component/OcclusionTarget';
-import { Occluder } from '../../cube-occlusion/component/Occluder';
+import { GridMapMesh3D, ICubePlacement } from './GridMapMesh3D';
+import { ScreenProjector } from '../../cube-occlusion/core/ScreenProjector';
+import { ProjectedTriangle } from './ProjectedTriangle';
 const { ccclass, property } = _decorator;
-
-interface OcclusionEntry
-{
-    target: OcclusionTarget;
-    occluder: Occluder;
-    block: PixelBlock;
-}
 
 @ccclass('LevelGrid3D')
 export class LevelGrid3D extends Component
 {
-    @property({ type: Prefab, group: 'Cube Map' })
-    public cubeBlockPrefab: Prefab = null;
-
     @property({ type: Node, group: 'Cube Map' })
     public cubeBlockHolder: Node = null;
+
+    @property({ type: GridMapMesh3D, group: 'Cube Map' })
+    public gridMapMesh: GridMapMesh3D = null;
 
     @property({ type: [ JsonAsset ], group: 'LevelData' })
     public levelJsonAssets: JsonAsset[] = [];
@@ -30,27 +22,53 @@ export class LevelGrid3D extends Component
     @property({ type: CCInteger, group: 'LevelData' })
     public levelIndex: number = 0;
 
-    @property({ type: OcclusionManager, group: 'Occlusion' })
-    public occlusionManager: OcclusionManager = null;
+    @property({ type: Camera, group: 'Occlusion' })
+    public camera: Camera = null;
 
     @property({ type: Vec3, group: 'Occlusion' })
     public occlusionBoxSize: Vec3 = new Vec3(1, 1, 1);
 
     @property({ type: CCInteger, group: 'Occlusion' })
+    public occlusionSampleGridSize: number = 3;
+
+    @property({ type: CCFloat, min: 0, max: 0.49, step: 0.01, group: 'Occlusion' })
+    public occlusionSampleMargin: number = 0.1;
+
+    @property({ type: CCInteger, group: 'Occlusion' })
     public visibilitySampleCountHideThreshold: number = 0;
+
+    @property({ type: CCBoolean, group: 'Occlusion', tooltip: 'Draws a cross at each cube (green = visible, red = hidden) using the camera\'s geometry renderer.' })
+    public debugDrawVisibility: boolean = false;
+
+    @property({ type: CCFloat, min: 0.001, group: 'Occlusion' })
+    public debugPointRadius: number = 0.05;
 
     public levelData: LevelData3D = null;
 
     private _gridMap = new Map<string, GridTile3D>();
 
-    private _occlusionEntries: OcclusionEntry[] = [];
+    // Every tile currently holding a cube. Hiding by topology (all 6 neighbours filled) is
+    // handled entirely by GridMapMesh3D itself, event-driven off removeCube() - nothing here
+    // needs to poll it every frame. This list only feeds the debug visibility computation.
+    private _solidTiles: GridTile3D[] = [];
 
-    // Reused every lateUpdate() to avoid allocating a new array per cube per frame.
-    private _occluderScratch: Occluder[] = [];
+    private readonly _occlusionHalfExtents = new Vec3();
+    private readonly _screenProjector = new ScreenProjector();
+    private readonly _holderWorldRotation = new Quat();
 
-    start() 
+    // Reused every lateUpdate(): every solid tile's occlusion box projected into up to 12
+    // triangles each, concatenated into one shared array. _tileTriangleStart/_tileTriangleCount
+    // (index-aligned with _solidTiles) mark each tile's own slice, which computeVisibility
+    // skips so a tile can never self-occlude.
+    private _trianglePool: ProjectedTriangle[] = [];
+    private _triangles: ProjectedTriangle[] = [];
+    private _tileTriangleStart: number[] = [];
+    private _tileTriangleCount: number[] = [];
+
+    start()
     {
         this.spawnLevel();
+        this.camera?.camera?.initGeometryRenderer();
     }
 
     public spawnLevel(): void
@@ -92,6 +110,14 @@ export class LevelGrid3D extends Component
             tile.setLinkedTiles(upTile, downTile, topTile, bottomTile, leftTile, rightTile);
         }
 
+        this._occlusionHalfExtents.set(
+            Math.abs(this.occlusionBoxSize.x) * 0.5,
+            Math.abs(this.occlusionBoxSize.y) * 0.5,
+            Math.abs(this.occlusionBoxSize.z) * 0.5,
+        );
+        GridTile3D.configureOcclusion(this.occlusionBoxSize, this.occlusionSampleGridSize, this.occlusionSampleMargin);
+
+        const placements: ICubePlacement[] = [];
         let spawnedCount = 0;
         for (let i = 0; i < this.levelData.cubes.length; i++)
         {
@@ -104,56 +130,107 @@ export class LevelGrid3D extends Component
                 continue;
             }
 
-            const cubeNode = instantiate(this.cubeBlockPrefab);
-            cubeNode.setParent(this.cubeBlockHolder);
-            cubeNode.setWorldPosition(gridTile.getWorldPos());
             gridTile.setCubeData(cubeData.color, cubeData.health);
-            const blockComp = cubeNode.getComponent(PixelBlock)
-            gridTile.setBlock(cubeNode, blockComp);
-            blockComp.init(cubeData.color, null , null, null)
 
-            const occlusionTarget = cubeNode.addComponent(OcclusionTarget);
-            occlusionTarget.size.set(this.occlusionBoxSize);
-            occlusionTarget.rebuildSamples();
-
-            const occluder = cubeNode.addComponent(Occluder);
-            occluder.size.set(this.occlusionBoxSize);
-
-            this._occlusionEntries.push({ target: occlusionTarget, occluder, block: blockComp });
+            placements.push({
+                x: cubeData.x,
+                y: cubeData.y,
+                z: cubeData.z,
+                colorID: cubeData.color,
+                localPos: gridTile.getLocalPos(),
+            });
 
             spawnedCount++;
         }
 
-        console.log(`[LevelGrid3D] Grid ${gridSize.x}x${gridSize.y}x${gridSize.z}, tiles: ${this._gridMap.size}, cubes spawned: ${spawnedCount}/${this.levelData.cubes.length}`);
+        this._solidTiles.length = 0;
+        this._tileTriangleStart.length = 0;
+        this._tileTriangleCount.length = 0;
+        for (const tile of this._gridMap.values())
+        {
+            if (!tile.isContainBlock()) continue;
+            this._solidTiles.push(tile);
+            this._tileTriangleStart.push(0);
+            this._tileTriangleCount.push(0);
+        }
+
+        if (!this.gridMapMesh)
+        {
+            console.error('[LevelGrid3D] gridMapMesh is not assigned.');
+            return;
+        }
+
+        this.gridMapMesh.build(placements, gridSize);
+
+        const stats = this.gridMapMesh.getStats();
+        console.log(`[LevelGrid3D] Grid ${gridSize.x}x${gridSize.y}x${gridSize.z}, tiles: ${this._gridMap.size}, merged mesh: ${stats.drawn}/${stats.cubes} cubes drawn across ${stats.chunks} chunk(s), ${stats.triangles} tris (spawned ${spawnedCount}/${this.levelData.cubes.length})`);
+    }
+
+    /**
+     * Removes a cube from the merged mesh. Neighbours that the removal exposes are revealed
+     * automatically.
+     */
+    public removeCube(x: number, y: number, z: number): boolean
+    {
+        if (!this.gridMapMesh) return false;
+
+        const tile = this._gridMap.get(LevelData3D.gridKey(x, y, z));
+        tile?.clearCubeData();
+
+        return this.gridMapMesh.removeCube(x, y, z);
     }
 
     lateUpdate(): void
     {
-        if (!this.occlusionManager) return;
+        if (!this.camera || this._solidTiles.length === 0) return;
 
-        for (const entry of this._occlusionEntries)
+        this._screenProjector.prepare(this.camera);
+
+        // Same rotation for every tile (they all share cubeBlockHolder), so fetch it once.
+        this.cubeBlockHolder.getWorldRotation(this._holderWorldRotation);
+
+        // Step 1: project every solid tile's occlusion box once, into a shared triangle list.
+        // Each tile's own [start, end) slice is recorded so its check can skip it below.
+        this._triangles.length = 0;
+        let poolIndex = 0;
+        for (let i = 0; i < this._solidTiles.length; i++)
         {
-            if (!entry.block || !entry.block.isValid) continue;
+            const start = this._triangles.length;
+            poolIndex = GridTile3D.projectOcclusionTriangles(this.camera, this._screenProjector, this._solidTiles[i].getWorldPos(), this._occlusionHalfExtents, this._holderWorldRotation, this._trianglePool, poolIndex, this._triangles);
+            this._tileTriangleStart[i] = start;
+            this._tileTriangleCount[i] = this._triangles.length - start;
+        }
 
-            // Build the occluder list for this cube's own check, excluding its own
-            // occluder box so it can never self-occlude (it shares the same node/
-            // position as its OcclusionTarget).
-            this._occluderScratch.length = 0;
-            for (const other of this._occlusionEntries)
+        const debugRenderer = this.debugDrawVisibility ? this.camera.camera?.geometryRenderer : null;
+
+        // Step 2: check every tile against those triangles, excluding its own slice.
+        for (let i = 0; i < this._solidTiles.length; i++)
+        {
+            const tile = this._solidTiles[i];
+
+            const excludeStart = this._tileTriangleStart[i];
+            const excludeEnd = excludeStart + this._tileTriangleCount[i];
+
+            const result = tile.computeVisibility(this.camera, this._screenProjector, this._triangles, excludeStart, excludeEnd);
+
+            const isVisible = result.visibleSamples > this.visibilitySampleCountHideThreshold;
+
+            if (debugRenderer && isVisible)
             {
-                if (other.occluder !== entry.occluder) this._occluderScratch.push(other.occluder);
+                debugRenderer.addCross(tile.getWorldPos(), this.debugPointRadius,  Color.WHITE, true);
             }
-
-            const result = this.occlusionManager.checkVisibility(entry.target, this._occluderScratch);
-            entry.block.setVisible(result.visibleSamples > this.visibilitySampleCountHideThreshold);
         }
     }
 
     public clearLevel(): void
     {
-        this._occlusionEntries.length = 0;
+        this._solidTiles.length = 0;
+        this._triangles.length = 0;
+        this._tileTriangleStart.length = 0;
+        this._tileTriangleCount.length = 0;
 
-        this.cubeBlockHolder.destroyAllChildren();
+        this.gridMapMesh?.clear();
+
         this._gridMap.clear();
     }
 
