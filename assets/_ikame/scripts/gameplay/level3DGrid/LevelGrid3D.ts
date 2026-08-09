@@ -5,8 +5,6 @@ import { IGridTile3D } from './IGridTile3D';
 import { PixelBlock } from '../flows/Block/PixelBlock';
 const { ccclass, property } = _decorator;
 
-const CUBE_BLOCK_SIZE = 1;
-
 @ccclass('LevelGrid3D')
 export class LevelGrid3D extends Component
 {
@@ -37,11 +35,11 @@ export class LevelGrid3D extends Component
         this.levelData = new LevelData3D(textJson);
 
         const gridSize = this.levelData.gridSize;
-        // Everything stays at unit size / scale 1 for now: cellSize, gridOrigin and
-        // defaultRotation from the level data are intentionally not applied yet.
-        const offsetX = (-gridSize.x / 2) + (CUBE_BLOCK_SIZE / 2);
-        const offsetZ = (-gridSize.z / 2) + (CUBE_BLOCK_SIZE / 2);
-        const offsetY = CUBE_BLOCK_SIZE / 2;
+
+        const cubeBounds = this.computeCubeBounds(gridSize);
+        const offsetX = -(cubeBounds.minX + cubeBounds.maxX) / 2;
+        const offsetZ = -(cubeBounds.minZ + cubeBounds.maxZ) / 2;
+        const offsetY = -(cubeBounds.minY + cubeBounds.maxY) / 2;
 
         for (let x = 0; x < gridSize.x; x++)
         {
@@ -86,7 +84,9 @@ export class LevelGrid3D extends Component
             cubeNode.setParent(this.cubeBlockHolder);
             cubeNode.setWorldPosition(gridTile.getWorldPos());
             gridTile.setCubeData(cubeData.color, cubeData.health);
-            gridTile.setBlock(cubeNode, cubeNode.getComponent(PixelBlock));
+            const blockComp = cubeNode.getComponent(PixelBlock)
+            gridTile.setBlock(cubeNode, blockComp);
+            blockComp.init(cubeData.color, null , null, null)
             spawnedCount++;
         }
 
@@ -102,5 +102,31 @@ export class LevelGrid3D extends Component
     public getTileAtCoord(x: number, y: number, z: number): IGridTile3D | null
     {
         return this._gridMap.get( LevelData3D.gridKey(x, y, z) ) || null;
+    }
+
+
+    private computeCubeBounds(gridSize: Vec3): { minX: number, maxX: number, minY: number, maxY: number, minZ: number, maxZ: number }
+    {
+        const cubes = this.levelData.cubes;
+        if (!cubes || cubes.length === 0)
+        {
+            return { minX: 0, maxX: gridSize.x - 1, minY: 0, maxY: gridSize.y - 1, minZ: 0, maxZ: gridSize.z - 1 };
+        }
+
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+        let minZ = Infinity, maxZ = -Infinity;
+
+        for (const cube of cubes)
+        {
+            if (cube.x < minX) minX = cube.x;
+            if (cube.x > maxX) maxX = cube.x;
+            if (cube.y < minY) minY = cube.y;
+            if (cube.y > maxY) maxY = cube.y;
+            if (cube.z < minZ) minZ = cube.z;
+            if (cube.z > maxZ) maxZ = cube.z;
+        }
+
+        return { minX, maxX, minY, maxY, minZ, maxZ };
     }
 }

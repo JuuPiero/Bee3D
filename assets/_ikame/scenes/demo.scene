@@ -176,9 +176,9 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -9.948,
-      "y": 10,
-      "z": 10
+      "x": -38.418,
+      "y": 38.192,
+      "z": 38.47
     },
     "_lrot": {
       "__type__": "cc.Quat",
@@ -213,11 +213,11 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "_projection": 1,
+    "_projection": 0,
     "_priority": 0,
     "_fov": 103,
     "_fovAxis": 0,
-    "_orthoHeight": 10,
+    "_orthoHeight": 40.4,
     "_near": 1,
     "_far": 1000,
     "_color": {
@@ -305,7 +305,7 @@
     "_enabled": true,
     "__prefab": null,
     "cubeBlockPrefab": {
-      "__uuid__": "52d032a1-3043-44ee-869c-1e73e490cfff",
+      "__uuid__": "430c30ae-f31e-4323-a3d2-fb87b22bcfec",
       "__expectedType__": "cc.Prefab"
     },
     "cubeBlockHolder": {
