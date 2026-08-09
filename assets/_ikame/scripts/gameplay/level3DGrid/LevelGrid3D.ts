@@ -6,6 +6,7 @@ import { ColorConfig } from '../../configData/ColorConfig';
 import { EColor } from '../../enums/EColor';
 import { ScreenProjector } from '../../cube-occlusion/core/ScreenProjector';
 import { ProjectedTriangle } from './ProjectedTriangle';
+import { GridMeshGrid3D, ICubePlacement } from './GridMeshGrid3D';
 const { ccclass, property } = _decorator;
 
 @ccclass('LevelGrid3D')
@@ -19,6 +20,12 @@ export class LevelGrid3D extends Component
 
     @property({ type: ColorConfig, group: 'Cube Map' })
     public colorData: ColorConfig = null;
+
+    @property({ type: CCBoolean, group: 'Cube Map', tooltip: 'Off: instantiate cubePrefab per cube (default, proven path). On: build one merged mesh via gridMeshGrid instead - no per-cube nodes, so occlusion-driven hide/show and per-cube animation are unavailable while this is on.' })
+    public useMergedMesh: boolean = false;
+
+    @property({ type: GridMeshGrid3D, group: 'Cube Map', tooltip: 'Only used when useMergedMesh is on.' })
+    public gridMeshGrid: GridMeshGrid3D = null;
 
     @property({ type: [ JsonAsset ], group: 'LevelData' })
     public levelJsonAssets: JsonAsset[] = [];
@@ -182,11 +189,23 @@ export class LevelGrid3D extends Component
         );
         GridTile3D.configureOcclusion(this.occlusionBoxSize, this.occlusionSampleGridSize, this.occlusionSampleMargin);
 
-        if (!this.cubePrefab)
+        if (this.useMergedMesh)
+        {
+            if (!this.gridMeshGrid)
+            {
+                console.error('[LevelGrid3D] useMergedMesh is on but gridMeshGrid is not assigned.');
+                return;
+            }
+        }
+        else if (!this.cubePrefab)
         {
             console.error('[LevelGrid3D] cubePrefab is not assigned.');
             return;
         }
+
+        // Only populated (and only meaningful) when useMergedMesh is on - GridMeshGrid3D.build()
+        // wants every cube up front rather than one-at-a-time like spawnCubeNode().
+        const placements: ICubePlacement[] = [];
 
         let spawnedCount = 0;
         for (let i = 0; i < this.levelData.cubes.length; i++)
@@ -201,9 +220,28 @@ export class LevelGrid3D extends Component
             }
 
             gridTile.setCubeData(cubeData.color, cubeData.health);
-            this.spawnCubeNode(key, cubeData.color, gridTile.getLocalPos());
+
+            if (this.useMergedMesh)
+            {
+                placements.push({
+                    x: cubeData.x,
+                    y: cubeData.y,
+                    z: cubeData.z,
+                    colorID: cubeData.color,
+                    localPos: gridTile.getLocalPos(),
+                });
+            }
+            else
+            {
+                this.spawnCubeNode(key, cubeData.color, gridTile.getLocalPos());
+            }
 
             spawnedCount++;
+        }
+
+        if (this.useMergedMesh)
+        {
+            this.gridMeshGrid.build(placements);
         }
 
         this._solidTiles.length = 0;
@@ -219,7 +257,7 @@ export class LevelGrid3D extends Component
 
         this.computeReachabilityForSolidTiles();
 
-        console.log(`[LevelGrid3D] Grid ${gridSize.x}x${gridSize.y}x${gridSize.z}, tiles: ${this._gridMap.size}, spawned ${spawnedCount}/${this.levelData.cubes.length} cube nodes`);
+        console.log(`[LevelGrid3D] Grid ${gridSize.x}x${gridSize.y}x${gridSize.z}, tiles: ${this._gridMap.size}, spawned ${spawnedCount}/${this.levelData.cubes.length} cubes (${this.useMergedMesh ? 'merged mesh' : 'prefab nodes'})`);
     }
 
     /** Instantiates one cube prefab at `localPos`, colors it, and caches it under `key`. */
@@ -246,28 +284,40 @@ export class LevelGrid3D extends Component
         if (meshRenderer) this._cubeRenderers.set(key, meshRenderer);
     }
 
-    /** Destroys the cube's node at (x, y, z) and clears its tile data. */
+    /** Removes the cube at (x, y, z) from whichever rendering path is active, and clears its tile data. */
     public removeCube(x: number, y: number, z: number): boolean
     {
         const key = LevelData3D.gridKey(x, y, z);
         const tile = this._gridMap.get(key);
-        const node = this._cubeNodes.get(key);
 
-        if (!node)
+        let removed: boolean;
+        if (this.useMergedMesh)
         {
-            // GridTile3D and _cubeNodes are two independent data stores keyed the same way -
-            // if the tile thinks it holds a cube but there's no node for it, they've desynced.
-            // Surface it loudly instead of returning a silent false.
+            removed = this.gridMeshGrid ? this.gridMeshGrid.removeBlock(x, y, z) : false;
+        }
+        else
+        {
+            const node = this._cubeNodes.get(key);
+            removed = !!node;
+            if (node)
+            {
+                node.destroy();
+                this._cubeNodes.delete(key);
+                this._cubeRenderers.delete(key);
+            }
+        }
+
+        if (!removed)
+        {
+            // GridTile3D and the active rendering path are two independent data stores keyed
+            // the same way - if the tile thinks it holds a cube but the renderer disagrees,
+            // they've desynced. Surface it loudly instead of returning a silent false.
             if (tile?.isContainBlock())
             {
-                console.warn(`[LevelGrid3D] removeCube(${x}, ${y}, ${z}): GridTile3D reports a block here but no cube node was found - data is desynced.`);
+                console.warn(`[LevelGrid3D] removeCube(${x}, ${y}, ${z}): GridTile3D reports a block here but the ${this.useMergedMesh ? 'merged mesh' : 'cube node map'} could not remove it - data is desynced.`);
             }
             return false;
         }
-
-        node.destroy();
-        this._cubeNodes.delete(key);
-        this._cubeRenderers.delete(key);
 
         tile?.clearCubeData();
 
@@ -346,12 +396,19 @@ export class LevelGrid3D extends Component
 
             tile.computeVisibility(this.camera, this._screenProjector, this._triangles, excludeStart, excludeEnd);
 
-            // Feed the camera-visibility result straight into the cube's own MeshRenderer -
-            // no merged mesh, no enclosure culling, just toggle whether this node draws.
             const visible = this.isTileVisible(tile);
-            const key = LevelData3D.gridKey(tile.getCoordX(), tile.getCoordY(), tile.getCoordZ());
-            const renderer = this._cubeRenderers.get(key);
-            if (renderer) renderer.enabled = visible;
+
+            // Feed the camera-visibility result straight into the cube's own MeshRenderer.
+            // Only meaningful for the per-node path - GridMeshGrid3D has no per-cube show/hide
+            // (only permanent removeBlock), so occlusion-driven hiding is dropped while
+            // useMergedMesh is on; the debug cross and findTargetTile's visibility filter
+            // below are unaffected either way.
+            if (!this.useMergedMesh)
+            {
+                const key = LevelData3D.gridKey(tile.getCoordX(), tile.getCoordY(), tile.getCoordZ());
+                const renderer = this._cubeRenderers.get(key);
+                if (renderer) renderer.enabled = visible;
+            }
 
             if (debugRenderer && visible)
             {
@@ -370,6 +427,8 @@ export class LevelGrid3D extends Component
         for (const node of this._cubeNodes.values()) node.destroy();
         this._cubeNodes.clear();
         this._cubeRenderers.clear();
+
+        this.gridMeshGrid?.clear();
 
         this._gridMap.clear();
     }

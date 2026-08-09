@@ -202,7 +202,6 @@ export class GridMeshChunk
     public cubeCount = 0;
     /** Number of cubes currently occupying a slot at the front of `indices`. */
     public liveCount = 0;
-    public dirty = false;
 
     constructor (public readonly capacity: number, verticesPerCube: number, indicesPerCube: number)
     {
@@ -260,6 +259,11 @@ export class GridMeshBuilder
     public get maxSubMeshIndices (): number
     {
         return this.cubesPerChunk * this.indicesPerCube;
+    }
+
+    public getLiveIndexCount (chunk: GridMeshChunk): number
+    {
+        return chunk.liveCount * this.indicesPerCube;
     }
 
     /**
@@ -362,23 +366,10 @@ export class GridMeshBuilder
                     values: chunk.capLocals.subarray(0, vertexCount * 3),
                 },
             ],
-            indices16: chunk.indices.subarray(0, chunk.liveCount * this.indicesPerCube),
+            indices16: chunk.indices.subarray(0, this.getLiveIndexCount(chunk)),
             minPos: chunk.minPos,
             maxPos: chunk.maxPos,
         };
     }
 }
 
-/**
- * Geometry that touches the index buffer only. updateSubMesh skips any vertex stream whose
- * array is empty, so this leaves all five vertex buffers untouched on the GPU.
- */
-const EMPTY_VERTICES = new Float32Array(0);
-
-export function buildIndexOnlyGeometry (chunk: GridMeshChunk, indicesPerCube: number): primitives.IDynamicGeometry
-{
-    return {
-        positions: EMPTY_VERTICES,
-        indices16: chunk.indices.subarray(0, chunk.liveCount * indicesPerCube),
-    };
-}
