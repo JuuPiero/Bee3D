@@ -3,7 +3,17 @@ import { LevelData3D } from '../../configData/LevelData3D';
 import { GridTile3D } from './GridTile3D';
 import { IGridTile3D } from './IGridTile3D';
 import { PixelBlock } from '../flows/Block/PixelBlock';
+import { OcclusionManager } from '../../cube-occlusion/manager/OcclusionManager';
+import { OcclusionTarget } from '../../cube-occlusion/component/OcclusionTarget';
+import { Occluder } from '../../cube-occlusion/component/Occluder';
 const { ccclass, property } = _decorator;
+
+interface OcclusionEntry
+{
+    target: OcclusionTarget;
+    occluder: Occluder;
+    block: PixelBlock;
+}
 
 @ccclass('LevelGrid3D')
 export class LevelGrid3D extends Component
@@ -20,9 +30,23 @@ export class LevelGrid3D extends Component
     @property({ type: CCInteger, group: 'LevelData' })
     public levelIndex: number = 0;
 
+    @property({ type: OcclusionManager, group: 'Occlusion' })
+    public occlusionManager: OcclusionManager = null;
+
+    @property({ type: Vec3, group: 'Occlusion' })
+    public occlusionBoxSize: Vec3 = new Vec3(1, 1, 1);
+
+    @property({ type: CCInteger, group: 'Occlusion' })
+    public visibilitySampleCountHideThreshold: number = 0;
+
     public levelData: LevelData3D = null;
 
     private _gridMap = new Map<string, GridTile3D>();
+
+    private _occlusionEntries: OcclusionEntry[] = [];
+
+    // Reused every lateUpdate() to avoid allocating a new array per cube per frame.
+    private _occluderScratch: Occluder[] = [];
 
     start() 
     {
@@ -87,14 +111,48 @@ export class LevelGrid3D extends Component
             const blockComp = cubeNode.getComponent(PixelBlock)
             gridTile.setBlock(cubeNode, blockComp);
             blockComp.init(cubeData.color, null , null, null)
+
+            const occlusionTarget = cubeNode.addComponent(OcclusionTarget);
+            occlusionTarget.size.set(this.occlusionBoxSize);
+            occlusionTarget.rebuildSamples();
+
+            const occluder = cubeNode.addComponent(Occluder);
+            occluder.size.set(this.occlusionBoxSize);
+
+            this._occlusionEntries.push({ target: occlusionTarget, occluder, block: blockComp });
+
             spawnedCount++;
         }
 
         console.log(`[LevelGrid3D] Grid ${gridSize.x}x${gridSize.y}x${gridSize.z}, tiles: ${this._gridMap.size}, cubes spawned: ${spawnedCount}/${this.levelData.cubes.length}`);
     }
 
+    lateUpdate(): void
+    {
+        if (!this.occlusionManager) return;
+
+        for (const entry of this._occlusionEntries)
+        {
+            if (!entry.block || !entry.block.isValid) continue;
+
+            // Build the occluder list for this cube's own check, excluding its own
+            // occluder box so it can never self-occlude (it shares the same node/
+            // position as its OcclusionTarget).
+            this._occluderScratch.length = 0;
+            for (const other of this._occlusionEntries)
+            {
+                if (other.occluder !== entry.occluder) this._occluderScratch.push(other.occluder);
+            }
+
+            const result = this.occlusionManager.checkVisibility(entry.target, this._occluderScratch);
+            entry.block.setVisible(result.visibleSamples > this.visibilitySampleCountHideThreshold);
+        }
+    }
+
     public clearLevel(): void
     {
+        this._occlusionEntries.length = 0;
+
         this.cubeBlockHolder.destroyAllChildren();
         this._gridMap.clear();
     }

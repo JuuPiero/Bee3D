@@ -208,6 +208,24 @@ export class PixelBlock extends Component implements IPixelBlock
     {
         this.node.active = false;
     }
+
+    private _blackColorBytes = new Uint8Array([0, 0 , 0, 0]);
+
+    /**
+     * Toggles only the mesh rendering (not the node/collider), so a cube
+     * hidden by occlusion culling still counts as a valid Occluder for
+     * whatever is behind it.
+     */
+    public setVisible(visible: boolean): void
+    {
+        if (this.meshRenderer) 
+        {
+            this.meshRenderer.setInstancedAttribute('a_instColor', visible ? this._blackColorBytes : this.ColorBytes );
+            this.meshRenderer.setInstancedAttribute('a_instColorShadow', visible ? this._blackColorBytes : this.ShadowBytes);
+
+        }
+            
+    }
     
     private _surroundingPixels: IPixelBlock[] = [];
 

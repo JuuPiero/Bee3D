@@ -1,0 +1,326 @@
+{
+    "GridSize": {
+        "x": 5,
+        "y": 5,
+        "z": 5
+    },
+    "CellSize": 0.14000000059604645,
+    "GridOrigin": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    },
+    "DefaultRotation": {
+        "x": 65.80000305175781,
+        "y": 0,
+        "z": 0
+    },
+    "Cubes": [
+        {
+            "GridPosition": {
+                "x": 1,
+                "y": 0,
+                "z": 1
+            },
+            "Color": 0,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 2,
+                "y": 0,
+                "z": 1
+            },
+            "Color": 0,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 3,
+                "y": 0,
+                "z": 1
+            },
+            "Color": 0,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 1,
+                "y": 0,
+                "z": 2
+            },
+            "Color": 0,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 2,
+                "y": 0,
+                "z": 2
+            },
+            "Color": 0,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 3,
+                "y": 0,
+                "z": 2
+            },
+            "Color": 0,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 1,
+                "y": 0,
+                "z": 3
+            },
+            "Color": 0,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 2,
+                "y": 0,
+                "z": 3
+            },
+            "Color": 0,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 3,
+                "y": 0,
+                "z": 3
+            },
+            "Color": 0,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+            },
+            "Color": 8,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 2,
+                "y": 1,
+                "z": 1
+            },
+            "Color": 8,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 3,
+                "y": 1,
+                "z": 1
+            },
+            "Color": 8,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 1,
+                "y": 1,
+                "z": 2
+            },
+            "Color": 8,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 2,
+                "y": 1,
+                "z": 2
+            },
+            "Color": 19,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 3,
+                "y": 1,
+                "z": 2
+            },
+            "Color": 8,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 1,
+                "y": 1,
+                "z": 3
+            },
+            "Color": 8,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 2,
+                "y": 1,
+                "z": 3
+            },
+            "Color": 8,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 3,
+                "y": 1,
+                "z": 3
+            },
+            "Color": 8,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 1,
+                "y": 2,
+                "z": 1
+            },
+            "Color": 12,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 2,
+                "y": 2,
+                "z": 1
+            },
+            "Color": 12,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 3,
+                "y": 2,
+                "z": 1
+            },
+            "Color": 12,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 1,
+                "y": 2,
+                "z": 2
+            },
+            "Color": 12,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 2,
+                "y": 2,
+                "z": 2
+            },
+            "Color": 12,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 3,
+                "y": 2,
+                "z": 2
+            },
+            "Color": 12,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 1,
+                "y": 2,
+                "z": 3
+            },
+            "Color": 12,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 2,
+                "y": 2,
+                "z": 3
+            },
+            "Color": 12,
+            "Health": 1
+        },
+        {
+            "GridPosition": {
+                "x": 3,
+                "y": 2,
+                "z": 3
+            },
+            "Color": 12,
+            "Health": 1
+        }
+    ],
+    "LineCount": 2,
+    "ShooterSpawnData": [
+        {
+            "Color": 0,
+            "Ammo": 9,
+            "Line": 0,
+            "Index": 0,
+            "ConnectionGroup": 0,
+            "IsMystery": false,
+            "FrozenAmmo": 0,
+            "Tunnel": [],
+            "TunnelSlotCount": 1,
+            "SecondColor": -1,
+            "SecondAmmo": 0
+        },
+        {
+            "Color": 8,
+            "Ammo": 8,
+            "Line": 1,
+            "Index": 0,
+            "ConnectionGroup": 0,
+            "IsMystery": false,
+            "FrozenAmmo": 0,
+            "Tunnel": [],
+            "TunnelSlotCount": 1,
+            "SecondColor": -1,
+            "SecondAmmo": 0
+        },
+        {
+            "Color": 19,
+            "Ammo": 1,
+            "Line": 0,
+            "Index": 1,
+            "ConnectionGroup": 0,
+            "IsMystery": false,
+            "FrozenAmmo": 0,
+            "Tunnel": [],
+            "TunnelSlotCount": 1,
+            "SecondColor": -1,
+            "SecondAmmo": 0
+        },
+        {
+            "Color": 12,
+            "Ammo": 9,
+            "Line": 1,
+            "Index": 1,
+            "ConnectionGroup": 0,
+            "IsMystery": false,
+            "FrozenAmmo": 0,
+            "Tunnel": [],
+            "TunnelSlotCount": 1,
+            "SecondColor": -1,
+            "SecondAmmo": 0
+        }
+    ],
+    "Difficulty": 0,
+    "IntroStyle": 0,
+    "IntroStartFrom": 0,
+    "EditorSelectedColor": 0,
+    "EditorActiveLayer": 0,
+    "EditorSoloLayer": false,
+    "EditorRevealMode": 0,
+    "EditorSliceAxis": 1
+}
