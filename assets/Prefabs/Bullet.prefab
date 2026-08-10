@@ -412,15 +412,16 @@
     "cubeNode": {
       "__id__": 2
     },
-    "extraCharacterGap": 0.2,
+    "extraCharacterGap": 0,
     "characterRotateSpeed": 220,
     "travelTurnSpeed": 720,
     "carryTurnSpeed": 220,
     "characterSettleSpeed": 12.6,
+    "gripReachDistance": 2.15,
     "swayAmplitude": 0.35,
     "swayFrequency": 1.2,
     "carrySwayScale": 0.5,
-    "swayFadeDistance": 2.5,
+    "swayFadeDistance": 1.8,
     "swaySettleSpeed": 3,
     "mainRenderers": [
       null,

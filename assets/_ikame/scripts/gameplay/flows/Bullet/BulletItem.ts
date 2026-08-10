@@ -1,4 +1,4 @@
-import { _decorator, CCFloat, Component, MeshRenderer, Node, Quat, Vec3 } from 'cc';
+import { _decorator, CCFloat, Component, easing, MeshRenderer, Node, Quat, Vec3 } from 'cc';
 import { RotateToForwardVelocity } from '../../../commons/RotateToForwardVelocity';
 const { ccclass, property } = _decorator;
 
@@ -39,6 +39,12 @@ enum BulletPhase
  * held square to the face being pulled, and loaded on the way out it may only YAW - bee on top and
  * cube hanging below is the whole read of a load being carried, and any pitch or roll swings that
  * rig out sideways and breaks it.
+ *
+ * A flight arrives flying INWARD and leaves flying OUTWARD, so somewhere in it the bee has to turn
+ * around. That happens on the way out, eased, and not on the face: the landing keeps the heading the
+ * approach came in on (see faceForPull), so the beat where the bee is closest to the camera and
+ * holding still is the one beat that never snaps. It backs out of the wall nose-in - which is what
+ * heaving something free looks like - and swings round to face its exit as the haul gets going.
  *
  * The moment the cube comes free it is REPARENTED under the bee, so from there on it is carried by
  * the scene graph and nothing in here touches its transform again. A per-frame chase (which is what
@@ -82,6 +88,10 @@ export class BulletItem extends Component
     @property({ type: CCFloat, tooltip: 'How quickly the bee slides back to its authored spot above the cube once it starts hauling, per second.' })
     public characterSettleSpeed: number = 8;
 
+    @property({ type: CCFloat, tooltip: 'How near (world units) the cube the bee starts reaching into the grip it lands in, so it arrives already holding the face instead of jumping onto it. Roughly the last cube or two of the run-in. 0 puts it into the grip on the landing frame, which snaps.' })
+    public gripReachDistance: number = 2;
+
+
     @property({ type: CCFloat, tooltip: 'How far (world units) the bee weaves to either side of its flight path on the way in and on the way out. 0 flies dead straight.' })
     public swayAmplitude: number = 0.35;
 
@@ -101,9 +111,10 @@ export class BulletItem extends Component
 
     private readonly _facing = new Quat();
 
-    // Where the pull direction lands in the bullet's own space. landOnFace() aims the bullet down
-    // that direction, so in its local frame the pull is always the same axis - which is why the
-    // grip pose can be worked out once instead of per shot.
+    // Where the pull direction lands in the bullet's own space. landOnFace() aims the bullet along
+    // the pull axis, so in its local frame the pull is always the same axis - which is why the grip
+    // pose can be worked out once instead of per shot. Which way down that axis is not obvious: the
+    // node is aimed nose-IN, so the outward pull is the far end of it (see cacheGripPose).
     private readonly _localOutAxis = new Vec3(0, 0, 1);
     private readonly _gripRotation = new Quat();
 
@@ -159,6 +170,21 @@ export class BulletItem extends Component
     private _cubeSizeY = 1;
     private readonly _characterBasePos = new Vec3();
     private readonly _characterBaseRot = new Quat();
+    private readonly _characterBaseScale = new Vec3(1, 1, 1);
+    // How much bigger the cube the map draws is than the one the prefab was authored around, and the
+    // bee's own scale with that applied. One ratio for all three axes: a bee is a shape, not a box,
+    // and matching a non-uniform cube per-axis would shear it.
+    private _cubeScaleRatio = 1;
+    private readonly _characterTargetScale = new Vec3(1, 1, 1);
+    private readonly _characterScale = new Vec3(1, 1, 1);
+    // The resize is a curve, not a rate, so it needs progress from 0 to 1 to have a shape at all -
+    // and the trip in is what that progress is measured on: how much of the way from the muzzle to
+    // the cell has been covered, taken off the distance still to go. The whole distance is latched on
+    // the first frame there is a cell to measure to, and the progress only ever climbs, so a flight
+    // that eddies about on its way in cannot walk the curve backwards.
+    private _characterResizing = false;
+    private _approachDistance = 0;
+    private _approachProgress = 0;
     // Which way the bee sits from the cube in the prefab (usually straight up), and how far past
     // the cube's own surface that puts it. Both are what a landing re-applies along the pull axis.
     private readonly _characterBaseDir = new Vec3(0, 1, 0);
@@ -166,6 +192,11 @@ export class BulletItem extends Component
 
     private readonly _characterPos = new Vec3();
     private readonly _characterRestPos = new Vec3();
+    // The grip, blended into over the run-in. Both ends are constants in the bullet's own space - the
+    // authored spot the bee flies at, and the standoff on the pull axis - so the reach can start
+    // before the pull direction is known, which is what lets it be spread over the run-in at all.
+    private readonly _gripPos = new Vec3();
+    private readonly _gripScratch = new Quat();
 
     @property([MeshRenderer]) private mainRenderers: MeshRenderer[] = [];
 
@@ -194,6 +225,8 @@ export class BulletItem extends Component
         {
             this._characterBasePos.set(this.characterRoot.position);
             this._characterBaseRot.set(this.characterRoot.rotation);
+            this._characterBaseScale.set(this.characterRoot.scale);
+            this._characterTargetScale.set(this.characterRoot.scale);
 
             const distance = this._characterBasePos.length();
             if (distance > 1e-5)
@@ -218,6 +251,12 @@ export class BulletItem extends Component
      * here by running that call on a probe direction and undoing it, rather than by assuming which
      * axis the engine treats as forward. The grip pose is then the prefab's authored arrangement
      * swung onto that axis, which puts the bee on the face the cube leaves through.
+     *
+     * What the landing hands that call is the INWARD heading, not the pull, so the axis worked out
+     * from the probe points into the wall and the outward side - the side the bee has to grip from -
+     * is the other end of it. Hence the negate: everything downstream, the grip pose here and the
+     * standoff in standoffAlong(), is expressed against "outward in local space" and so comes out
+     * right whichever way round the node itself is aimed.
      */
     private cacheGripPose(): void
     {
@@ -227,6 +266,7 @@ export class BulletItem extends Component
         Quat.invert(probeFacing, probeFacing);
         Vec3.transformQuat(this._localOutAxis, probe, probeFacing);
         this._localOutAxis.normalize();
+        Vec3.negate(this._localOutAxis, this._localOutAxis);
 
         Quat.rotationTo(this._gripRotation, this._characterBaseDir, this._localOutAxis);
         Quat.multiply(this._gripRotation, this._gripRotation, this._characterBaseRot);
@@ -234,20 +274,63 @@ export class BulletItem extends Component
 
     //#region phases
 
-    /** Leaves the muzzle empty-handed and flying nose-first. Called as the shot is fired. */
-    public beginApproach(): void
+    /**
+     * Leaves the muzzle empty-handed and flying nose-first. Called as the shot is fired.
+     *
+     * `cubeWorldScale` is the size the map draws its cubes at, if the caller knows it yet. Knowing it
+     * this early is what lets the flight in do its own preparing: the bee grows onto that size across
+     * the trip (see growCharacter), and the standoff it will grip at - which is measured off that
+     * size - is known too, so it can reach into the grip before it gets there (see reachForGrip).
+     * Pass nothing and both wait for the landing, which is the same pose arrived at in one frame.
+     */
+    public beginApproach(cubeWorldScale: Readonly<Vec3> | null = null): void
     {
         this.releaseCube();
         this._phase = BulletPhase.Approach;
         // Fresh weave for the leg in; the shooter sets the face it ends on right after this.
         this.restartWeave();
+
+        // After releaseCube(), which is what puts the bee back at its authored size and spot - the
+        // near end of both blends, so they have to be where it actually is.
+        if (cubeWorldScale)
+        {
+            this.aimCharacterScaleAt(cubeWorldScale);
+            this._cubeSizeY = cubeWorldScale.y;
+            this._characterResizing = true;
+            this._approachDistance = 0;
+            this._approachProgress = 0;
+        }
     }
 
     /**
-     * Lands on the face the cube will be pulled out of: the bullet is aimed down the pull
-     * direction and the bee is put on that face, standing off it by the cube's half-size plus the
-     * prefab's own gap. The turn onto the face is eased rather than snapped, so it reads as the bee
-     * settling rather than teleporting into a grip.
+     * Works out the size the bee has to end up at to sit right against the cube it is fetching.
+     *
+     * The map draws its cubes at whatever its fit scale works out to, which is not the size the
+     * prefab was authored around - the stand-in is already resized per shot for exactly that reason
+     * (see landOnFace), and this is the same correction carried across to the bee, so the pair keeps
+     * the proportions it was authored with instead of a bee hauling a cube twice its size.
+     *
+     * The ratio is kept, not just the scale, because the arrangement scales too: the gap the prefab
+     * leaves between bee and cube face is part of the same picture, and standoffAlong() grows it by
+     * this ratio so a bigger rig does not sit tighter than the authored one.
+     */
+    private aimCharacterScaleAt(cubeWorldScale: Readonly<Vec3>): void
+    {
+        const authored = this._cubeBaseScale.y;
+        this._cubeScaleRatio = Math.abs(authored) > 1e-6 ? cubeWorldScale.y / authored : 1;
+
+        Vec3.multiplyScalar(this._characterTargetScale, this._characterBaseScale, this._cubeScaleRatio);
+    }
+
+    /**
+     * Lands on the face the cube will be pulled out of: the bullet is squared up to the pull axis
+     * (nose-in, holding the approach heading - see faceForPull) and the bee is put on that face,
+     * standing off it by the cube's half-size plus the prefab's own gap.
+     *
+     * Both halves of that grip pose are arrived at rather than snapped into. The run-in has already
+     * blended the bee most of the way into it (see reachForGrip), so the position set here is the last
+     * hair of a move that has been happening for a stretch, and the turn is handed to the eased one in
+     * update() rather than written. Nothing about the pose changes on this frame alone.
      *
      * `worldScale` is the size the map draws its cubes at, and the stand-in is resized to it here
      * even though it is still hidden - the bee has to stand off the face of the cube it is landing
@@ -264,12 +347,18 @@ export class BulletItem extends Component
         // the standoff below is measured against the cell, so it has to start on it.
         this.clearSway();
 
-        this.faceOutward(outwardDir);
+        this.faceForPull(outwardDir);
 
         if (!this.cubeNode || !this.characterRoot) return;
 
         this.cubeNode.setWorldScale(worldScale);
         this._cubeSizeY = worldScale.y;
+
+        // Whatever the flight in did not finish growing, taken exactly here: this is the size the
+        // standoff below is measured against, and it is the authority on it either way - a shot that
+        // was fired without a cube size to aim at gets its only sizing on this line.
+        this.aimCharacterScaleAt(worldScale);
+        this.applyTargetScale();
 
         this.standoffAlong(this._characterPos, this._localOutAxis);
         this.characterRoot.setPosition(this._characterPos);
@@ -357,10 +446,16 @@ export class BulletItem extends Component
             this.cubeNode.setRotation(this._cubeBaseRot);
         }
         this._cubeSizeY = this._cubeBaseScale.y;
+        this._cubeScaleRatio = 1;
+        this._characterTargetScale.set(this._characterBaseScale);
+        this._characterResizing = false;
+        this._approachDistance = 0;
+        this._approachProgress = 0;
         if (this.characterRoot)
         {
             this.characterRoot.setPosition(this._characterBasePos);
             this.characterRoot.setRotation(this._characterBaseRot);
+            this.characterRoot.setScale(this._characterBaseScale);
         }
 
         this._isTurning = false;
@@ -403,6 +498,8 @@ export class BulletItem extends Component
         {
             this.faceAlongTravel(dt);
         }
+
+        if (this._phase === BulletPhase.Approach) this.updateApproachPose();
 
         if (this._phase === BulletPhase.Carry) this.settleCharacter(dt);
     }
@@ -492,7 +589,22 @@ export class BulletItem extends Component
      */
     private isClosingOnTarget(): boolean
     {
-        if (!this._hasSwayTarget || this.swayFadeDistance <= 0) return false;
+        if (this.swayFadeDistance <= 0) return false;
+        if (!this.resolveSwayTarget()) return false;
+
+        return Vec3.squaredDistance(this._swayBasePos, this._swayTargetWorld) <= this.swayFadeDistance * this.swayFadeDistance;
+    }
+
+    /**
+     * Puts where this leg ends into `_swayTargetWorld`, and says whether there was one to put there.
+     *
+     * Split out because the weave is no longer the only thing that wants it: the resize on the way in
+     * is paced by how far there is still to fly (see growCharacter), and both want the same
+     * once-per-frame resolve of a point that is held in a moving node's space.
+     */
+    private resolveSwayTarget(): boolean
+    {
+        if (!this._hasSwayTarget) return false;
 
         if (this._swaySpace)
         {
@@ -504,7 +616,7 @@ export class BulletItem extends Component
             this._swayTargetWorld.set(this._swayTargetPos);
         }
 
-        return Vec3.squaredDistance(this._swayBasePos, this._swayTargetWorld) <= this.swayFadeDistance * this.swayFadeDistance;
+        return true;
     }
 
     /**
@@ -637,6 +749,10 @@ export class BulletItem extends Component
      *   of the heading is faced, which by construction is a turn about world Y and nothing else:
      *   Quat.fromViewUp() of a direction that is already perpendicular to up can only yaw.
      *
+     *   This is also where the flight turns around. The bee lands and heaves nose-in, so the first
+     *   thing this yaws it through on the way out is the half-turn onto its exit - eased at
+     *   carryTurnSpeed, over a bee that is already moving, with the cube swinging round under it.
+     *
      * World rotation in both cases, not local - through the pile the bullet is parented to the
      * holder the map turns with, and neither "which way am I going" nor "which way is up" turns
      * with the level.
@@ -681,6 +797,121 @@ export class BulletItem extends Component
     }
 
     /**
+     * Everything the bee does to itself on the way in - resize itself, then reach into its grip.
+     *
+     * Both are paced off the same number, how far there is still to fly to the cell, which is why
+     * they are measured together here. And they are deliberately laid out end to end along it rather
+     * than run on top of each other: the resize finishes where the reach begins (gripReachDistance
+     * from the cube), so the last stretch of a flight has one thing changing at a time. Two changes
+     * landing together on the frames the bee is largest and slowing down is what reads as a snap,
+     * however smooth either of them is on its own.
+     */
+    private updateApproachPose(): void
+    {
+        if (!this.characterRoot) return;
+
+        // Nothing to measure against yet - the cell it is going to is set just after the shot.
+        if (!this.resolveSwayTarget()) return;
+
+        const remaining = Vec3.distance(this._swayBasePos, this._swayTargetWorld);
+
+        // First frame with a cell to fly at: this is the whole trip, and everything after it is a
+        // fraction of this one number.
+        if (this._approachDistance <= 0) this._approachDistance = remaining;
+
+        this.growCharacter(remaining);
+        this.reachForGrip(remaining);
+    }
+
+    /**
+     * Grows the bee onto the size of the cube it is flying at, across the flight in.
+     *
+     * Spread over the trip rather than set at the muzzle because that is where the shot is at its
+     * biggest and nearest the camera: a size correction taken there is a visible pop on every shot,
+     * where the same correction spread over the way in is a change nobody reads.
+     *
+     * The trip is the timing - there is no duration to author. Progress is how much of the distance
+     * from the muzzle to the cell has been covered, so a long shot resizes over a long flight and a
+     * short one over a short flight. Distance rather than elapsed time because the flight is not one
+     * tween and does not hold one speed - it arcs, then runs the corridor - and what the resize has
+     * to be finished by is a place, not a clock.
+     *
+     * That place is where the reach starts, not the cube: the last stretch belongs to the grip (see
+     * updateApproachPose), so the size is settled before the bee gets there. Progress only ever
+     * climbs, so a flight that eddies about on its way in cannot walk the curve backwards.
+     */
+    private growCharacter(remaining: number): void
+    {
+        if (!this._characterResizing) return;
+
+        // Done by the time the reach begins, so the two never overlap.
+        const margin = Math.max(0, this.gripReachDistance);
+        const trip = this._approachDistance - margin;
+
+        if (trip <= 1e-4)
+        {
+            // No room to spread it over - a shot fired from inside its own reach distance.
+            this.applyTargetScale();
+            return;
+        }
+
+        const covered = 1 - (remaining - margin) / trip;
+        this._approachProgress = Math.min(1, Math.max(this._approachProgress, covered));
+
+        if (this._approachProgress >= 1)
+        {
+            this.applyTargetScale();
+            return;
+        }
+
+        const t = easing.sineIn(this._approachProgress);
+        Vec3.lerp(this._characterScale, this._characterBaseScale, this._characterTargetScale, t);
+        this.characterRoot.setScale(this._characterScale);
+    }
+
+    /**
+     * Reaches the bee into the grip it lands in, over the last stretch of the run-in.
+     *
+     * The bee flies at the spot the prefab parks it - above the cube - and grips from the standoff on
+     * the pull axis, and for any pull that is not straight up those are different sides of the cube.
+     * Set on the landing frame, as it used to be, that is the bee jumping around its own cube in
+     * exactly the moment it is biggest on screen and about to hold still, which is the snap this
+     * blend exists to remove. The landing turn was already eased; this is the other half of the same
+     * pose, the half that was not.
+     *
+     * It can start before the pull direction is known because both ends are constants in the bullet's
+     * own space, and the bullet is squared up to the pull by then anyway: the run-in flies straight
+     * down the corridor, which is the axis the cube comes out along, so the frame the offset is
+     * expressed in has already converged on the one the landing will square it to. The last of it is
+     * still put on exactly by landOnFace - by then this has made that a no-op rather than a jump.
+     *
+     * Paced off distance to the cube, not time, so it is finished when the bee gets there however
+     * fast it flew - and eased at both ends, so it neither starts nor stops abruptly.
+     */
+    private reachForGrip(remaining: number): void
+    {
+        if (this.gripReachDistance <= 0) return;
+        if (remaining >= this.gripReachDistance) return;
+
+        const reached = Math.min(1, Math.max(0, 1 - remaining / this.gripReachDistance));
+        const t = easing.cubicInOut(reached);
+
+        this.standoffAlong(this._gripPos, this._localOutAxis);
+        Vec3.lerp(this._characterPos, this._characterBasePos, this._gripPos, t);
+        this.characterRoot.setPosition(this._characterPos);
+
+        Quat.slerp(this._gripScratch, this._characterBaseRot, this._gripRotation, t);
+        this.characterRoot.setRotation(this._gripScratch);
+    }
+
+    /** Ends the resize on the size it was aiming for, exactly. */
+    private applyTargetScale(): void
+    {
+        this._characterResizing = false;
+        if (this.characterRoot) this.characterRoot.setScale(this._characterTargetScale);
+    }
+
+    /**
      * Slides the bee back to the spot the prefab gave it above the cube, now that it is done
      * gripping a face - measured against the map's cube size rather than the one the prefab was
      * authored with, so it sits on the cube it is actually holding.
@@ -701,11 +932,17 @@ export class BulletItem extends Component
      * surface by the gap the prefab was authored with. Measured against the cube's CURRENT size,
      * since the stand-in is resized to whatever the map draws its cubes at and the authored offset
      * would leave the bee floating off a smaller one.
+     *
+     * The authored gap is scaled with the rig, since the bee is too - it is part of the arrangement,
+     * not a fixed clearance, and left alone it would read as a bigger bee sitting tighter on its
+     * cube. extraCharacterGap is not scaled: that one is a hand nudge, and a nudge that changed size
+     * with the level would be no use to tune with.
      */
     private standoffAlong(out: Vec3, axis: Readonly<Vec3>): Vec3
     {
         const halfSize = this._cubeSizeY * 0.5;
-        return Vec3.multiplyScalar(out, axis, halfSize + this._characterSurfaceGap + this.extraCharacterGap);
+        const gap = this._characterSurfaceGap * this._cubeScaleRatio + this.extraCharacterGap;
+        return Vec3.multiplyScalar(out, axis, halfSize + gap);
     }
 
     /**
@@ -791,15 +1028,24 @@ export class BulletItem extends Component
     }
 
     /**
-     * Points the bullet down `outwardDir` - the direction the cube will be pulled out in. Uses the
-     * same Quat.fromViewUp() as the travel facing does, which is what lets the grip pose be
-     * expressed against one fixed local axis (see cacheGripPose).
+     * Squares the bullet up to the face the cube will be pulled out of, given the direction it comes
+     * out in. Uses the same Quat.fromViewUp() as the travel facing does, which is what lets the grip
+     * pose be expressed against one fixed local axis (see cacheGripPose).
+     *
+     * Aimed AGAINST the pull, which is to say down the heading the approach flew in on. Facing the
+     * pull instead is the same pose turned 180 degrees, and since the approach leg is the reversed
+     * corridor - it flies in along exactly the direction the cube will come out along, backwards -
+     * that is a half-turn snapped on in the single frame the bee touches down, in the middle of the
+     * screen, with the flight held still. The turn-around a flight does need is real but it belongs
+     * on the way out, where faceAlongTravel eases it at carryTurnSpeed while the bee is already
+     * moving; here it costs nothing to leave the heading alone, because which way round the node
+     * sits is not what puts the bee on the cube - the local pull axis is.
      */
-    public faceOutward(outwardDir: Readonly<Vec3>): void
+    public faceForPull(outwardDir: Readonly<Vec3>): void
     {
         if (!outwardDir || outwardDir.lengthSqr() < 1e-8) return;
 
-        this._travelDir.set(outwardDir as Vec3);
+        this._travelDir.set(-outwardDir.x, -outwardDir.y, -outwardDir.z);
         this._travelDir.normalize();
 
         // Cubes come out upwards as readily as sideways, and a straight-up view against the default

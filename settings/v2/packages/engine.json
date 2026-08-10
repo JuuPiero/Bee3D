@@ -107,7 +107,7 @@
             "_value": true
           },
           "profiler": {
-            "_value": false
+            "_value": true
           },
           "occlusion-query": {
             "_value": false
@@ -207,6 +207,7 @@
           "particle",
           "physics-cannon",
           "primitive",
+          "profiler",
           "rich-text",
           "skeletal-animation",
           "tween",

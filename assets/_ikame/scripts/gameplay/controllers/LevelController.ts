@@ -45,6 +45,17 @@ const POP_DURATION = 0.14;
 // leg's own length. The sideways weave over that bow belongs to BulletItem.
 const ARC_HEIGHT_RATIO = 0.35;
 
+// The brake into the cube. The last leg of the way in slows to a standstill on the face rather than
+// arriving at cruise and being halted by the end of its tween - a stop that lands on the same frames
+// as the landing pose and reads as part of the same snap.
+//
+// An ease-out is only half of it: sineOut also LEAVES at BRAKE_ENTRY_RATE times the leg's average
+// speed, which over a linear-timed leg would be a lurch at the corridor mouth. So the leg is given
+// that same factor more time to run. It then enters at exactly the cruise speed the arc handed over,
+// and from there only ever slows - the whole leg is deceleration and nothing else.
+const BRAKE_EASING = easing.sineOut;
+const BRAKE_ENTRY_RATE = Math.PI / 2;
+
 @ccclass('LevelController')
 export class LevelController extends Component implements ILevelController
 {
@@ -591,7 +602,10 @@ export class LevelController extends Component implements ILevelController
         const bullet = this.bulletPool.getBullet();
         const bulletItem = bullet.getComponent(BulletItem);
         bulletItem?.setColor(colorBytes, shadowBytes);
-        bulletItem?.beginApproach();
+        // Handed the map's cube size up front, not just at the landing: the bee grows onto it across
+        // the flight in, which is the one stretch long enough to hide the change.
+        this.levelGrid3D.getCubeWorldScale(this._cubeGrabScale);
+        bulletItem?.beginApproach(this._cubeGrabScale);
         // The cell it is going to land on, in the holder's own space so it stays right as the map
         // turns: the bee weaves across the open air and unwinds onto the line as it closes on it.
         bulletItem?.setSwayTarget(this.levelGrid3D.cubeBlockHolder, corridor[0]);
@@ -701,14 +715,22 @@ export class LevelController extends Component implements ILevelController
             .start();
     }
 
-    /** Straight-line run along a holder-local polyline - used for the legs inside the pile. */
+    /**
+     * The run down the corridor onto the face, straight along a holder-local polyline.
+     *
+     * The one leg of a flight that ends somewhere rather than handing over to another leg, so it is
+     * the one that brakes: it comes in at the speed the arc left off at and slows to a stop on the
+     * cube (see BRAKE_EASING). Everything the bee does to itself over this stretch is paced by the
+     * distance still to go rather than by time, so all of it stretches out with the deceleration
+     * instead of finishing early and waiting.
+     */
     private flyBulletStraight(bullet: Node, path: Vec3[], cellWorldSize: number, onArrived: () => void): void
     {
         const localPos = new Vec3();
         const pathObj = { t: 0 };
         tween(pathObj)
-            .to(LevelController.pathTravelTime(path, cellWorldSize), { t: 1 }, {
-                easing: easing.linear,
+            .to(LevelController.pathTravelTime(path, cellWorldSize) * BRAKE_ENTRY_RATE, { t: 1 }, {
+                easing: easing.sineOut,
                 onUpdate: () =>
                 {
                     if (!bullet.isValid) return;
