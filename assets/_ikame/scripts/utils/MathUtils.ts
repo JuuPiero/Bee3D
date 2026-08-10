@@ -111,6 +111,25 @@ export function lerp3Vec3(A: Vec3, B: Vec3, C: Vec3, t: number, out: Vec3): Vec3
     return out
 }
 
+/**
+ * Quadratic Bezier A -> C, bent towards the control point B. Unlike lerp3Vec3, which is two
+ * straight segments with a corner at B, this is one smooth curve - and it does not pass through B,
+ * it only leans towards it, peaking about halfway there.
+ */
+export function quadraticBezier(out: Vec3, a: Vec3, b: Vec3, c: Vec3, t: number): Vec3
+{
+    const inverse = 1 - t;
+    const wa = inverse * inverse;
+    const wb = 2 * inverse * t;
+    const wc = t * t;
+
+    return out.set(
+        a.x * wa + b.x * wb + c.x * wc,
+        a.y * wa + b.y * wb + c.y * wc,
+        a.z * wa + b.z * wb + c.z * wc,
+    );
+}
+
 export function pathLength(path: Vec3[])
 {
     let length = 0;

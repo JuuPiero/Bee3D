@@ -21,7 +21,8 @@ import { IPixelBlock } from '../flows/Block/IPixelBlock';
 import { PixelBlock } from '../flows/Block/PixelBlock';
 import { LevelGrid3D } from '../level3DGrid/LevelGrid3D';
 import { IGridTile3D } from '../level3DGrid/IGridTile3D';
-import { lerp3Vec3, lerpMultiplePoints } from '../../utils/MathUtils';
+import { lerpMultiplePoints, quadraticBezier } from '../../utils/MathUtils';
+import { BulletItem } from '../flows/Bullet/BulletItem';
 const { ccclass, property } = _decorator;
 
 // World units per second, shared by both legs of a bullet's flight.
@@ -30,6 +31,21 @@ const BULLET_SPEED = 22;
 // How far outside the map's own bounds a bullet's fly-out route is kept, so it never grazes a
 // cube that is still standing.
 const EXIT_CLEARANCE = 1;
+
+// The beat the bee spends settled on the cube's face, gripping, before it heaves. The cube is
+// still part of the wall for this - without the pause the grab reads as the bee passing through.
+const LAND_HOVER_DURATION = 0.12;
+
+// The plug-out: how far (in grid cells) and how fast the bullet yanks the cube straight out of
+// its cell before settling into carrying it down the corridor.
+const POP_DISTANCE_CELLS = 0.9;
+const POP_DURATION = 0.14;
+
+// Bee flight over open air: how far the path bows off the straight line (as a fraction of the
+// leg's own length), and the sideways weave laid over that bow.
+const ARC_HEIGHT_RATIO = 0.35;
+const WEAVE_CYCLES = 1.5;
+const WEAVE_AMPLITUDE = 0.25;
 
 @ccclass('LevelController')
 export class LevelController extends Component implements ILevelController
@@ -524,6 +540,10 @@ export class LevelController extends Component implements ILevelController
 
     //#region 3D shooting
 
+    // Reused by grabCubeWithBullet(), which runs once per cube taken.
+    private readonly _cubeGrabScale = new Vec3();
+    private readonly _cubeGrabDir = new Vec3();
+
     /** The cube this shooter color should hit next, or null when none is reachable/visible. */
     public findTargetTile(colorID: number): IGridTile3D | null
     {
@@ -533,6 +553,12 @@ export class LevelController extends Component implements ILevelController
     /**
      * Flies one bullet from `startPos` into `tile`, takes the cube out, then sends the bullet up
      * over the map and on to `bulletExitTarget`.
+     *
+     * The beats are: arc across the open air to the corridor mouth, straight down the corridor to
+     * the cube, settle on its face and hold, heave it out, then haul it away over the map. Each
+     * hands over to the next in its own callback, and BulletItem is told which beat it is in so it
+     * can pose the bee accordingly - nose-first on the way in, gripping the face on the landing,
+     * hanging under gravity once it is carrying.
      *
      * The flight has two halves, and the split is entirely about the map rotating:
      *
@@ -560,67 +586,236 @@ export class LevelController extends Component implements ILevelController
         this.levelGrid3D.reserveTile(tile);
 
         const bullet = this.bulletPool.getBullet();
+        // Pooled: whatever the last shot left it holding, it leaves this muzzle empty-handed.
+        bullet.getComponent(BulletItem)?.beginApproach();
         bullet.setWorldPosition(startPos);
         // keepWorldTransform, so parenting neither teleports the bullet nor shrinks it into the
         // holder's fit scale.
         bullet.setParent(this.levelGrid3D.cubeBlockHolder, true);
 
-        // The corridor runs cube -> outward; reversed it is the approach, prefixed with the
-        // muzzle - which, now that the bullet is a child of the holder, is just its local position.
-        const approachPath: Vec3[] = [ bullet.position.clone() ];
-        for (let i = corridor.length - 1; i >= 0; i--) approachPath.push(corridor[i]);
-
         // Holder-local units scale into world units by the holder's fit scale, so travel time is
         // measured in world units and the bullet keeps one speed across every leg.
         const cellWorldSize = this.levelGrid3D.getCellWorldSize();
 
-        const localPos = new Vec3();
-        const approachObj = { t: 0 };
-        tween(approachObj)
-            .to(LevelController.pathTravelTime(approachPath, cellWorldSize), { t: 1 }, {
-                easing: easing.linear,
-                onUpdate: () =>
-                {
-                    if (!bullet.isValid) return;
-                    lerpMultiplePoints(localPos, approachPath, approachObj.t);
-                    bullet.setPosition(localPos);
-                },
-                onComplete: () =>
-                {
-                    if (!bullet.isValid) return;
+        // The approach is two legs, because only one of them is free to wander: the open air
+        // between muzzle and corridor mouth, which the bee arcs and weaves across, and then the
+        // corridor itself, which is a straight line between standing cubes and has to stay one.
+        const mouth = corridor[corridor.length - 1];
+        const flyIn: Vec3[] = [];
+        for (let i = corridor.length - 1; i >= 0; i--) flyIn.push(corridor[i]);
 
-                    this.levelGrid3D.releaseTile(tile);
+        this.flyBulletAlongArc(bullet, bullet.position.clone(), mouth, cellWorldSize, () =>
+        {
+            this.flyBulletStraight(bullet, flyIn, cellWorldSize, () =>
+            {
+                this.landBulletOnFace(bullet, corridor);
 
-                    // A cube with health N takes N bullets - only the last one clears the cell,
-                    // which is also what the win counter counts (one tick per hit, not per cube).
-                    const health = tile.getHealth();
-                    if (health > 1)
+                // Hold on the face for a beat before heaving. A tween rather than a scheduler so
+                // it lives and dies with the rest of the flight.
+                tween(bullet)
+                    .delay(LAND_HOVER_DURATION)
+                    .call(() =>
                     {
-                        tile.setCubeData(tile.getColorID(), health - 1);
-                    }
-                    else
-                    {
-                        this.levelGrid3D.removeCube(tile.getCoordX(), tile.getCoordY(), tile.getCoordZ());
-                    }
-                    this.checkWinCondition();
-                    EventDispatcher.dispatch(EventName.PlaySFX, this.breakBlockBreak);
+                        if (!bullet.isValid) return;
 
-                    this.flyBulletOut(bullet, corridor, cellWorldSize);
-                }
-            })
-            .start();
+                        this.levelGrid3D.releaseTile(tile);
+
+                        // A cube with health N takes N bullets - only the last one clears the
+                        // cell, which is also what the win counter counts (one tick per hit, not
+                        // per cube).
+                        const health = tile.getHealth();
+                        if (health > 1)
+                        {
+                            tile.setCubeData(tile.getColorID(), health - 1);
+                        }
+                        else
+                        {
+                            // Grab first, remove second, both in this frame: the stand-in has to
+                            // be fitted to the cube while the tile still describes it, and has to
+                            // appear in the same rebuild that drops it from the mesh so there is
+                            // no blink.
+                            this.grabCubeWithBullet(bullet, tile);
+                            this.levelGrid3D.removeCube(tile.getCoordX(), tile.getCoordY(), tile.getCoordZ());
+                        }
+                        this.checkWinCondition();
+                        EventDispatcher.dispatch(EventName.PlaySFX, this.breakBlockBreak);
+
+                        this.flyBulletOut(bullet, corridor, cellWorldSize);
+                    })
+                    .start();
+            });
+        });
 
         return true;
     }
 
     /**
-     * Second half of a bullet's flight: back out along the corridor (still parented to the map, so
-     * it keeps tracking the rotation), then off the map and up out of its bounding sphere and
-     * across to `bulletExitTarget` in world space, re-aimed every frame. Without a target node
-     * assigned the bullet just keeps climbing until it is well clear, then is recycled.
+     * Flies the bullet between two holder-local points the way a bee actually crosses open air:
+     * an arc that lifts off the straight line, with a weave laid over it. Only ever used outside
+     * the pile - inside it the corridor is the one line that is guaranteed clear of cubes, and
+     * that leg is flown straight by flyBulletStraight().
+     */
+    private flyBulletAlongArc(bullet: Node, fromLocal: Vec3, toLocal: Vec3, cellWorldSize: number, onArrived: () => void): void
+    {
+        // Bend the line upwards, in world terms - the map is turning, so its own up is not up.
+        const up = this.levelGrid3D.worldDirectionToLocal(new Vec3(), Vec3.UP);
+        const span = Vec3.distance(fromLocal, toLocal);
+        const control = new Vec3(
+            (fromLocal.x + toLocal.x) * 0.5 + up.x * span * ARC_HEIGHT_RATIO,
+            (fromLocal.y + toLocal.y) * 0.5 + up.y * span * ARC_HEIGHT_RATIO,
+            (fromLocal.z + toLocal.z) * 0.5 + up.z * span * ARC_HEIGHT_RATIO,
+        );
+
+        // Weave sideways across the arc: perpendicular to both the flight line and up, so it reads
+        // as a bee wandering rather than as the whole path being crooked.
+        const flightDir = new Vec3();
+        Vec3.subtract(flightDir, toLocal, fromLocal);
+        const weaveAxis = new Vec3();
+        Vec3.cross(weaveAxis, flightDir, up);
+        if (weaveAxis.lengthSqr() > 1e-8) weaveAxis.normalize();
+        else weaveAxis.set(0, 0, 0);
+
+        const pos = new Vec3();
+        const arcObj = { t: 0 };
+        tween(arcObj)
+            .to(Math.max((span * cellWorldSize) / BULLET_SPEED, 0.01), { t: 1 }, {
+                easing: easing.linear,
+                onUpdate: () =>
+                {
+                    if (!bullet.isValid) return;
+                    quadraticBezier(pos, fromLocal, control, toLocal, arcObj.t);
+
+                    // Fades in and out with sin(pi*t), so both ends of the leg land exactly on
+                    // their points - the far end is the corridor mouth, which has to be hit dead on.
+                    const weave = Math.sin(arcObj.t * Math.PI) * Math.sin(arcObj.t * Math.PI * 2 * WEAVE_CYCLES) * WEAVE_AMPLITUDE;
+                    pos.x += weaveAxis.x * weave;
+                    pos.y += weaveAxis.y * weave;
+                    pos.z += weaveAxis.z * weave;
+
+                    bullet.setPosition(pos);
+                },
+                onComplete: () =>
+                {
+                    if (!bullet.isValid) return;
+                    onArrived();
+                }
+            })
+            .start();
+    }
+
+    /** Straight-line run along a holder-local polyline - used for the legs inside the pile. */
+    private flyBulletStraight(bullet: Node, path: Vec3[], cellWorldSize: number, onArrived: () => void): void
+    {
+        const localPos = new Vec3();
+        const pathObj = { t: 0 };
+        tween(pathObj)
+            .to(LevelController.pathTravelTime(path, cellWorldSize), { t: 1 }, {
+                easing: easing.linear,
+                onUpdate: () =>
+                {
+                    if (!bullet.isValid) return;
+                    lerpMultiplePoints(localPos, path, pathObj.t);
+                    bullet.setPosition(localPos);
+                },
+                onComplete: () =>
+                {
+                    if (!bullet.isValid) return;
+                    onArrived();
+                }
+            })
+            .start();
+    }
+
+    /**
+     * Settles the bee onto the face the cube will come out of - the corridor's first step is that
+     * direction, and the map's cube size is what it has to stand off by. Nothing is taken yet: the
+     * cube is still in the wall for the hover that follows.
+     */
+    private landBulletOnFace(bullet: Node, corridor: Vec3[]): void
+    {
+        const bulletItem = bullet.getComponent(BulletItem);
+        if (!bulletItem) return;
+
+        const nextCell = corridor.length > 1 ? corridor[1] : corridor[0];
+        this._cubeGrabDir.set(nextCell.x - corridor[0].x, nextCell.y - corridor[0].y, nextCell.z - corridor[0].z);
+        this.levelGrid3D.localDirectionToWorld(this._cubeGrabDir, this._cubeGrabDir);
+
+        this.levelGrid3D.getCubeWorldScale(this._cubeGrabScale);
+
+        bulletItem.landOnFace(this._cubeGrabDir, this._cubeGrabScale);
+    }
+
+    /**
+     * Hands the cube at `tile` to the bullet: its own stand-in is switched on and coloured like the
+     * one the map is about to lose (the landing already sized it). The cube is a child of the
+     * bullet, so from here it simply comes along.
+     */
+    private grabCubeWithBullet(bullet: Node, tile: IGridTile3D): void
+    {
+        const bulletItem = bullet.getComponent(BulletItem);
+        if (!bulletItem) return;
+
+        const colorBytes = this.levelGrid3D.getCubeColorBytes(tile.getColorID());
+
+        bulletItem.grabCube(
+            colorBytes ? colorBytes.color : null,
+            colorBytes ? colorBytes.shadow : null,
+        );
+    }
+
+    /**
+     * Second half of a bullet's flight: a short sharp pop straight out of the cell - the cube
+     * coming unplugged - then back out along the corridor (still parented to the map, so it keeps
+     * tracking the rotation), then off the map and up out of its bounding sphere and across to
+     * `bulletExitTarget` in world space, re-aimed every frame. Without a target node assigned the
+     * bullet just keeps climbing until it is well clear, then is recycled.
      */
     private flyBulletOut(bullet: Node, corridor: Vec3[], cellWorldSize: number): void
     {
+        const localPos = new Vec3();
+
+        // Pop: overshoot a short way along the first corridor step, so the cube visibly snaps free
+        // before the bee settles into carrying it. backOut gives it the recoil at the end.
+        const popFrom = corridor[0];
+        const nextCell = corridor.length > 1 ? corridor[1] : corridor[0];
+        const popDir = new Vec3(nextCell.x - popFrom.x, nextCell.y - popFrom.y, nextCell.z - popFrom.z);
+        if (popDir.lengthSqr() > 1e-8) popDir.normalize();
+        const popTo = new Vec3(
+            popFrom.x + popDir.x * POP_DISTANCE_CELLS,
+            popFrom.y + popDir.y * POP_DISTANCE_CELLS,
+            popFrom.z + popDir.z * POP_DISTANCE_CELLS,
+        );
+
+        // What is left of the corridor once the pop has covered its first stretch.
+        const corridorAfterPop: Vec3[] = [ popTo ];
+        for (let i = 1; i < corridor.length; i++) corridorAfterPop.push(corridor[i]);
+
+        const popObj = { t: 0 };
+        tween(popObj)
+            .to(POP_DURATION, { t: 1 }, {
+                easing: easing.backOut,
+                onUpdate: () =>
+                {
+                    if (!bullet.isValid) return;
+                    Vec3.lerp(localPos, popFrom, popTo, popObj.t);
+                    bullet.setPosition(localPos);
+                }
+            })
+            .call(() =>
+            {
+                if (!bullet.isValid) return;
+                // Cube is free of the wall: gravity takes over the layout from here.
+                bullet.getComponent(BulletItem)?.beginCarry();
+                this.flyBulletAlongCorridor(bullet, corridorAfterPop, cellWorldSize);
+            })
+            .start();
+    }
+
+    /** Rides the rest of the corridor out of the pile, then hands over to the world-space leg. */
+    private flyBulletAlongCorridor(bullet: Node, corridor: Vec3[], cellWorldSize: number): void
+    {
+        if (!bullet.isValid) return;
+
         const localPos = new Vec3();
 
         const corridorObj = { t: 0 };
@@ -638,7 +833,8 @@ export class LevelController extends Component implements ILevelController
                     if (!bullet.isValid) return;
 
                     // Off the map's back now: hand the bullet back to the pool's node, keeping
-                    // where it is, so it stops spinning with the level.
+                    // where it is, so it stops spinning with the level. The carried cube is a
+                    // child of the bullet, so it comes along and stops spinning with it.
                     bullet.setParent(this.bulletPool.node, true);
                     this.flyBulletToExitTarget(bullet);
                 }
@@ -648,8 +844,13 @@ export class LevelController extends Component implements ILevelController
 
     /**
      * Last leg, in world space and starting from wherever the bullet already is (which is always
-     * outside the grid by now): straight up until it is above the map's bounding sphere, then
-     * across and down onto `bulletExitTarget`, re-aimed every frame so a moving node is still hit.
+     * outside the grid by now): one arch that climbs above the map's bounding sphere and comes
+     * down onto `bulletExitTarget`, re-aimed every frame so a moving node is still hit.
+     *
+     * The climb is a Bezier control point rather than a waypoint, which is what makes it an arch
+     * instead of a corner - a bee does not fly up, stop, and turn. A curve only leans about
+     * halfway towards its control point, so the control is set at twice the height that has to be
+     * cleared and the curve peaks at the height itself.
      *
      * A bounding SPHERE, not the box: the map keeps turning, and only a sphere is the same size
      * from every angle, so a route outside it can never be reached by a rotated-in cube. With no
@@ -663,14 +864,17 @@ export class LevelController extends Component implements ILevelController
         const cruiseY = center.y + radius;
 
         const climbFrom = bullet.worldPosition.clone();
-        const climbTo = new Vec3(climbFrom.x, Math.max(cruiseY, climbFrom.y), climbFrom.z);
+        const peakY = Math.max(cruiseY, climbFrom.y);
+        const control = new Vec3(climbFrom.x, climbFrom.y + (peakY - climbFrom.y) * 2, climbFrom.z);
+        // Nowhere to fly to: arch up and off, and let the recycle happen up there.
+        const fallbackEnd = new Vec3(climbFrom.x, peakY, climbFrom.z);
 
         const target = this.bulletExitTarget;
         const flyPos = new Vec3();
         const exitObj = { t: 0 };
 
-        const climbDistance = Vec3.distance(climbFrom, climbTo);
-        const crossDistance = target ? Vec3.distance(climbTo, target.worldPosition) : radius;
+        const climbDistance = peakY - climbFrom.y;
+        const crossDistance = target ? Vec3.distance(control, target.worldPosition) : radius;
         const duration = Math.max((climbDistance + crossDistance) / BULLET_SPEED, 0.01);
 
         tween(exitObj)
@@ -679,21 +883,17 @@ export class LevelController extends Component implements ILevelController
                 onUpdate: () =>
                 {
                     if (!bullet.isValid) return;
-                    if (target)
-                    {
-                        // Re-read the node every frame: it may be moving, and the climb keeps the
-                        // bullet above the map the whole way across.
-                        lerp3Vec3(climbFrom, climbTo, target.worldPosition, exitObj.t, flyPos);
-                    }
-                    else
-                    {
-                        Vec3.lerp(flyPos, climbFrom, climbTo, exitObj.t);
-                    }
+                    // Re-read the node every frame: it may be moving, and the arch keeps the
+                    // bullet above the map the whole way across.
+                    quadraticBezier(flyPos, climbFrom, control, target ? target.worldPosition : fallbackEnd, exitObj.t);
                     bullet.setWorldPosition(flyPos);
                 },
                 onComplete: () =>
                 {
                     if (!bullet.isValid) return;
+                    // Drop the cube before parking the bullet, or it would still be in hand the
+                    // next time this one is fired.
+                    bullet.getComponent(BulletItem)?.releaseCube();
                     this.bulletPool.returnBullet(bullet);
                 }
             })

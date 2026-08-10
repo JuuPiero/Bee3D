@@ -25,6 +25,7 @@ export class LevelGrid3D extends Component
     @property({ type: ColorConfig, group: 'Cube Map' })
     public colorData: ColorConfig = null;
 
+
     @property({ type: CCBoolean, group: 'Cube Map', tooltip: 'Off: instantiate cubePrefab per cube (default, proven path). On: build one merged mesh via gridMeshGrid instead - no per-cube nodes, so occlusion-driven hide/show and per-cube animation are unavailable while this is on.' })
     public useMergedMesh: boolean = false;
 
@@ -90,6 +91,7 @@ export class LevelGrid3D extends Component
     private readonly _occlusionHalfExtents = new Vec3();
     private readonly _screenProjector = new ScreenProjector();
     private readonly _holderWorldRotation = new Quat();
+    private readonly _holderInverseRotation = new Quat();
 
     // Reused by findTargetTile()'s camera-depth ranking, to avoid a per-candidate allocation.
     private readonly _targetCameraForwardScratch = new Vec3();
@@ -98,6 +100,9 @@ export class LevelGrid3D extends Component
     // Reused by buildBulletPath()'s corridor pick.
     private readonly _exitToCameraScratch = new Vec3();
     private readonly _exitDirWorldScratch = new Vec3();
+
+    // colorID -> the instanced-attribute bytes for that color, built on first use.
+    private readonly _cubeColorBytes = new Map<number, { color: Uint8Array, shadow: Uint8Array }>();
 
     // Tiles a bullet is already flying at. They stay in _solidTiles (they still occlude and still
     // block corridors) but findTargetTile() skips them, so two shooters can never pick the same
@@ -327,6 +332,59 @@ export class LevelGrid3D extends Component
 
         this._cubeNodes.set(key, node);
         if (meshRenderer) this._cubeRenderers.set(key, meshRenderer);
+    }
+
+    /**
+     * The world size one cube is drawn at, so a bullet can rescale its own stand-in cube to match
+     * what it just took out of the map. Same two factors the mesh is built from: the scale baked
+     * into every cube's vertices, times the holder's fit scale.
+     */
+    public getCubeWorldScale(out: Vec3): Vec3
+    {
+        const holderScale = this.cubeBlockHolder ? this.cubeBlockHolder.worldScale : Vec3.ONE;
+        const cubeScale = this.gridMeshGrid ? this.gridMeshGrid.cubeScale : Vec3.ONE;
+        return Vec3.multiply(out, holderScale, cubeScale);
+    }
+
+    /**
+     * `colorID`'s tones as the instanced-attribute byte pairs a cube renderer wants. Cached per
+     * color: a bullet asks for these on every hit, and the answer never changes for a color.
+     */
+    public getCubeColorBytes(colorID: number): { color: Uint8Array, shadow: Uint8Array } | null
+    {
+        const cached = this._cubeColorBytes.get(colorID);
+        if (cached) return cached;
+
+        const blockColors = this.colorData ? this.colorData.getBlockColors(colorID as EColor) : null;
+        if (!blockColors) return null;
+
+        const bytes = {
+            color: new Uint8Array([blockColors.color.r, blockColors.color.g, blockColors.color.b, blockColors.color.a]),
+            shadow: new Uint8Array([blockColors.shadow.r, blockColors.shadow.g, blockColors.shadow.b, blockColors.shadow.a]),
+        };
+        this._cubeColorBytes.set(colorID, bytes);
+        return bytes;
+    }
+
+    /** Turns a corridor direction (holder-local, from buildBulletPath) into a world direction. */
+    public localDirectionToWorld(out: Vec3, localDir: Readonly<Vec3>): Vec3
+    {
+        this.cubeBlockHolder.getWorldRotation(this._holderWorldRotation);
+        Vec3.transformQuat(out, localDir, this._holderWorldRotation);
+        return out.normalize();
+    }
+
+    /**
+     * The other way round - a world direction expressed in the holder's space. Used to arc a
+     * bullet's approach "upwards" while it is flying in the map's rotating frame: world up has to
+     * be brought into that frame or the arc tilts with the level.
+     */
+    public worldDirectionToLocal(out: Vec3, worldDir: Readonly<Vec3>): Vec3
+    {
+        this.cubeBlockHolder.getWorldRotation(this._holderWorldRotation);
+        Quat.invert(this._holderInverseRotation, this._holderWorldRotation);
+        Vec3.transformQuat(out, worldDir, this._holderInverseRotation);
+        return out.normalize();
     }
 
     /** Removes the cube at (x, y, z) from whichever rendering path is active, and clears its tile data. */
