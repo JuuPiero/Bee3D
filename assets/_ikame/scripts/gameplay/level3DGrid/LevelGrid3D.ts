@@ -9,6 +9,10 @@ import { ProjectedTriangle } from './ProjectedTriangle';
 import { GridMeshGrid3D, ICubePlacement } from './GridMeshGrid3D';
 const { ccclass, property } = _decorator;
 
+// Seconds between reachability rebuilds while the map rotates. Cheap enough at these grid sizes,
+// and short enough that a shooter never picks a cube whose corridor has swung out of reach.
+const REACHABILITY_REFRESH_INTERVAL = 0.15;
+
 @ccclass('LevelGrid3D')
 export class LevelGrid3D extends Component
 {
@@ -121,6 +125,8 @@ export class LevelGrid3D extends Component
     // triangles each, concatenated into one shared array. _tileTriangleStart/_tileTriangleCount
     // (index-aligned with _solidTiles) mark each tile's own slice, which computeVisibility
     // skips so a tile can never self-occlude.
+    private _reachabilityTimer: number = 0;
+
     private _trianglePool: ProjectedTriangle[] = [];
     private _triangles: ProjectedTriangle[] = [];
     private _tileTriangleStart: number[] = [];
@@ -172,6 +178,10 @@ export class LevelGrid3D extends Component
         }
 
         this.levelData = levelData;
+
+        // A previous level that was cleared to the last cube switched these off (see
+        // disableMeshIfCleared) - turn them back on before spawning into them.
+        this.setMeshRenderersEnabled(true);
 
         const gridSize = this.levelData.gridSize;
 
@@ -375,7 +385,31 @@ export class LevelGrid3D extends Component
         // already uses, and cheap enough at these grid sizes.
         this.computeReachabilityForSolidTiles();
 
+        this.disableMeshIfCleared();
+
         return true;
+    }
+
+    /**
+     * Stops drawing the cube map once its last cube is gone. Only the MeshRenderer is switched
+     * off, never the node: bullets are parented to cubeBlockHolder while they fly their corridor,
+     * and deactivating it would take the in-flight ones down with it.
+     */
+    private disableMeshIfCleared(): void
+    {
+        if (this._solidTiles.length > 0) return;
+
+        this.setMeshRenderersEnabled(false);
+    }
+
+    /** Toggles the cube map's own renderers - the merged mesh, and any renderer on the holder. */
+    private setMeshRenderersEnabled(enabled: boolean): void
+    {
+        const meshRenderer = this.gridMeshGrid ? this.gridMeshGrid.getComponent(MeshRenderer) : null;
+        if (meshRenderer) meshRenderer.enabled = enabled;
+
+        const holderRenderer = this.cubeBlockHolder ? this.cubeBlockHolder.getComponent(MeshRenderer) : null;
+        if (holderRenderer) holderRenderer.enabled = enabled;
     }
 
     private computeReachabilityForSolidTiles(): void
@@ -398,9 +432,20 @@ export class LevelGrid3D extends Component
         return tile.getVisibilityResult().visibleSamples > this.visibilitySampleCountHideThreshold;
     }
 
-    lateUpdate(): void
+    lateUpdate(dt: number): void
     {
         if (!this.camera || this._solidTiles.length === 0) return;
+
+        // Reachability is scored against the camera-facing faces, so a rotating map invalidates
+        // it continuously - not just when a cube is removed. Recompute on a timer rather than
+        // every frame: it is a full scan over every solid tile, and the answer only changes as
+        // fast as the map turns.
+        this._reachabilityTimer += dt;
+        if (this._reachabilityTimer >= REACHABILITY_REFRESH_INTERVAL)
+        {
+            this._reachabilityTimer = 0;
+            this.computeReachabilityForSolidTiles();
+        }
 
         this._screenProjector.prepare(this.camera);
 
@@ -575,15 +620,22 @@ export class LevelGrid3D extends Component
     }
 
     /**
-     * The corridor a bullet may travel along to reach `tile` without touching any other cube,
-     * as world positions ordered from the cube outward:
+     * The corridor a bullet may travel along to reach `tile` without touching any other cube, in
+     * cubeBlockHolder's LOCAL space, ordered from the cube outward:
      *   [0]     the target cube itself
      *   [1..n]  every empty cell between it and the edge of the pile
-     *   [n+1]   the corridor mouth, one cell past the last one (where a bullet enters)
-     *   [last]  a far point along the same axis, well outside the pile - the fly-out target
+     *   [last]  the corridor mouth, one cell past the last one - outside the grid, so it is where
+     *           a bullet enters, and where it is clear of the pile again on the way out
      * The corridor is a straight run along whichever unsealed face is clear all the way out of
      * the grid and points most towards the camera, so a bullet flying it (in either direction)
      * only ever passes through empty cells. Returns null when every face is blocked.
+     *
+     * Local, not world, because the level keeps rotating: a world-space snapshot would be stale
+     * the moment the holder turned, and the bullet would fly at where the cube used to be. In
+     * local space the corridor is fixed relative to the cubes, so a bullet parented to
+     * cubeBlockHolder can just follow these positions directly and stay inside the corridor no
+     * matter how the map spins. The face choice is still scored against the camera in world
+     * space, i.e. picked for how the map looks at the moment of the shot.
      *
      * A fresh array each call on purpose: lerpMultiplePoints() caches arc lengths keyed by array
      * identity, so a reused-and-rewritten array would be interpolated with stale distances.
@@ -630,43 +682,37 @@ export class LevelGrid3D extends Component
 
         if (!bestEntry) return null;
 
-        // World-space step of one grid cell along the chosen axis, and the same axis normalized -
-        // the tiles sit on a 1-unit lattice, so the holder's world scale is the cell size.
-        const holderScale = this.cubeBlockHolder.worldScale;
-        const stepX = bestEntry.dir.x * holderScale.x;
-        const stepY = bestEntry.dir.y * holderScale.y;
-        const stepZ = bestEntry.dir.z * holderScale.z;
-        const cellStep = new Vec3(stepX, stepY, stepZ);
-        Vec3.transformQuat(cellStep, cellStep, this._holderWorldRotation);
-
-        const path: Vec3[] = [ tileWorldPos.clone() ];
+        const path: Vec3[] = [ tile.getLocalPos().clone() ];
 
         let current: IGridTile3D = tile;
         while (true)
         {
             const next = bestEntry.getNeighbor(current);
             if (!next) break;
-            path.push(next.getWorldPos().clone());
+            path.push(next.getLocalPos().clone());
             current = next;
         }
 
         // Corridor mouth: one cell past the last in-grid cell, so the straight leg the bullet
-        // flies in from the shooter ends outside the pile rather than inside it.
+        // flies in from the shooter ends outside the pile rather than inside it - and so the
+        // fly-out leg starts from a point that is already clear of every remaining cube. The
+        // tiles sit on a 1-unit lattice, so one cell is exactly the direction vector.
         const lastCell = path[path.length - 1];
-        path.push(new Vec3(lastCell.x + cellStep.x, lastCell.y + cellStep.y, lastCell.z + cellStep.z));
-
-        // Fly-out point: far enough along the same axis to clear the whole pile (and the screen).
-        const gridSize = this.levelData.gridSize;
-        const exitCells = Math.max(gridSize.x, gridSize.y, gridSize.z) + 4;
-        const mouth = path[path.length - 1];
-        path.push(new Vec3(
-            mouth.x + cellStep.x * exitCells,
-            mouth.y + cellStep.y * exitCells,
-            mouth.z + cellStep.z * exitCells,
-        ));
+        path.push(new Vec3(lastCell.x + bestEntry.dir.x, lastCell.y + bestEntry.dir.y, lastCell.z + bestEntry.dir.z));
 
         return path;
     }
+
+    /**
+     * World units per grid cell - the holder's (uniform) fit scale. Callers working in local
+     * space need it to convert a local distance into a world one, e.g. for travel time.
+     */
+    public getCellWorldSize(): number
+    {
+        const scale = this.cubeBlockHolder.worldScale;
+        return Math.max(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z));
+    }
+
 
 
     /**

@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, BoxCollider, Camera, CCBoolean, CCInteger, Color, Component, easing, EventKeyboard, EventTouch, geometry, Input, input, JsonAsset, KeyCode, PhysicsSystem, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, AudioClip, BoxCollider, Camera, CCBoolean, CCInteger, Color, Component, easing, EventKeyboard, EventTouch, geometry, Input, input, JsonAsset, KeyCode, Node, PhysicsSystem, tween, Vec2, Vec3 } from 'cc';
 import { LevelData3D, ShooterSpawnData3D } from '../../configData/LevelData3D';
 import { EDITOR, PREVIEW } from 'cc/env';
 import { EColor } from '../../enums/EColor';
@@ -21,11 +21,15 @@ import { IPixelBlock } from '../flows/Block/IPixelBlock';
 import { PixelBlock } from '../flows/Block/PixelBlock';
 import { LevelGrid3D } from '../level3DGrid/LevelGrid3D';
 import { IGridTile3D } from '../level3DGrid/IGridTile3D';
-import { lerpMultiplePoints } from '../../utils/MathUtils';
+import { lerp3Vec3, lerpMultiplePoints } from '../../utils/MathUtils';
 const { ccclass, property } = _decorator;
 
 // World units per second, shared by both legs of a bullet's flight.
 const BULLET_SPEED = 22;
+
+// How far outside the map's own bounds a bullet's fly-out route is kept, so it never grazes a
+// cube that is still standing.
+const EXIT_CLEARANCE = 1;
 
 @ccclass('LevelController')
 export class LevelController extends Component implements ILevelController
@@ -67,6 +71,11 @@ export class LevelController extends Component implements ILevelController
 
     @property({ type: CCInteger, group: 'LevelData' })
     public tutQueueIndex: number;
+
+    // Where a bullet goes after it has taken its cube out: it climbs over the map and flies to
+    // this node. Leave it empty to have bullets just keep going straight out of the map instead.
+    @property({ type: Node, group: 'Bullet' })
+    public bulletExitTarget: Node = null;
 
     @property(BulletPooling) public bulletPool: BulletPooling;
     @property(BulletPooling) public particlePooling: BulletPooling;
@@ -522,42 +531,64 @@ export class LevelController extends Component implements ILevelController
     }
 
     /**
-     * Flies one bullet from `startPos` into `tile` and out the other end.
+     * Flies one bullet from `startPos` into `tile`, takes the cube out, then sends the bullet up
+     * over the map and on to `bulletExitTarget`.
      *
-     * The whole flight rides the corridor LevelGrid3D.buildBulletPath() picked - a straight run of
-     * empty cells from the cube out of the pile - so the bullet only ever passes through empty
-     * space: in from the corridor mouth to the cube (never clipping the cubes beside it), then,
-     * once the cube is removed, straight back out along the same corridor and off the screen.
+     * The flight has two halves, and the split is entirely about the map rotating:
+     *
+     * 1. While it is in or near the pile the bullet is PARENTED TO cubeBlockHolder, so it simply
+     *    rides the level: it inherits the rotation for free, and the corridor - which is authored
+     *    in the holder's own space - stays a corridor of empty cells however far the map has spun
+     *    since the shot. Driving world positions instead would need the path re-derived every
+     *    frame, and a world-space snapshot would be stale the instant the map moved and would cut
+     *    straight through the cubes beside the target. The visible cost is that the muzzle-to-mouth
+     *    leg curves along with the map, which reads as the level carrying the bullet.
+     * 2. At the corridor mouth the bullet is out of the grid, so it is handed back to the pool's
+     *    node (keeping its world transform, so it neither jumps nor keeps spinning) and the rest
+     *    is flown in world space: up above the map's bounding sphere, then across to the target
+     *    node, whose position is re-read every frame so a moving node is still hit. Staying
+     *    outside the bounding sphere is rotation-proof - a sphere looks the same from every angle,
+     *    so no amount of spin can swing a cube into that route.
      */
     public shootBulletAtTile(tile: IGridTile3D, startPos: Vec3): boolean
     {
         if (!this.levelGrid3D || !tile || !this.bulletPool) return false;
 
-        const exitPath = this.levelGrid3D.buildBulletPath(tile);
-        if (!exitPath) return false;
-
-        // The corridor runs cube -> outward; reversed (minus the far fly-out point) it is the
-        // approach, which the shooter's fire point is prepended to.
-        const approachPath: Vec3[] = [ startPos.clone() ];
-        for (let i = exitPath.length - 2; i >= 0; i--) approachPath.push(exitPath[i]);
+        const corridor = this.levelGrid3D.buildBulletPath(tile);
+        if (!corridor) return false;
 
         this.levelGrid3D.reserveTile(tile);
 
         const bullet = this.bulletPool.getBullet();
-        bullet.setWorldPosition(approachPath[0]);
+        bullet.setWorldPosition(startPos);
+        // keepWorldTransform, so parenting neither teleports the bullet nor shrinks it into the
+        // holder's fit scale.
+        bullet.setParent(this.levelGrid3D.cubeBlockHolder, true);
 
-        const flyPos = new Vec3();
+        // The corridor runs cube -> outward; reversed it is the approach, prefixed with the
+        // muzzle - which, now that the bullet is a child of the holder, is just its local position.
+        const approachPath: Vec3[] = [ bullet.position.clone() ];
+        for (let i = corridor.length - 1; i >= 0; i--) approachPath.push(corridor[i]);
+
+        // Holder-local units scale into world units by the holder's fit scale, so travel time is
+        // measured in world units and the bullet keeps one speed across every leg.
+        const cellWorldSize = this.levelGrid3D.getCellWorldSize();
+
+        const localPos = new Vec3();
         const approachObj = { t: 0 };
         tween(approachObj)
-            .to(LevelController.pathTravelTime(approachPath), { t: 1 }, {
+            .to(LevelController.pathTravelTime(approachPath, cellWorldSize), { t: 1 }, {
                 easing: easing.linear,
                 onUpdate: () =>
                 {
-                    lerpMultiplePoints(flyPos, approachPath, approachObj.t);
-                    bullet.setWorldPosition(flyPos);
+                    if (!bullet.isValid) return;
+                    lerpMultiplePoints(localPos, approachPath, approachObj.t);
+                    bullet.setPosition(localPos);
                 },
                 onComplete: () =>
                 {
+                    if (!bullet.isValid) return;
+
                     this.levelGrid3D.releaseTile(tile);
 
                     // A cube with health N takes N bullets - only the last one clears the cell,
@@ -574,22 +605,7 @@ export class LevelController extends Component implements ILevelController
                     this.checkWinCondition();
                     EventDispatcher.dispatch(EventName.PlaySFX, this.breakBlockBreak);
 
-                    // Second leg: out along the same corridor, ending well off screen.
-                    const exitObj = { t: 0 };
-                    tween(exitObj)
-                        .to(LevelController.pathTravelTime(exitPath), { t: 1 }, {
-                            easing: easing.linear,
-                            onUpdate: () =>
-                            {
-                                lerpMultiplePoints(flyPos, exitPath, exitObj.t);
-                                bullet.setWorldPosition(flyPos);
-                            },
-                            onComplete: () =>
-                            {
-                                this.bulletPool.returnBullet(bullet);
-                            }
-                        })
-                        .start();
+                    this.flyBulletOut(bullet, corridor, cellWorldSize);
                 }
             })
             .start();
@@ -597,12 +613,103 @@ export class LevelController extends Component implements ILevelController
         return true;
     }
 
-    /** Seconds a bullet needs to walk `path` at BULLET_SPEED, so speed stays constant leg to leg. */
-    private static pathTravelTime(path: Vec3[]): number
+    /**
+     * Second half of a bullet's flight: back out along the corridor (still parented to the map, so
+     * it keeps tracking the rotation), then off the map and up out of its bounding sphere and
+     * across to `bulletExitTarget` in world space, re-aimed every frame. Without a target node
+     * assigned the bullet just keeps climbing until it is well clear, then is recycled.
+     */
+    private flyBulletOut(bullet: Node, corridor: Vec3[], cellWorldSize: number): void
+    {
+        const localPos = new Vec3();
+
+        const corridorObj = { t: 0 };
+        tween(corridorObj)
+            .to(LevelController.pathTravelTime(corridor, cellWorldSize), { t: 1 }, {
+                easing: easing.linear,
+                onUpdate: () =>
+                {
+                    if (!bullet.isValid) return;
+                    lerpMultiplePoints(localPos, corridor, corridorObj.t);
+                    bullet.setPosition(localPos);
+                },
+                onComplete: () =>
+                {
+                    if (!bullet.isValid) return;
+
+                    // Off the map's back now: hand the bullet back to the pool's node, keeping
+                    // where it is, so it stops spinning with the level.
+                    bullet.setParent(this.bulletPool.node, true);
+                    this.flyBulletToExitTarget(bullet);
+                }
+            })
+            .start();
+    }
+
+    /**
+     * Last leg, in world space and starting from wherever the bullet already is (which is always
+     * outside the grid by now): straight up until it is above the map's bounding sphere, then
+     * across and down onto `bulletExitTarget`, re-aimed every frame so a moving node is still hit.
+     *
+     * A bounding SPHERE, not the box: the map keeps turning, and only a sphere is the same size
+     * from every angle, so a route outside it can never be reached by a rotated-in cube. With no
+     * target node assigned the bullet just climbs clear and is recycled there.
+     */
+    private flyBulletToExitTarget(bullet: Node): void
+    {
+        const center = this.BoundsCenter;
+        const span = this.BoundsSize;
+        const radius = Math.hypot(span.x, span.y, span.z) * 0.5 + EXIT_CLEARANCE;
+        const cruiseY = center.y + radius;
+
+        const climbFrom = bullet.worldPosition.clone();
+        const climbTo = new Vec3(climbFrom.x, Math.max(cruiseY, climbFrom.y), climbFrom.z);
+
+        const target = this.bulletExitTarget;
+        const flyPos = new Vec3();
+        const exitObj = { t: 0 };
+
+        const climbDistance = Vec3.distance(climbFrom, climbTo);
+        const crossDistance = target ? Vec3.distance(climbTo, target.worldPosition) : radius;
+        const duration = Math.max((climbDistance + crossDistance) / BULLET_SPEED, 0.01);
+
+        tween(exitObj)
+            .to(duration, { t: 1 }, {
+                easing: easing.linear,
+                onUpdate: () =>
+                {
+                    if (!bullet.isValid) return;
+                    if (target)
+                    {
+                        // Re-read the node every frame: it may be moving, and the climb keeps the
+                        // bullet above the map the whole way across.
+                        lerp3Vec3(climbFrom, climbTo, target.worldPosition, exitObj.t, flyPos);
+                    }
+                    else
+                    {
+                        Vec3.lerp(flyPos, climbFrom, climbTo, exitObj.t);
+                    }
+                    bullet.setWorldPosition(flyPos);
+                },
+                onComplete: () =>
+                {
+                    if (!bullet.isValid) return;
+                    this.bulletPool.returnBullet(bullet);
+                }
+            })
+            .start();
+    }
+
+    /**
+     * Seconds a bullet needs to walk `path` at BULLET_SPEED, so speed stays constant leg to leg.
+     * `unitScale` converts the path's units into world units - 1 for a world-space path, the
+     * holder's cell size for a local-space one.
+     */
+    private static pathTravelTime(path: Vec3[], unitScale: number = 1): number
     {
         let length = 0;
         for (let i = 1; i < path.length; i++) length += Vec3.distance(path[i - 1], path[i]);
-        return Math.max(length / BULLET_SPEED, 0.01);
+        return Math.max((length * unitScale) / BULLET_SPEED, 0.01);
     }
 
     //#endregion
