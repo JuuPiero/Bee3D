@@ -2,6 +2,7 @@ import { Vec3 , Node} from "cc";
 import { EShooterState } from "./states/EShooterState";
 import { IPixelBlock } from "../Block/IPixelBlock";
 import { IGridTile } from "../MapTiles/IGridTile";
+import { IGridTile3D } from "../../level3DGrid/IGridTile3D";
 
 export interface IShooterItem {
     doNoTarget(): void;
@@ -39,6 +40,14 @@ export interface IShooterItem {
     pauseAnimation(): void
     getAngleDeltaToTarget(target: IPixelBlock): number
     destroyShooter(): void
+
+    /** Picks (and remembers) the next cube of this shooter's color, or null when there is none. */
+    findTargetTile(): IGridTile3D | null
+    /** The cube findTargetTile() last picked, still unshot. */
+    getTargetTile(): IGridTile3D | null
+    /** Fires one bullet at the remembered cube; clears it either way. */
+    shootTargetTile(): boolean
+    getAngleDeltaToTile(tile: IGridTile3D): number
 }
 
 

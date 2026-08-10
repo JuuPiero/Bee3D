@@ -1,5 +1,4 @@
 import { EShooterState } from "../EShooterState";
-import { ShooterAnimationName } from "../ShooterAnimationName";
 import { ShooterStateBase } from "../ShooterStateBase";
 
 const SEARCH_INTERVAL = 0.1;
@@ -10,22 +9,9 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
 
     public onEnter(): void
     {
-        const targets = this._shooter.findTargets();
-        // for (let [x, d] of targets){
-        //     x.disable()
-        // }
-        if (targets.size)
-        {
-            this.stateMachine.changeState(EShooterState.InConveyor_Shot);
-            return;
-        }
+        if (this.trySearchTarget()) return;
 
-        if (!targets.size)
-        {
-            this._shooter.doNoTarget();
-        }
-
-        if (this.stateMachine.getLastStateName() !== EShooterState.Jump) 
+        if (this.stateMachine.getLastStateName() !== EShooterState.Jump)
         {
             this._shooter.pauseAnimation();
         }
@@ -39,20 +25,27 @@ export class ShooterInConveyorIdleState extends ShooterStateBase
             return;
         }
         this._searchTimer = 0;
-        let targets = this._shooter.getTargets()
-        if (targets.size) return;
-        
-        targets = this._shooter.findTargets();
-        if (targets.size) {
-            this.stateMachine.changeState(EShooterState.InConveyor_Shot);
-            return;
-        }
 
-        if (!targets.size) {
-            this._shooter.doNoTarget();
-        }
+        this.trySearchTarget();
     }
 
+    /**
+     * Asks the cube grid for the next cube of this shooter's color. Reachability and visibility
+     * both change as the pile is peeled, so a shooter with no target just keeps asking rather
+     * than giving up.
+     */
+    private trySearchTarget(): boolean
+    {
+        const target = this._shooter.findTargetTile();
+        if (target)
+        {
+            this.stateMachine.changeState(EShooterState.InConveyor_Shot);
+            return true;
+        }
+
+        this._shooter.doNoTarget();
+        return false;
+    }
 }
 
 

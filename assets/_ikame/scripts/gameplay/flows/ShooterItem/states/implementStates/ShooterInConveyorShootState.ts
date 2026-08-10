@@ -1,32 +1,35 @@
 import { PromiseDelay } from "db://assets/_ikame/scripts/commons/PromiseDelay";
-import { IPixelBlock } from "../../../Block/IPixelBlock";
 import { EShooterState } from "../EShooterState";
 import { ShooterAnimationName } from "../ShooterAnimationName";
 import { ShooterStateBase } from "../ShooterStateBase";
-import { game } from "cc";
-import { IGridTile } from "../../../MapTiles/IGridTile";
 
-const FIRE_INTERVAL = 0.2
+const FIRE_INTERVAL = 0.2;
+
 export class ShooterInConveyorShootState extends ShooterStateBase {
-
-    private _target: Map<IPixelBlock, IGridTile[]>;
-    private _lastFireTime = Number.MIN_VALUE;
 
     public onEnter(): void
     {
-        this._target = this._shooter.getTargets();
         this.rotateAndShoot();
     }
 
     private async rotateAndShoot()
     {
-        for (let [block, path] of this._target) {
-            this._shooter.pauseAnimation();
-            this._shooter.changeAnimation(ShooterAnimationName.Attack, true);
-            this._shooter.moveByPathToTarget(block, path);
-            await PromiseDelay.Wait(FIRE_INTERVAL);
+        const target = this._shooter.getTargetTile();
+        if (!target)
+        {
+            this.finishShootState();
+            return;
         }
-        this._target.clear();
+
+        await this._shooter.rotateTowardsTargetAsync(this._shooter.getAngleDeltaToTile(target));
+
+        this._shooter.pauseAnimation();
+        this._shooter.changeAnimation(ShooterAnimationName.Attack, true);
+        // The bullet flies itself from here: in along a clear corridor, cube removed, then out
+        // of the screen - the shooter is free to look for its next target immediately.
+        this._shooter.shootTargetTile();
+
+        await PromiseDelay.Wait(FIRE_INTERVAL);
         this.finishShootState();
     }
 

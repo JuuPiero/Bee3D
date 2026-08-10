@@ -91,6 +91,26 @@ export class LevelGrid3D extends Component
     private readonly _targetCameraForwardScratch = new Vec3();
     private readonly _targetCameraToTileScratch = new Vec3();
 
+    // Reused by buildBulletPath()'s corridor pick.
+    private readonly _exitToCameraScratch = new Vec3();
+    private readonly _exitDirWorldScratch = new Vec3();
+
+    // Tiles a bullet is already flying at. They stay in _solidTiles (they still occlude and still
+    // block corridors) but findTargetTile() skips them, so two shooters can never pick the same
+    // cube and fire two bullets at it.
+    private readonly _reservedTiles = new Set<IGridTile3D>();
+
+    // Local-space axis + matching neighbour getter, per cube face. Drives buildBulletPath()'s
+    // straight-corridor scan the same way FACE_NEIGHBORS drives GridTile3D's reachability.
+    private static readonly EXIT_DIRECTIONS: readonly { dir: Vec3, getNeighbor: (tile: IGridTile3D) => IGridTile3D }[] = [
+        { dir: new Vec3(0, 1, 0), getNeighbor: t => t.getUpLinkedTile() },      // +Y
+        { dir: new Vec3(0, -1, 0), getNeighbor: t => t.getDownLinkedTile() },   // -Y
+        { dir: new Vec3(0, 0, -1), getNeighbor: t => t.getTopLinkedTile() },    // -Z
+        { dir: new Vec3(0, 0, 1), getNeighbor: t => t.getBottomLinkedTile() },  // +Z
+        { dir: new Vec3(-1, 0, 0), getNeighbor: t => t.getLeftLinkedTile() },   // -X
+        { dir: new Vec3(1, 0, 0), getNeighbor: t => t.getRightLinkedTile() },   // +X
+    ];
+
     // Digit key -> colorID, index-aligned (KEY_DIGIT_0 -> colorID 0, etc.).
     private static readonly DEBUG_COLOR_KEYS: readonly number[] = [
         KeyCode.DIGIT_0, KeyCode.DIGIT_1, KeyCode.DIGIT_2, KeyCode.DIGIT_3, KeyCode.DIGIT_4,
@@ -438,6 +458,7 @@ export class LevelGrid3D extends Component
         this._triangles.length = 0;
         this._tileTriangleStart.length = 0;
         this._tileTriangleCount.length = 0;
+        this._reservedTiles.clear();
 
         for (const node of this._cubeNodes.values()) node.destroy();
         this._cubeNodes.clear();
@@ -473,6 +494,7 @@ export class LevelGrid3D extends Component
         const candidates = this._solidTiles.filter(tile =>
             tile.isMatchingColorID(colorID) &&
             tile.isReachable() &&
+            !this._reservedTiles.has(tile) &&
             this.isTileVisible(tile)
         );
         if (candidates.length === 0) return null;
@@ -538,6 +560,112 @@ export class LevelGrid3D extends Component
         }
 
         return best;
+    }
+
+    /** Marks `tile` as already being shot at, so findTargetTile() stops handing it out. */
+    public reserveTile(tile: IGridTile3D): void
+    {
+        if (tile) this._reservedTiles.add(tile);
+    }
+
+    /** Undoes reserveTile() - call once the bullet has landed (or was cancelled). */
+    public releaseTile(tile: IGridTile3D): void
+    {
+        if (tile) this._reservedTiles.delete(tile);
+    }
+
+    /**
+     * The corridor a bullet may travel along to reach `tile` without touching any other cube,
+     * as world positions ordered from the cube outward:
+     *   [0]     the target cube itself
+     *   [1..n]  every empty cell between it and the edge of the pile
+     *   [n+1]   the corridor mouth, one cell past the last one (where a bullet enters)
+     *   [last]  a far point along the same axis, well outside the pile - the fly-out target
+     * The corridor is a straight run along whichever unsealed face is clear all the way out of
+     * the grid and points most towards the camera, so a bullet flying it (in either direction)
+     * only ever passes through empty cells. Returns null when every face is blocked.
+     *
+     * A fresh array each call on purpose: lerpMultiplePoints() caches arc lengths keyed by array
+     * identity, so a reused-and-rewritten array would be interpolated with stale distances.
+     */
+    public buildBulletPath(tile: IGridTile3D): Vec3[] | null
+    {
+        if (!tile || !this.camera || !this.levelData) return null;
+
+        this.cubeBlockHolder.getWorldRotation(this._holderWorldRotation);
+
+        const tileWorldPos = tile.getWorldPos();
+        const cameraPos = this.camera.node.worldPosition;
+        this._exitToCameraScratch.set(
+            cameraPos.x - tileWorldPos.x,
+            cameraPos.y - tileWorldPos.y,
+            cameraPos.z - tileWorldPos.z,
+        );
+        this._exitToCameraScratch.normalize();
+
+        let bestEntry: (typeof LevelGrid3D.EXIT_DIRECTIONS)[number] | null = null;
+        let bestScore = -Infinity;
+
+        for (const entry of LevelGrid3D.EXIT_DIRECTIONS)
+        {
+            let isClear = true;
+            let current: IGridTile3D = tile;
+            while (true)
+            {
+                const next = entry.getNeighbor(current);
+                if (!next) break;                                  // walked out of the grid: clear
+                if (next.isContainBlock()) { isClear = false; break; }
+                current = next;
+            }
+            if (!isClear) continue;
+
+            Vec3.transformQuat(this._exitDirWorldScratch, entry.dir, this._holderWorldRotation);
+            const score = Vec3.dot(this._exitDirWorldScratch, this._exitToCameraScratch);
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestEntry = entry;
+            }
+        }
+
+        if (!bestEntry) return null;
+
+        // World-space step of one grid cell along the chosen axis, and the same axis normalized -
+        // the tiles sit on a 1-unit lattice, so the holder's world scale is the cell size.
+        const holderScale = this.cubeBlockHolder.worldScale;
+        const stepX = bestEntry.dir.x * holderScale.x;
+        const stepY = bestEntry.dir.y * holderScale.y;
+        const stepZ = bestEntry.dir.z * holderScale.z;
+        const cellStep = new Vec3(stepX, stepY, stepZ);
+        Vec3.transformQuat(cellStep, cellStep, this._holderWorldRotation);
+
+        const path: Vec3[] = [ tileWorldPos.clone() ];
+
+        let current: IGridTile3D = tile;
+        while (true)
+        {
+            const next = bestEntry.getNeighbor(current);
+            if (!next) break;
+            path.push(next.getWorldPos().clone());
+            current = next;
+        }
+
+        // Corridor mouth: one cell past the last in-grid cell, so the straight leg the bullet
+        // flies in from the shooter ends outside the pile rather than inside it.
+        const lastCell = path[path.length - 1];
+        path.push(new Vec3(lastCell.x + cellStep.x, lastCell.y + cellStep.y, lastCell.z + cellStep.z));
+
+        // Fly-out point: far enough along the same axis to clear the whole pile (and the screen).
+        const gridSize = this.levelData.gridSize;
+        const exitCells = Math.max(gridSize.x, gridSize.y, gridSize.z) + 4;
+        const mouth = path[path.length - 1];
+        path.push(new Vec3(
+            mouth.x + cellStep.x * exitCells,
+            mouth.y + cellStep.y * exitCells,
+            mouth.z + cellStep.z * exitCells,
+        ));
+
+        return path;
     }
 
 

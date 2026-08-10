@@ -721,7 +721,9 @@
     "gridMeshGrid": {
       "__id__": 22
     },
-    "camera": null,
+    "camera": {
+      "__id__": 16
+    },
     "occlusionBoxSize": {
       "__type__": "cc.Vec3",
       "x": 1,

@@ -27,6 +27,7 @@ import { PREVIEW } from 'cc/env';
 import { Floater } from '../Floater/Floater';
 import { IPixelBlock } from '../Block/IPixelBlock';
 import { IGridTile } from '../MapTiles/IGridTile';
+import { IGridTile3D } from '../../level3DGrid/IGridTile3D';
 const { ccclass, property } = _decorator;
 
 const JUMP_DURATION = 0.3;
@@ -195,7 +196,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             this.tryShootTargets();
         }
     }
-o
+
     public tryShootTargets(): number {
         if (this.ammoCount <= 0) {
             return 0;
@@ -206,8 +207,42 @@ o
     }
 
     public findTargets(): Map<IPixelBlock, IGridTile[]> {
-        this._levelController.findTargetPixels(this.colorID, this._target, 1); 
+        this._levelController.findTargetPixels(this.colorID, this._target, 1);
         return this._target;
+    }
+
+    // The cube picked by LevelGrid3D.findTargetTile() for this shooter's color, held between the
+    // idle state (which finds it) and the shoot state (which fires at it).
+    private _targetTile: IGridTile3D = null;
+
+    public findTargetTile(): IGridTile3D | null {
+        this._targetTile = this._levelController.findTargetTile(this.colorID);
+        return this._targetTile;
+    }
+
+    public getTargetTile(): IGridTile3D | null {
+        return this._targetTile;
+    }
+
+    /**
+     * Fires one bullet at the remembered cube. The cube is released either way, so a stale target
+     * (already shot by another shooter, or out of ammo) never sticks around to be fired at twice.
+     */
+    public shootTargetTile(): boolean {
+        const tile = this._targetTile;
+        this._targetTile = null;
+        if (!tile || this.ammoCount <= 0 || !tile.isContainBlock()) {
+            return false;
+        }
+
+        const didShoot = this._levelController.shootBulletAtTile(tile, this.getFirePointWorldPosition());
+        if (!didShoot) {
+            return false;
+        }
+
+        this.reduceAmmoCount(1);
+        this.shootSoundEffect();
+        return true;
     }
 
     public init(shooterData: ShooterSpawnData3D, colorQueue: IColorQueue, levelController: ILevelController): void {
@@ -380,6 +415,17 @@ o
         target.getWorldPosition(this._targetWorldPosition);
         const deltaEuler = Utils.getDeltaEuler(this._worldPosition, this._targetWorldPosition, this._curentEuler.y);
         return deltaEuler;
+    }
+
+
+    /** Same yaw delta as getAngleDeltaToTarget(), for a 3D grid tile instead of a 2D pixel block. */
+    public getAngleDeltaToTile(tile: IGridTile3D): number
+    {
+        this.characterRoot.getRotation(this._curRotattion);
+        this._curRotattion.getEulerAngles(this._curentEuler);
+        this.node.getWorldPosition(this._worldPosition);
+        this._targetWorldPosition.set(tile.getWorldPos());
+        return Utils.getDeltaEuler(this._worldPosition, this._targetWorldPosition, this._curentEuler.y);
     }
 
 

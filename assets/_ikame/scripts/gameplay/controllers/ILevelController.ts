@@ -8,6 +8,7 @@ import { IShooterItem } from "../flows/ShooterItem/IShooterItem"
 import { Floater } from "../flows/Floater/Floater"
 import { IPixelBlock } from "../flows/Block/IPixelBlock"
 import { GridTile } from "../flows/MapTiles/GridTile"
+import { IGridTile3D } from "../level3DGrid/IGridTile3D"
 
 export interface ILevelController
 {
@@ -52,6 +53,14 @@ export interface ILevelController
     
     moveBulletByPathToTarget(block: IPixelBlock, path: IGridTile[], startPos: Vec3)
 
+    /** The next cube of `colorID` a shooter should hit, or null when none is reachable/visible. */
+    findTargetTile(colorID: number): IGridTile3D | null
+
+    /**
+     * Flies a bullet from `startPos` into `tile` along a corridor of empty cells (so no other
+     * cube is hit), removes that cube, then flies the bullet on out of the screen.
+     */
+    shootBulletAtTile(tile: IGridTile3D, startPos: Vec3): boolean
 }
 
 

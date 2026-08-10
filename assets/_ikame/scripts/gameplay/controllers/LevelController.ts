@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, BoxCollider, Camera, CCBoolean, CCInteger, Color, Component, EventKeyboard, EventTouch, geometry, Input, input, JsonAsset, KeyCode, PhysicsSystem, Vec2, Vec3 } from 'cc';
+import { _decorator, AudioClip, BoxCollider, Camera, CCBoolean, CCInteger, Color, Component, easing, EventKeyboard, EventTouch, geometry, Input, input, JsonAsset, KeyCode, PhysicsSystem, tween, Vec2, Vec3 } from 'cc';
 import { LevelData3D, ShooterSpawnData3D } from '../../configData/LevelData3D';
 import { EDITOR, PREVIEW } from 'cc/env';
 import { EColor } from '../../enums/EColor';
@@ -20,7 +20,12 @@ import { LevelScaler } from '../LevelScaler';
 import { IPixelBlock } from '../flows/Block/IPixelBlock';
 import { PixelBlock } from '../flows/Block/PixelBlock';
 import { LevelGrid3D } from '../level3DGrid/LevelGrid3D';
+import { IGridTile3D } from '../level3DGrid/IGridTile3D';
+import { lerpMultiplePoints } from '../../utils/MathUtils';
 const { ccclass, property } = _decorator;
+
+// World units per second, shared by both legs of a bullet's flight.
+const BULLET_SPEED = 22;
 
 @ccclass('LevelController')
 export class LevelController extends Component implements ILevelController
@@ -507,6 +512,100 @@ export class LevelController extends Component implements ILevelController
     public getTutorialPosition(): Vec3 {
         return this.colorQueueControllers.getQueueTopPosition(this.tutQueueIndex);
     }
+
+    //#region 3D shooting
+
+    /** The cube this shooter color should hit next, or null when none is reachable/visible. */
+    public findTargetTile(colorID: number): IGridTile3D | null
+    {
+        return this.levelGrid3D ? this.levelGrid3D.findTargetTile(colorID) : null;
+    }
+
+    /**
+     * Flies one bullet from `startPos` into `tile` and out the other end.
+     *
+     * The whole flight rides the corridor LevelGrid3D.buildBulletPath() picked - a straight run of
+     * empty cells from the cube out of the pile - so the bullet only ever passes through empty
+     * space: in from the corridor mouth to the cube (never clipping the cubes beside it), then,
+     * once the cube is removed, straight back out along the same corridor and off the screen.
+     */
+    public shootBulletAtTile(tile: IGridTile3D, startPos: Vec3): boolean
+    {
+        if (!this.levelGrid3D || !tile || !this.bulletPool) return false;
+
+        const exitPath = this.levelGrid3D.buildBulletPath(tile);
+        if (!exitPath) return false;
+
+        // The corridor runs cube -> outward; reversed (minus the far fly-out point) it is the
+        // approach, which the shooter's fire point is prepended to.
+        const approachPath: Vec3[] = [ startPos.clone() ];
+        for (let i = exitPath.length - 2; i >= 0; i--) approachPath.push(exitPath[i]);
+
+        this.levelGrid3D.reserveTile(tile);
+
+        const bullet = this.bulletPool.getBullet();
+        bullet.setWorldPosition(approachPath[0]);
+
+        const flyPos = new Vec3();
+        const approachObj = { t: 0 };
+        tween(approachObj)
+            .to(LevelController.pathTravelTime(approachPath), { t: 1 }, {
+                easing: easing.linear,
+                onUpdate: () =>
+                {
+                    lerpMultiplePoints(flyPos, approachPath, approachObj.t);
+                    bullet.setWorldPosition(flyPos);
+                },
+                onComplete: () =>
+                {
+                    this.levelGrid3D.releaseTile(tile);
+
+                    // A cube with health N takes N bullets - only the last one clears the cell,
+                    // which is also what the win counter counts (one tick per hit, not per cube).
+                    const health = tile.getHealth();
+                    if (health > 1)
+                    {
+                        tile.setCubeData(tile.getColorID(), health - 1);
+                    }
+                    else
+                    {
+                        this.levelGrid3D.removeCube(tile.getCoordX(), tile.getCoordY(), tile.getCoordZ());
+                    }
+                    this.checkWinCondition();
+                    EventDispatcher.dispatch(EventName.PlaySFX, this.breakBlockBreak);
+
+                    // Second leg: out along the same corridor, ending well off screen.
+                    const exitObj = { t: 0 };
+                    tween(exitObj)
+                        .to(LevelController.pathTravelTime(exitPath), { t: 1 }, {
+                            easing: easing.linear,
+                            onUpdate: () =>
+                            {
+                                lerpMultiplePoints(flyPos, exitPath, exitObj.t);
+                                bullet.setWorldPosition(flyPos);
+                            },
+                            onComplete: () =>
+                            {
+                                this.bulletPool.returnBullet(bullet);
+                            }
+                        })
+                        .start();
+                }
+            })
+            .start();
+
+        return true;
+    }
+
+    /** Seconds a bullet needs to walk `path` at BULLET_SPEED, so speed stays constant leg to leg. */
+    private static pathTravelTime(path: Vec3[]): number
+    {
+        let length = 0;
+        for (let i = 1; i < path.length; i++) length += Vec3.distance(path[i - 1], path[i]);
+        return Math.max(length / BULLET_SPEED, 0.01);
+    }
+
+    //#endregion
 
     //#region 2D grid stubs
     // The 2D pixel grid used to live here; it now lives in LevelGrid3D as a 3D cube grid, which
