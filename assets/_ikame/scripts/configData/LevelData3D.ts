@@ -66,6 +66,9 @@ export class CubeData3D {
     public health: number = 1;
 }
 
+/** Multiplier used to fold (line, index) into a single unique shooter id. */
+const UID_LINE_STRIDE = 1000;
+
 /** A single shooter placed on the conveyor lines around the grid. */
 export class ShooterSpawnData3D {
     public color: number = 0;
@@ -97,6 +100,15 @@ export class ShooterSpawnData3D {
 
     public get hasSecondColor(): boolean {
         return this.secondColor >= 0 && this.secondAmmo > 0;
+    }
+
+    /**
+     * Stable per-level identity. The 3D level JSON has no explicit shooter id like the old 2D
+     * schema did, but (line, index) is unique per shooter, so derive one from it - this is what
+     * LevelController keys its shooter map by.
+     */
+    public get uid(): number {
+        return this.line * UID_LINE_STRIDE + this.index;
     }
 }
 

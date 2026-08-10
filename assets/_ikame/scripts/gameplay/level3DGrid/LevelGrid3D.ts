@@ -1,4 +1,4 @@
-import { _decorator, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, EventKeyboard, Input, input, instantiate, JsonAsset, KeyCode, MeshRenderer, Node, Prefab, Quat, Vec3 } from 'cc';
+import { _decorator, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, EventKeyboard, Input, input, instantiate, KeyCode, MeshRenderer, Node, Prefab, Quat, Vec3 } from 'cc';
 import { LevelData3D } from '../../configData/LevelData3D';
 import { GridTile3D } from './GridTile3D';
 import { IGridTile3D } from './IGridTile3D';
@@ -26,12 +26,6 @@ export class LevelGrid3D extends Component
 
     @property({ type: GridMeshGrid3D, group: 'Cube Map', tooltip: 'Only used when useMergedMesh is on.' })
     public gridMeshGrid: GridMeshGrid3D = null;
-
-    @property({ type: [ JsonAsset ], group: 'LevelData' })
-    public levelJsonAssets: JsonAsset[] = [];
-
-    @property({ type: CCInteger, group: 'LevelData' })
-    public levelIndex: number = 0;
 
     @property({ type: Camera, group: 'Occlusion' })
     public camera: Camera = null;
@@ -87,6 +81,8 @@ export class LevelGrid3D extends Component
     // and the camera-occlusion show/hide below.
     private _solidTiles: GridTile3D[] = [];
 
+    // occlusionBoxSize scaled by cubeBlockHolder's world scale, i.e. the box in world units.
+    private readonly _occlusionBoxWorldSize = new Vec3();
     private readonly _occlusionHalfExtents = new Vec3();
     private readonly _screenProjector = new ScreenProjector();
     private readonly _holderWorldRotation = new Quat();
@@ -112,7 +108,6 @@ export class LevelGrid3D extends Component
 
     start()
     {
-        this.spawnLevel();
         this.camera?.camera?.initGeometryRenderer();
 
         input.on(Input.EventType.KEY_DOWN, this.onDebugKeyDown, this);
@@ -143,14 +138,24 @@ export class LevelGrid3D extends Component
         console.log(`[LevelGrid3D] findTargetTile(${colorID}) -> (${x}, ${y}, ${z}), removeCube: ${removed}`);
     }
 
-    public spawnLevel(): void
+    /**
+     * Builds the grid and its cubes from `levelData`, which the caller owns and has already
+     * parsed - LevelController reads the level JSON once and shares the result between this grid
+     * and the shooter queues, so this component never touches a JsonAsset itself.
+     */
+    public spawnLevel(levelData: LevelData3D): void
     {
-        var textJson = JSON.stringify(this.levelJsonAssets[this.levelIndex].json);
-        this.levelData = new LevelData3D(textJson);
+        if (!levelData)
+        {
+            console.error('[LevelGrid3D] spawnLevel() called without level data - nothing spawned.');
+            return;
+        }
+
+        this.levelData = levelData;
 
         const gridSize = this.levelData.gridSize;
 
-        const cubeBounds = this.computeCubeBounds(gridSize);
+        const cubeBounds = LevelGrid3D.computeCubeBounds(this.levelData);
         const offsetX = -(cubeBounds.minX + cubeBounds.maxX) / 2;
         const offsetZ = -(cubeBounds.minZ + cubeBounds.maxZ) / 2;
         const offsetY = -(cubeBounds.minY + cubeBounds.maxY) / 2;
@@ -182,12 +187,22 @@ export class LevelGrid3D extends Component
             tile.setLinkedTiles(upTile, downTile, topTile, bottomTile, leftTile, rightTile);
         }
 
-        this._occlusionHalfExtents.set(
-            Math.abs(this.occlusionBoxSize.x) * 0.5,
-            Math.abs(this.occlusionBoxSize.y) * 0.5,
-            Math.abs(this.occlusionBoxSize.z) * 0.5,
+        // occlusionBoxSize is authored in cube units (1 = one cell), but the samples and box
+        // corners derived from it are added to world-space tile positions. cubeBlockHolder is
+        // scaled to fit the level inside the map border, so the box has to be scaled with it -
+        // otherwise every cube keeps a full-size occluder and swallows its neighbours.
+        const holderScale = this.cubeBlockHolder.worldScale;
+        this._occlusionBoxWorldSize.set(
+            Math.abs(this.occlusionBoxSize.x * holderScale.x),
+            Math.abs(this.occlusionBoxSize.y * holderScale.y),
+            Math.abs(this.occlusionBoxSize.z * holderScale.z),
         );
-        GridTile3D.configureOcclusion(this.occlusionBoxSize, this.occlusionSampleGridSize, this.occlusionSampleMargin);
+        this._occlusionHalfExtents.set(
+            this._occlusionBoxWorldSize.x * 0.5,
+            this._occlusionBoxWorldSize.y * 0.5,
+            this._occlusionBoxWorldSize.z * 0.5,
+        );
+        GridTile3D.configureOcclusion(this._occlusionBoxWorldSize, this.occlusionSampleGridSize, this.occlusionSampleMargin);
 
         if (this.useMergedMesh)
         {
@@ -526,9 +541,29 @@ export class LevelGrid3D extends Component
     }
 
 
-    private computeCubeBounds(gridSize: Vec3): { minX: number, maxX: number, minY: number, maxY: number, minZ: number, maxZ: number }
+    /**
+     * Local-space size of the box the spawned cubes occupy, in cube units (tiles sit on a
+     * 1-unit lattice, so a span of N cells is N units wide). LevelController uses this to scale
+     * cubeBlockHolder so the level fits inside the map border - which is why it is static: the
+     * fit has to be applied before spawnLevel() runs, so the occlusion box is sized against the
+     * final holder scale.
+     */
+    public static computeCubeMapSize(levelData: LevelData3D, out: Vec3 = new Vec3()): Vec3
     {
-        const cubes = this.levelData.cubes;
+        if (!levelData) return out.set(0, 0, 0);
+
+        const bounds = LevelGrid3D.computeCubeBounds(levelData);
+        return out.set(
+            bounds.maxX - bounds.minX + 1,
+            bounds.maxY - bounds.minY + 1,
+            bounds.maxZ - bounds.minZ + 1,
+        );
+    }
+
+    private static computeCubeBounds(levelData: LevelData3D): { minX: number, maxX: number, minY: number, maxY: number, minZ: number, maxZ: number }
+    {
+        const gridSize = levelData.gridSize;
+        const cubes = levelData.cubes;
         if (!cubes || cubes.length === 0)
         {
             return { minX: 0, maxX: gridSize.x - 1, minY: 0, maxY: gridSize.y - 1, minZ: 0, maxZ: gridSize.z - 1 };

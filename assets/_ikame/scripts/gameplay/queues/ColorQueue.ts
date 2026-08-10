@@ -1,5 +1,5 @@
 import { _decorator, Component, instantiate, Node, NodeSpace, Prefab, Vec3 } from 'cc';
-import { Shooter } from '../../configData/LevelData';
+import { ShooterSpawnData3D } from '../../configData/LevelData3D';
 import { ShooterItem } from '../flows/ShooterItem/ShooterItem';
 import { IColorQueue } from './IColorQueue';
 import { ILevelController } from '../controllers/ILevelController';
@@ -32,7 +32,7 @@ export class ColorQueue extends Component implements IColorQueue {
     private _allShooters: ShooterItem[] = [];
     private _activeCount: number = 0;
 
-    init(shooters: Shooter[], levelController: ILevelController): void
+    init(shooters: ShooterSpawnData3D[], levelController: ILevelController): void
     {
         this._shooterQueue.clear();
         this._allShooters = [];

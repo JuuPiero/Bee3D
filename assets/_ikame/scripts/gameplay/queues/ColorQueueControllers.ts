@@ -1,7 +1,7 @@
 import { _decorator, Component, Node, Prefab, Vec3 } from 'cc';
 import { IColorQueueControllers } from './IColorQueueControllers';
 import { ColorQueue } from './ColorQueue';
-import { ShooterQueue } from '../../configData/LevelData';
+import { ShooterSpawnData3D } from '../../configData/LevelData3D';
 import { ILevelController } from '../controllers/ILevelController';
 const { ccclass, property } = _decorator;
 
@@ -20,28 +20,41 @@ export class ColorQueueControllers extends Component implements IColorQueueContr
         this._colorQueues = this.node.getComponentsInChildren(ColorQueue);  
     }
 
-    init(shooterQueues: ShooterQueue[], levelController: ILevelController): void 
+    /**
+     * @param shooterLines One entry per conveyor line, each already sorted by shooter index -
+     *                     i.e. exactly what LevelData3D.getShootersByLine() returns. Lines beyond
+     *                     the number of ColorQueue children in the scene are dropped with a warning,
+     *                     since there is no queue to spawn them into.
+     */
+    init(shooterLines: ShooterSpawnData3D[][], levelController: ILevelController): void
     {
         this._activeQueues = [];
         this._levelController = levelController;
-        
+
+        // The level data is authoritative about how many lines exist, but the scene is
+        // authoritative about how many queues can render them - take the smaller of the two.
+        const lineCount = Math.min(shooterLines.length, this._colorQueues.length);
+        if (shooterLines.length > this._colorQueues.length)
+        {
+            console.warn(`[ColorQueueControllers] Level has ${shooterLines.length} shooter lines but only ${this._colorQueues.length} ColorQueue children - the extra lines are not spawned.`);
+        }
+
         for (let i = 0; i < this._colorQueues.length; i++)
         {
-            const queueData = shooterQueues[ i ];
             const queue = this._colorQueues[i];
-            queue.node.active = i < shooterQueues.length;
-            if (i < shooterQueues.length) {
+            queue.node.active = i < lineCount;
+            if (i < lineCount) {
                 this._activeQueues.push( queue );
             }
         }
-        
+
         // align queues so they are centered
         const offsetX = -((this._activeQueues.length - 1) * QUEUE_GAP) / 2;
         for (let i = 0; i < this._activeQueues.length; i++)
         {
             const queue = this._activeQueues[i];
             queue.node.setPosition(i * QUEUE_GAP + offsetX, 0, 0);
-            queue.init( shooterQueues[i].shooters, this._levelController );
+            queue.init( shooterLines[i], this._levelController );
         }
     }
 

@@ -1,11 +1,8 @@
-import { _decorator, AudioClip, Camera, CCBoolean, CCFloat, CCInteger, Color, Component, director, Director, EventKeyboard, EventTouch, geometry, Input, input, instantiate, JsonAsset, KeyCode, MeshRenderer, Node, PhysicsSystem, Prefab, Quat, TextAsset, tween, Vec2, Vec3 } from 'cc';
-import { LevelData } from '../../configData/LevelData';
+import { _decorator, AudioClip, BoxCollider, Camera, CCBoolean, CCInteger, Color, Component, EventKeyboard, EventTouch, geometry, Input, input, JsonAsset, KeyCode, PhysicsSystem, Vec2, Vec3 } from 'cc';
+import { LevelData3D, ShooterSpawnData3D } from '../../configData/LevelData3D';
 import { EDITOR, PREVIEW } from 'cc/env';
-import { PixelBlock } from '../flows/Block/PixelBlock';
-import { Utils } from '../../utils/Utils';
 import { EColor } from '../../enums/EColor';
 import { EDirection } from '../../enums/EDirection';
-import { GridTile } from '../flows/MapTiles/GridTile';
 import { ILevelController } from './ILevelController';
 import { IGridTile } from '../flows/MapTiles/IGridTile';
 import { ColorQueueControllers } from '../queues/ColorQueueControllers';
@@ -21,35 +18,39 @@ import { Floater } from '../flows/Floater/Floater';
 import { ETrackingEvent, TrackingManager } from '../../base-script/PlayableAds/Tracking/TrackingManager';
 import { LevelScaler } from '../LevelScaler';
 import { IPixelBlock } from '../flows/Block/IPixelBlock';
-import { Queue } from '../../commons/Queue';
-import { lerpMultiplePoints, pathLength } from '../../utils/MathUtils';
+import { PixelBlock } from '../flows/Block/PixelBlock';
+import { LevelGrid3D } from '../level3DGrid/LevelGrid3D';
 const { ccclass, property } = _decorator;
 
-const PIXEL_BLOCK_SIZE = 1;
-const GRAVITY = 32.8;
 @ccclass('LevelController')
 export class LevelController extends Component implements ILevelController
 {
 
     private _isFinished: boolean = false;
 
-    @property({ type: Prefab, group: 'Pixel Map' })
-    public pixelBlockPrefab: Prefab = null;
-    @property({ type: Node, group: 'Pixel Map' })
-    public pixelBlockHolder: Node = null;
-    public levelData: LevelData = null;
+    // Owns the whole cube map now: grid construction, cube spawning, occlusion and target
+    // picking all live in here. LevelController only parses the level once and drives it.
+    @property({ type: LevelGrid3D, group: 'Cube Map' })
+    public levelGrid3D: LevelGrid3D = null;
 
-    @property({ type: Node, group: 'MapBorder' })
-    public topLeft: Node = null;
-    @property({ type: Node, group: 'MapBorder' })
-    public botRight: Node = null;
+    public levelData: LevelData3D = null;
 
-    public get maxX(): number { return this.botRight.position.x; }
-    public get minX(): number { return this.topLeft.position.x; }
-    public get maxZ(): number { return this.botRight.position.z; }
-    public get minZ(): number { return this.topLeft.position.z; }
+    // The playable volume, authored as a box in the scene. Replaces the old topLeft/botRight
+    // corner nodes: those only described a flat XZ rectangle, which cannot bound a cube map
+    // that also stacks upward. Its size/center are read in world space, so moving, scaling or
+    // resizing the collider in the editor re-fits the level.
+    @property({ type: BoxCollider, group: 'MapBorder' })
+    public levelBoundBox: BoxCollider = null;
 
-    private _centerMap: Vec3 = undefined;
+    public get maxX(): number { return this.BoundsCenter.x + this.BoundsSize.x * 0.5; }
+    public get minX(): number { return this.BoundsCenter.x - this.BoundsSize.x * 0.5; }
+    public get maxY(): number { return this.BoundsCenter.y + this.BoundsSize.y * 0.5; }
+    public get minY(): number { return this.BoundsCenter.y - this.BoundsSize.y * 0.5; }
+    public get maxZ(): number { return this.BoundsCenter.z + this.BoundsSize.z * 0.5; }
+    public get minZ(): number { return this.BoundsCenter.z - this.BoundsSize.z * 0.5; }
+
+    private _boundsCenter: Vec3 = new Vec3();
+    private _boundsSize: Vec3 = new Vec3();
     @property({ type: Camera })
     private cameraMain: Camera = null;
 
@@ -65,42 +66,62 @@ export class LevelController extends Component implements ILevelController
     @property(BulletPooling) public bulletPool: BulletPooling;
     @property(BulletPooling) public particlePooling: BulletPooling;
 
-    @property(LevelScaler) public levelScaler: LevelScaler;
 
     @property(AudioClip) public breakBlockBreak: AudioClip;
     @property(AudioClip) public shootOutClip: AudioClip;
 
     private _shooterCount : number = 0;
 
+    /**
+     * World-space size of the bound box: the collider's authored size scaled by its node's world
+     * scale. Recomputed on read so editing the collider in the editor takes effect immediately.
+     * Assumes the bound node is axis-aligned - a rotated box would need its extents projected
+     * onto the world axes, and the level is authored square to the world anyway.
+     */
+    public get BoundsSize(): Vec3
+    {
+        if (!this.levelBoundBox) return this._boundsSize.set(0, 0, 0);
+
+        const worldScale = this.levelBoundBox.node.worldScale;
+        const size = this.levelBoundBox.size;
+        return this._boundsSize.set(
+            Math.abs(size.x * worldScale.x),
+            Math.abs(size.y * worldScale.y),
+            Math.abs(size.z * worldScale.z),
+        );
+    }
+
+    /** World-space center of the bound box (its local `center` offset put through the node's world matrix). */
+    public get BoundsCenter(): Vec3
+    {
+        if (!this.levelBoundBox) return this._boundsCenter.set(0, 0, 0);
+
+        Vec3.transformMat4(this._boundsCenter, this.levelBoundBox.center, this.levelBoundBox.node.worldMatrix);
+        return this._boundsCenter;
+    }
+
     public get WidthMap(): number
     {
-        return this.maxX - this.minX;
+        return this.BoundsSize.x;
     }
 
+    /** Vertical extent. Y is up in the 3D level, so this is no longer the Z span it used to be. */
     public get HeightMap(): number
     {
-        return this.maxZ - this.minZ;
+        return this.BoundsSize.y;
     }
 
-    private _gridMap = new Map<string, GridTile>();
-    
+    public get DepthMap(): number
+    {
+        return this.BoundsSize.z;
+    }
+
     public get CenterMap(): Vec3
     {
-        if (!this._centerMap)
-        {
-            this._centerMap = new Vec3(
-                (this.minX + this.maxX) * 0.5,
-                0,
-                (this.minZ + this.maxZ) * 0.5
-            );
-        }
-        return this._centerMap;
+        return this.BoundsCenter;
     }
-    
-    private _debugTopLeftMap: Vec3 = new Vec3();
-    private _debugTopRightMap: Vec3 = new Vec3();
-    private _debugBottomLeftMap: Vec3 = new Vec3();
-    private _debugBottomRightMap: Vec3 = new Vec3();
+
+    private _debugBoundsAABB: geometry.AABB = new geometry.AABB();
 
     @property({ type: ColorQueueControllers, group: 'Controllers' })
     protected colorQueueControllers: ColorQueueControllers = null;
@@ -108,9 +129,9 @@ export class LevelController extends Component implements ILevelController
     @property({ type: Conveyor, group: 'Controllers' })
     protected conveyor: Conveyor = null;
 
-
-    private _pixelCount: number = 0;
-    private _totalPixelCount: number = 0;
+    // Remaining hits to clear the level (a cube with health N counts as N).
+    private _cubeHitCount: number = 0;
+    private _totalCubeHitCount: number = 0;
 
     private _shooterMapByID: Map<number, IShooterItem> = new Map<number, ShooterItem>();
 
@@ -120,29 +141,20 @@ export class LevelController extends Component implements ILevelController
     private _is50Completed: boolean = false;
     private _is75Completed: boolean = false;
 
-    private _bottomPixels: IPixelBlock[] = [];
-
     @property({ type: CCInteger, group: 'LevelData' })
     private levelIndex: number = 0;
-    
-    private  _topLeftBoundTile: GridTile;
-    private  _botRightBoundTile: GridTile;
 
     protected _debugDrawSpline(): void
     {
         if (!this.cameraMain || !EDITOR || !PREVIEW || !this.debugDrawMapBorder) return;
 
-        this._debugTopLeftMap.set(this.minX, 0, this.minZ);
-        this._debugTopRightMap.set(this.maxX, 0, this.minZ);
-        this._debugBottomLeftMap.set(this.minX, 0, this.maxZ);
-        this._debugBottomRightMap.set(this.maxX, 0, this.maxZ);
+        // The bound is a volume now, not a floor rectangle, so draw the whole box.
+        const center = this.BoundsCenter;
+        const size = this.BoundsSize;
+        geometry.AABB.set(this._debugBoundsAABB, center.x, center.y, center.z, size.x * 0.5, size.y * 0.5, size.z * 0.5);
 
-        this.cameraMain.camera.geometryRenderer?.addLine(this._debugTopLeftMap, this._debugTopRightMap, Color.MAGENTA);
-        this.cameraMain.camera.geometryRenderer?.addLine(this._debugTopRightMap, this._debugBottomRightMap, Color.MAGENTA);
-        this.cameraMain.camera.geometryRenderer?.addLine(this._debugBottomRightMap, this._debugBottomLeftMap, Color.MAGENTA);
-        this.cameraMain.camera.geometryRenderer?.addLine(this._debugBottomLeftMap, this._debugTopLeftMap, Color.MAGENTA);
-        
-        this.cameraMain.camera.geometryRenderer?.addCircle(this.CenterMap, 0.1, Color.MAGENTA);
+        this.cameraMain.camera.geometryRenderer?.addBoundingBox(this._debugBoundsAABB, Color.MAGENTA);
+        this.cameraMain.camera.geometryRenderer?.addCircle(center, 0.1, Color.MAGENTA);
     }
 
     protected start(): void
@@ -157,22 +169,10 @@ export class LevelController extends Component implements ILevelController
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
     }
 
-    private onKeyDown(event: EventKeyboard): void 
+    private onKeyDown(event: EventKeyboard): void
     {
         if (event.keyCode === KeyCode.KEY_Q)
         {
-            // this.levelData.verifyData();
-
-            let blockRemain = 0;
-            for (const [ key, tile ] of this._gridMap)
-            {
-                const pixelBlock = tile.getPixelBlock();
-                if (pixelBlock)
-                {
-                    blockRemain++;
-                }
-            }
-
             let bulletCount = 0;
             for (const [ id, shooter ] of this._shooterMapByID)
             {
@@ -181,15 +181,9 @@ export class LevelController extends Component implements ILevelController
             }
 
             console.log(`Level Verification:
-            Total Blocks on Map: ${blockRemain}
+            Total Cube Hits Remaining: ${this._cubeHitCount}
             Total Bullets in Shooters: ${bulletCount}
             `);
-        }
-
-        if (event.keyCode === KeyCode.KEY_R)
-        {
-            const outsideColors = this.getAllOutsideColor();
-            console.log('Outside edge colors:', outsideColors);
         }
     }
 
@@ -199,68 +193,33 @@ export class LevelController extends Component implements ILevelController
         input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
     }
 
-    public spawnLevel(): void 
+    public spawnLevel(): void
     {
         this._isFinished = false;
         this.conveyor.init();
-        //#region Spawn Pixel Blocks
+
         var textJson = JSON.stringify(this.levelJsonAssets[this.levelIndex].json);
-        this.levelData = new LevelData(textJson);
+        this.levelData = new LevelData3D(textJson);
 
-        this.pixelBlockHolder.setPosition(this.CenterMap);
-        const scaleHorizontal = this.WidthMap / this.levelData.widthMap;
-        const scaleVertical = this.HeightMap / this.levelData.heightMap;
-        const mapScale = Math.min(scaleHorizontal, scaleVertical);
-        this.pixelBlockHolder.setScale(mapScale, mapScale, mapScale);
-        
-        const offsetX = (-this.levelData.widthMap / 2) +  (PIXEL_BLOCK_SIZE / 2);
-        const offsetZ = (-this.levelData.heightMap / 2) + (PIXEL_BLOCK_SIZE / 2);
-        const bottomRowIndex = this.levelData.heightMap - 1;
-        this._bottomPixels.length = this.levelData.widthMap;
-        for (let i = 0; i < this.levelData.widthMap; i++)
+        if (!this.levelGrid3D)
         {
-            for (let j = 0; j < this.levelData.heightMap; j++)
-            {
-                const key = Utils.generateKeyFromCoord(i, j);
-                const gridTile = new GridTile(i, j, this.pixelBlockHolder, new Vec3(i + offsetX, 0, j + offsetZ));
-                this._gridMap.set(key, gridTile);
-            }
+            console.error('[LevelController] levelGrid3D is not assigned - no cube map will be spawned.');
+        }
+        else
+        {
+            // Scale first, spawn second: LevelGrid3D sizes its occlusion boxes against the
+            // holder's world scale while spawning, so the fit has to already be applied.
+            this.fitGridToMapBorder();
+            // Hand over the already-parsed data so the JSON is only read once per level.
+            this.levelGrid3D.spawnLevel(this.levelData);
         }
 
-        this._topLeftBoundTile = new GridTile(-1, -1, this.pixelBlockHolder, new Vec3(-1 + offsetX, 0, -1 + offsetZ))
-        this._botRightBoundTile = new GridTile(this.getLevelWidth(), this.getLevelHeight(), this.pixelBlockHolder, new Vec3(this.getLevelWidth() + offsetX, 0, this.getLevelHeight() + offsetZ));
+        this.colorQueueControllers.init(this.levelData.getShootersByLine(), this);
 
-        for (const [ key, tile ] of this._gridMap)
-        {
-            const x = tile.getCoordX();
-            const z = tile.getCoordZ();
-            const topTile = this._gridMap.get( Utils.generateKeyFromCoord(x, z - 1) ) || null;
-            const bottomTile = this._gridMap.get( Utils.generateKeyFromCoord(x, z + 1) ) || null;
-            const leftTile = this._gridMap.get( Utils.generateKeyFromCoord(x - 1, z) ) || null;
-            const rightTile = this._gridMap.get( Utils.generateKeyFromCoord(x + 1, z) ) || null;
-            tile.setLinkedTiles(topTile, bottomTile,  leftTile, rightTile);
-        }
-
-        for (let i = 0; i < this.levelData.pixels.length; i++)
-        {
-            const pixelData = this.levelData.pixels[i];
-            const pixelNode = instantiate(this.pixelBlockPrefab);
-            pixelNode.setParent(this.pixelBlockHolder)
-            const pixelBlockComp = pixelNode.getComponent(PixelBlock);
-            pixelBlockComp.init(pixelData.material , this, this.bulletPool, this.particlePooling);
-            const key = Utils.generateKeyFromCoord(pixelData.x, pixelData.y);
-            const gridTile = this._gridMap.get(key);
-            pixelNode.setWorldPosition(gridTile.getWorldPos());
-            gridTile.setPixelBlock(pixelBlockComp);
-        }
-        //#endregion
-
-        this.colorQueueControllers.init(this.levelData.shooterQueues, this);
-        this._pixelCount = this.levelData.pixels.length;
-        this._totalPixelCount = this._pixelCount;
+        this._cubeHitCount = this.countTotalCubeHits();
+        this._totalCubeHitCount = this._cubeHitCount;
 
         this.linkShooters();
-
 
         this._is25Completed = false;
         this._is50Completed = false;
@@ -269,20 +228,73 @@ export class LevelController extends Component implements ILevelController
         if (PREVIEW || EDITOR)
         {
             this.logAllColorIDs();
-            this.topLeft.setWorldPosition(this._topLeftBoundTile.getWorldPos());
-            this.botRight.setWorldPosition(this._botRightBoundTile.getWorldPos());
         }
+    }
+
+    private _cubeMapSize: Vec3 = new Vec3();
+
+    /**
+     * Centers the cube map inside the bound box and uniformly scales it to fit, in the spirit of
+     * the old 2D fit: one scale factor, the smallest of the per-axis ratios, so the level keeps
+     * its proportions and cannot spill outside the bound on any axis.
+     *
+     * Unlike the 2D version this is a true 3D fit - the cube map stacks upward, so its Y span is
+     * matched against the box's own Y extent rather than being folded into the XZ footprint.
+     */
+    private fitGridToMapBorder(): void
+    {
+        if (!this.levelBoundBox)
+        {
+            console.warn('[LevelController] levelBoundBox is not assigned - skipping the bound fit, the cube map keeps its authored transform.');
+            return;
+        }
+
+        const holder = this.levelGrid3D.cubeBlockHolder;
+        if (!holder)
+        {
+            console.warn('[LevelController] levelGrid3D.cubeBlockHolder is not assigned - skipping the bound fit.');
+            return;
+        }
+
+        // Cube units, on a 1-unit lattice - the same units the tile local positions use.
+        LevelGrid3D.computeCubeMapSize(this.levelData, this._cubeMapSize);
+
+        // Read once: both getters rebuild into a shared scratch Vec3 on every access.
+        const boundsSize = this.BoundsSize;
+        const scaleX = this._cubeMapSize.x > 0 ? boundsSize.x / this._cubeMapSize.x : Infinity;
+        const scaleY = this._cubeMapSize.y > 0 ? boundsSize.y / this._cubeMapSize.y : Infinity;
+        const scaleZ = this._cubeMapSize.z > 0 ? boundsSize.z / this._cubeMapSize.z : Infinity;
+
+        const mapScale = Math.min(scaleX, scaleY, scaleZ);
+        if (!isFinite(mapScale) || mapScale <= 0)
+        {
+            console.warn(`[LevelController] Could not fit the cube map (${this._cubeMapSize}) inside the bound box (${boundsSize}) - leaving the holder transform untouched.`);
+            return;
+        }
+
+        // LevelGrid3D already centers the cubes on the holder's origin, so placing the holder at
+        // the box center is all that is needed to center the level inside the bound.
+        holder.setWorldPosition(this.BoundsCenter);
+        holder.setScale(mapScale, mapScale, mapScale);
+    }
+
+    /** A cube with health N needs N bullets, so the win counter tracks hits, not cube count. */
+    private countTotalCubeHits(): number
+    {
+        let total = 0;
+        for (const cube of this.levelData.cubes)
+        {
+            total += cube.health > 0 ? cube.health : 1;
+        }
+        return total;
     }
 
     private logAllColorIDs(): void
     {
         const colorSet = new Set<number>();
-        for (const [, tile] of this._gridMap)
+        for (const cube of this.levelData.cubes)
         {
-            if (tile.isContainBlock())
-            {
-                colorSet.add(tile.getOccupyingColorID());
-            }
+            colorSet.add(cube.color);
         }
         const colorList = Array.from(colorSet).sort((a, b) => a - b);
         const colorNames = colorList.map(id => `${EColor[id] ?? 'Unknown'}(${id})`);
@@ -292,7 +304,7 @@ export class LevelController extends Component implements ILevelController
     protected lateUpdate(dt: number): void
     {
         this._debugDrawSpline();
-    }   
+    }
 
     public getShooterEdge(x: number, z: number): EDirection
     {
@@ -309,28 +321,6 @@ export class LevelController extends Component implements ILevelController
         return EDirection.NONE;
     }
 
-    public getTileAtCoord(x: number, z: number): IGridTile | null
-    {
-        const key = Utils.generateKeyFromCoord(x, z);
-        return this._gridMap.get(key) || null;
-    }
-
-    public getBlockAtCoord(x: number, z: number): PixelBlock | null
-    {
-        const key = Utils.generateKeyFromCoord(x, z);
-        return this._gridMap.get(key).getPixelBlock() as PixelBlock;
-    }
-
-    public getLevelWidth(): number
-    {
-        return this.levelData.widthMap;
-    }
-
-    public getLevelHeight(): number
-    {
-        return this.levelData.heightMap;
-    }
-
     public getSpline(): SplineSmooth
     {
         return this.conveyor;
@@ -340,10 +330,11 @@ export class LevelController extends Component implements ILevelController
 
     public clearLevel(): void
     {
-        this.pixelBlockHolder.destroyAllChildren();
+        this.levelGrid3D?.clearLevel();
         this.colorQueueControllers.clearQueue();
         this.conveyor.clearConveyor();
-        this._gridMap.clear();
+        this._shooterMapByID.clear();
+        this._shooterCount = 0;
     }
 
     private onTouchStart(event: EventTouch): void
@@ -393,12 +384,12 @@ export class LevelController extends Component implements ILevelController
         EventDispatcher.dispatch(EventName.EndGame, false);
     }
 
-    checkWinCondition(): void 
+    checkWinCondition(): void
     {
         if (this._isFinished) return;
-        this._pixelCount--;
+        this._cubeHitCount--;
         this.trackLevelProgress();
-        if (this._pixelCount <= 0)
+        if (this._cubeHitCount <= 0)
         {
             this._isFinished = true;
             this.levelIndex++;
@@ -408,7 +399,7 @@ export class LevelController extends Component implements ILevelController
         }
     }
 
-    public getRemainCount(): number 
+    public getRemainCount(): number
     {
         return this.colorQueueControllers.getRemainInQueueCount();
     }
@@ -418,20 +409,37 @@ export class LevelController extends Component implements ILevelController
         this._shooterMapByID.set(id, shooter);
     }
 
-    public linkShooters(): void 
+    /**
+     * Chains shooters that share a non-zero connectionGroup. The 3D level data has no explicit
+     * connection list like the 2D schema did - the grouping is carried on each shooter - so the
+     * chains are rebuilt here, ordered by (line, index) the same way the queues spawn them.
+     */
+    public linkShooters(): void
     {
-        if (this.levelData.connectedShooters.length <= 0) return;
-        const firstChainShooter = this._shooterMapByID.get(this.levelData.connectedShooters[0].Shooters[0]);
-        for (const linkedData of this.levelData.connectedShooters)
+        const groups = new Map<number, ShooterSpawnData3D[]>();
+        for (const shooter of this.levelData.shooters)
         {
-            for (let i = 0; i < linkedData.Shooters.length; i++)
-            {
-                const mainShooter = this._shooterMapByID.get(linkedData.Shooters[i]);
-                const firstShooter = this._shooterMapByID.get(linkedData.Shooters[i - 1]);
-                const secondShooter = this._shooterMapByID.get(linkedData.Shooters[i + 1]);
-                mainShooter.setLinkedShooters(firstShooter, secondShooter, firstChainShooter);
-            }
+            if (shooter.connectionGroup === 0) continue;
+            const group = groups.get(shooter.connectionGroup);
+            if (group) group.push(shooter);
+            else groups.set(shooter.connectionGroup, [ shooter ]);
         }
+
+        groups.forEach(group =>
+        {
+            if (group.length <= 1) return;
+            group.sort((a, b) => (a.line - b.line) || (a.index - b.index));
+
+            const firstChainShooter = this._shooterMapByID.get(group[0].uid);
+            for (let i = 0; i < group.length; i++)
+            {
+                const mainShooter = this._shooterMapByID.get(group[i].uid);
+                if (!mainShooter) continue;
+                const leftShooter = i > 0 ? this._shooterMapByID.get(group[i - 1].uid) : null;
+                const rightShooter = i < group.length - 1 ? this._shooterMapByID.get(group[i + 1].uid) : null;
+                mainShooter.setLinkedShooters(leftShooter, rightShooter, firstChainShooter);
+            }
+        });
     }
 
     public addShooterCount(): void
@@ -454,82 +462,10 @@ export class LevelController extends Component implements ILevelController
         return this.getShooterCount() <= this.conveyor.floaters.length;
     }
 
-    
-    public getBestFloaterSlot(): Floater 
+
+    public getBestFloaterSlot(): Floater
     {
         return this.conveyor.getNextEmpty();
-    }
-
-    public findPathOutOfMap(x: number, z: number): IGridTile[]
-    {
-        const startTile = this._gridMap.get(Utils.generateKeyFromCoord(x, z));
-        if (!startTile) return null;
-
-        const isEdgeTile = (tile: IGridTile): boolean =>
-        {
-            return !tile.getTopLinkedTile() || !tile.getBottomLinkedTile() || !tile.getLeftLinkedTile() || !tile.getRightLinkedTile();
-        };
-
-        const startKey = Utils.generateKeyFromCoord(x, z);
-        const visited = new Set<string>([ startKey ]);
-        const parent = new Map<string, IGridTile>();
-        const queue: IGridTile[] = [ startTile ];
-
-        while (queue.length > 0)
-        {
-            const current = queue.shift();
-            if (isEdgeTile(current))
-            {
-                const path: IGridTile[] = [];
-                let node: IGridTile | undefined = current;
-                while (node)
-                {
-                    path.unshift(node);
-                    node = parent.get(Utils.generateKeyFromCoord(node.getCoordX(), node.getCoordZ()));
-                }
-                return path;
-            }
-
-            const neighbors = [ current.getTopLinkedTile(), current.getBottomLinkedTile(), current.getLeftLinkedTile(), current.getRightLinkedTile() ];
-            for (const neighbor of neighbors)
-            {
-                if (!neighbor || !neighbor.isEmpty()) continue;
-                const key = Utils.generateKeyFromCoord(neighbor.getCoordX(), neighbor.getCoordZ());
-                if (visited.has(key)) continue;
-                visited.add(key);
-                parent.set(key, current);
-                queue.push(neighbor);
-            }
-        }
-
-        return null;
-    }
-
-    public getAllOutsideColor(): number[]
-    {
-        const colors = new Set<number>();
-        const width = this.getLevelWidth();
-        const height = this.getLevelHeight();
-
-        for (let z = 0; z < height; z++)
-        {
-            for (let x = 0; x < width; x++)
-            {
-                const tile = this.getTileAtCoord(x, z);
-                if (!tile || !tile.isContainBlock()) continue;
-
-                const colorID = tile.getOccupyingColorID();
-                if (colors.has(colorID)) continue;
-
-                const path = this.findPathOutOfMap(x, z);
-                if (path)
-                {
-                    colors.add(colorID);
-                }
-            }
-        }
-
-        return Array.from(colors);
     }
 
     public doUpdate(dt: number): void
@@ -537,28 +473,9 @@ export class LevelController extends Component implements ILevelController
         this.colorQueueControllers.doUpdate(dt);
     }
 
-    public checkLose():  void
-    {
-        const inConveyColor: Set<number> = new Set<number>();
-        for (const floater of this.conveyor.floaters)
-        {
-            const shooter = floater.getShooter();
-            if (!shooter) return;
-            if (shooter.getAmmoCount() <= 0) return;
-            inConveyColor.add(shooter.getColorID());
-        }
-        const colorEgdes = this.getAllOutsideColor(); 
-        const hasOverlap = colorEgdes.some(color => inConveyColor.has(color));
-        if (!hasOverlap)
-        {
-            this.lose();
-        }
-
-    }
-
     public trackLevelProgress(): void
     {
-        const progress = (this._totalPixelCount - this._pixelCount) / this._totalPixelCount * 100;
+        const progress = (this._totalCubeHitCount - this._cubeHitCount) / this._totalCubeHitCount * 100;
         if (!this._is25Completed && progress >= 25)
         {
             this._is25Completed = true;
@@ -587,170 +504,64 @@ export class LevelController extends Component implements ILevelController
         return this.conveyor.resetProgress;
     }
 
-    public dropColumn(x: number): void
-    {
-        let i = 0;
-        while (i < this.getLevelHeight())
-        {
-            const tile = this.getTileAtCoord(x, i);
-            if (tile && tile.isContainBlock())
-            {
-                tile.getPixelBlock().moveBlockDown();
-            }
-            i++;
-        }
-    }
-
-    setBottomPixel(block: IPixelBlock, colIndex: number, rowIndex: number): void {
-        if (colIndex < 0 || colIndex >= this.getLevelWidth() || rowIndex < 0 || rowIndex !== this.getLevelHeight() - 1) {
-            return;
-        }
-        this._bottomPixels[colIndex] = block;
-    }    
-
-    private _searchPixelWorldPos: Vec3 = new Vec3();
-
-    private pushUniquePixel(out: IPixelBlock[], pixel: IPixelBlock | undefined): void
-    {
-        if (!pixel)
-        {
-            return;
-        }
-
-        const pixelUid = pixel.getUid();
-        for (let i = 0; i < out.length; i++)
-        {
-            if (out[i].getUid() === pixelUid)
-            {
-                return;
-            }
-        }
-
-        out.push(pixel);
-    }
-
-    public getSurroundingPixels(grid: IGridTile, pixel : IPixelBlock, out: IPixelBlock[]): void {
-        
-        const botTile = grid.getBottomLinkedTile();
-        const topTile = grid.getTopLinkedTile();
-        const leftTile = grid.getLeftLinkedTile();
-        const rightTile = grid.getRightLinkedTile();
-        out.length = 0;
-        if (botTile && botTile.getPixelBlock())
-            out.push(botTile.getPixelBlock())
-        if (topTile && topTile.getPixelBlock())
-            out.push(topTile.getPixelBlock())
-        if (leftTile && leftTile.getPixelBlock())
-            out.push(leftTile.getPixelBlock())
-        if (rightTile && rightTile.getPixelBlock())
-            out.push(rightTile.getPixelBlock())
-    }
-    
     public getTutorialPosition(): Vec3 {
         return this.colorQueueControllers.getQueueTopPosition(this.tutQueueIndex);
     }
 
-    public findTargetPixels(colorID: number, out: Map<IPixelBlock, IGridTile[]>, max: number): void {
-        out.clear();
-        let y = this.getLevelHeight() - 1;
-        let x = 0;
-        while (y >= 0)
-        {
-            while (x < this.getLevelWidth())
-            {
-                const tile = this.getTileAtCoord(x, y);
-                if (tile && tile.getPixelBlock() && tile.getPixelBlock().getColorID() === colorID && !tile.getPixelBlock().isTargeted())
-                {
-                    let path = this.findPathOutOfMap(tile.getCoordX(), tile.getCoordZ())
-                    if (path)
-                    {
-                        // path.unshift(tile)
-                        out.set(tile.getPixelBlock(), path);
-                        tile.getPixelBlock().setTargeted(true);
-                    }
-                    if (out.size >= max)
-                    {
-                        y = -1
-                        x = this.getLevelWidth() + 1;
-                        break;
-                    }
-                }
-                x++
-            }
-            x = 0;
-            y--
-            // for (const tile of row)
-            // {
-            //     tile.removePixelBlock();
-            // }
-        }
-    }
+    //#region 2D grid stubs
+    // The 2D pixel grid used to live here; it now lives in LevelGrid3D as a 3D cube grid, which
+    // ShooterItem/PixelBlock have not been ported to yet. These keep ILevelController satisfied
+    // (so those two still compile) and are deliberately inert - none of them touch level state.
+    // Delete them together with their call sites once the shooting flow moves onto IGridTile3D.
 
-    moveBulletByPathToTarget(block: IPixelBlock, path: IGridTile[], startPos: Vec3)
+    public getTileAtCoord(x: number, z: number): IGridTile | null
     {
-        const exitTile = path[path.length - 1];
-        const newWaypoints : Vec3[] = []
-        if (exitTile.getCoordZ() === 0) // TOP
-        {
-            const waypoint = new Vec3(exitTile.getWorldPosX(),  exitTile.getWorldPos().y, this._topLeftBoundTile.getWorldPos().z)
-            newWaypoints.push(waypoint);
-            if (exitTile.getCoordX() < this.getLevelWidth() * 0.5)
-            {
-                newWaypoints.push(this._topLeftBoundTile.getWorldPos());
-                newWaypoints.push(new Vec3(this._topLeftBoundTile.getWorldPosX(), exitTile.getWorldPos().y, this._botRightBoundTile.getWorldPosZ()))
-            }
-            else 
-            {
-                newWaypoints.push(new Vec3(this._botRightBoundTile.getWorldPos().x, exitTile.getWorldPos().y, this._topLeftBoundTile.getWorldPos().z))
-                newWaypoints.push(this._botRightBoundTile.getWorldPos())
-            }
-        }
-        else if (exitTile.getCoordZ() === this.getLevelHeight() - 1) // Bottom
-        {
-            const waypoint = new Vec3(exitTile.getWorldPosX(), exitTile.getWorldPos().y, this._botRightBoundTile.getWorldPos().z)
-            newWaypoints.push(waypoint);
-        }
-        else if (exitTile.getCoordX() === 0) // LEFT
-        {
-            const waypoint = new Vec3(this._topLeftBoundTile.getWorldPos().x, exitTile.getWorldPos().y, exitTile.getWorldPosZ())
-            newWaypoints.push(waypoint);
-            newWaypoints.push(new Vec3(this._topLeftBoundTile.getWorldPosX(), exitTile.getWorldPos().y, this._botRightBoundTile.getWorldPosZ()));
-        }
-        else if (exitTile.getCoordX() === this.getLevelWidth() - 1) //RIGHT
-        {
-            const waypoint = new Vec3(this._botRightBoundTile.getWorldPos().x, exitTile.getWorldPos().y, exitTile.getWorldPosZ())
-            newWaypoints.push(waypoint);
-            newWaypoints.push(this._botRightBoundTile.getWorldPos());
-        }
-        
-        const enterMapWaypoint = new Vec3(startPos.x, this._botRightBoundTile.getWorldPos().y, this._botRightBoundTile.getWorldPosZ())
-        newWaypoints.push(enterMapWaypoint)
-        newWaypoints.push(startPos)
-
-        const definitiveWaypoints = (path.map(x => x.getWorldPos())).concat(newWaypoints);
-        const bullet = this.bulletPool.getBullet();
-        const translationPos = new Vec3();
-        const progressObj = { x: 1 };
-        const duration = pathLength(definitiveWaypoints) / 3;
-
-        const meshRenderer = bullet.getComponentInChildren(MeshRenderer);
-        meshRenderer.setInstancedAttribute('a_instColor', block.ColorBytes);
-        meshRenderer.setInstancedAttribute('a_instColorShadow', block.ShadowBytes);
-
-        // EventDispatcher.dispatch(EventName.PlaySFX, this.shootOutClip, 0.5)
-
-        tween(progressObj).timeScale(director.getScheduler().getTimeScale()).to(duration, { x: 0 }, {
-            onUpdate: () => {
-                lerpMultiplePoints(translationPos, definitiveWaypoints, progressObj.x)
-                bullet.setWorldPosition(translationPos);
-            },
-            onComplete: () => {
-                block.markForDestroy(null)
-                this.bulletPool.returnBullet(bullet);
-                EventDispatcher.dispatch(EventName.PlaySFX, this.breakBlockBreak, 0.45)
-            }
-        }).start();
+        return null;
     }
+
+    public getBlockAtCoord(x: number, z: number): PixelBlock | null
+    {
+        return null;
+    }
+
+    public getLevelWidth(): number
+    {
+        return 0;
+    }
+
+    public getLevelHeight(): number
+    {
+        return 0;
+    }
+
+    public dropColumn(x: number): void
+    {
+    }
+
+    public setBottomPixel(block: IPixelBlock, colIndex: number, rowIndex: number): void
+    {
+    }
+
+    public getSurroundingPixels(grid: IGridTile, pixel: IPixelBlock, out: IPixelBlock[]): void
+    {
+        out.length = 0;
+    }
+
+    public findTargetPixels(colorID: number, out: Map<IPixelBlock, IGridTile[]>, max: number): void
+    {
+        out.clear();
+    }
+
+    public moveBulletByPathToTarget(block: IPixelBlock, path: IGridTile[], startPos: Vec3): void
+    {
+    }
+
+    // Lose detection read the 2D edge-reachability of every remaining color. The 3D equivalent
+    // (LevelGrid3D.findTargetTile returning null for every queued color) is not wired up yet, so
+    // this never declares a loss rather than declaring a false one.
+    public checkLose(): void
+    {
+    }
+
+    //#endregion
 }
-
-

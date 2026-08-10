@@ -2,7 +2,7 @@ import { _decorator, Animation, AnimationState, AudioClip, CCFloat, CCInteger, C
 import { Utils } from '../../../utils/Utils';
 import { EDirection } from '../../../enums/EDirection';
 import { SplineFollowerSpeed } from '../../../splines/SplineFollowerSpeed';
-import { Shooter } from '../../../configData/LevelData';
+import { ShooterSpawnData3D } from '../../../configData/LevelData3D';
 import { IColorQueue } from '../../queues/IColorQueue';
 import { ILevelController } from '../../controllers/ILevelController';
 import { ColorConfig } from '../../../configData/ColorConfig';
@@ -210,12 +210,12 @@ o
         return this._target;
     }
 
-    public init(shooterData: Shooter, colorQueue: IColorQueue, levelController: ILevelController): void {
+    public init(shooterData: ShooterSpawnData3D, colorQueue: IColorQueue, levelController: ILevelController): void {
         this._rowSign = 0;
         this._colIndex = 0
-        this.id = shooterData.id;
+        this.id = shooterData.uid;
         this.spline = levelController.getSpline();
-        this.colorID = shooterData.material;
+        this.colorID = shooterData.color;
         this._colorQueue = colorQueue;
         this._levelController = levelController;
         this.ammoCount = shooterData.ammo;
@@ -223,9 +223,9 @@ o
         if (this._ammoDisplayCount < 10) this._ammoDisplayCount = 10;
         // this.ammoLabel.string = this._ammoDisplayCount.toString();
         this.ammoLabel.string = this.ammoCount.toString();
-        const charColors = this.colorConfig.getCharacterColors(shooterData.material);
+        const charColors = this.colorConfig.getCharacterColors(shooterData.color);
         if (PREVIEW) {
-            if (!charColors) console.warn("Color not found for colorID:", EColor[shooterData.material]);
+            if (!charColors) console.warn("Color not found for colorID:", EColor[shooterData.color]);
         }
         if (charColors) {
             const colorBytes = new Uint8Array([charColors.color.r, charColors.color.g, charColors.color.b, charColors.color.a]);
