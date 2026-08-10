@@ -1,0 +1,93 @@
+{
+  "__type__": "cc.Material",
+  "_name": "",
+  "_objFlags": 0,
+  "__editorExtras__": {},
+  "_native": "",
+  "_effectAsset": {
+    "__uuid__": "c5940293-7d2a-4d14-8402-49227b332040",
+    "__expectedType__": "cc.EffectAsset"
+  },
+  "_techIdx": 0,
+  "_defines": [
+    {
+      "USE_INSTANCING": true
+    },
+    {
+      "USE_INSTANCING": true,
+      "USE_SPECULAR": true,
+      "RAMP_TYPE": 2,
+      "SPECULAR_TYPE": 1
+    },
+    {},
+    {}
+  ],
+  "_states": [
+    {
+      "rasterizerState": {},
+      "depthStencilState": {},
+      "blendState": {
+        "targets": [
+          {}
+        ]
+      }
+    },
+    {
+      "rasterizerState": {},
+      "depthStencilState": {},
+      "blendState": {
+        "targets": [
+          {}
+        ]
+      }
+    },
+    {
+      "rasterizerState": {},
+      "depthStencilState": {},
+      "blendState": {
+        "targets": [
+          {}
+        ]
+      }
+    },
+    {
+      "rasterizerState": {},
+      "depthStencilState": {},
+      "blendState": {
+        "targets": [
+          {}
+        ]
+      }
+    }
+  ],
+  "_props": [
+    {},
+    {
+      "shadowColor": {
+        "__type__": "cc.Color",
+        "r": 255,
+        "g": 255,
+        "b": 255,
+        "a": 255
+      },
+      "rampThreshold": 0.773,
+      "rampSmoothing": 0.4,
+      "rampBands": 1,
+      "rampBandsSmoothing": 1,
+      "specularColor": {
+        "__type__": "cc.Color",
+        "r": 105,
+        "g": 105,
+        "b": 105,
+        "a": 255
+      },
+      "specularToonSize": 0.04,
+      "specularSmoothness": 1,
+      "specularRoughness": 0.238,
+      "rimMin": 0.912,
+      "rimMax": 0.75
+    },
+    {},
+    {}
+  ]
+}

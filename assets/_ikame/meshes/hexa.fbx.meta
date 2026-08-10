@@ -1,0 +1,96 @@
+{
+  "ver": "2.3.14",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "a0ba1d96-96ba-4b94-b76f-0d1d135d1e29",
+  "files": [],
+  "subMetas": {
+    "e2349": {
+      "importer": "gltf-mesh",
+      "uuid": "a0ba1d96-96ba-4b94-b76f-0d1d135d1e29@e2349",
+      "displayName": "",
+      "id": "e2349",
+      "name": "Mesh.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 370
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "51aaf": {
+      "importer": "gltf-material",
+      "uuid": "a0ba1d96-96ba-4b94-b76f-0d1d135d1e29@51aaf",
+      "displayName": "",
+      "id": "51aaf",
+      "name": "Base_Color.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "59a5a": {
+      "importer": "gltf-scene",
+      "uuid": "a0ba1d96-96ba-4b94-b76f-0d1d135d1e29@59a5a",
+      "displayName": "",
+      "id": "59a5a",
+      "name": "hexa.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "a0ba1d96-96ba-4b94-b76f-0d1d135d1e29@e2349"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [
+        "a0ba1d96-96ba-4b94-b76f-0d1d135d1e29@51aaf"
+      ],
+      "scenes": [
+        "a0ba1d96-96ba-4b94-b76f-0d1d135d1e29@59a5a"
+      ]
+    }
+  }
+}

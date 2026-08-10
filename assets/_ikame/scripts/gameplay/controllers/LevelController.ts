@@ -26,7 +26,7 @@ import { BulletItem } from '../flows/Bullet/BulletItem';
 const { ccclass, property } = _decorator;
 
 // World units per second, shared by both legs of a bullet's flight.
-const BULLET_SPEED = 22;
+const BULLET_SPEED = 16;
 
 // How far outside the map's own bounds a bullet's fly-out route is kept, so it never grazes a
 // cube that is still standing.
@@ -579,7 +579,7 @@ export class LevelController extends Component implements ILevelController
      *    outside the bounding sphere is rotation-proof - a sphere looks the same from every angle,
      *    so no amount of spin can swing a cube into that route.
      */
-    public shootBulletAtTile(tile: IGridTile3D, startPos: Vec3): boolean
+    public shootBulletAtTile(tile: IGridTile3D, startPos: Vec3, colorBytes: Uint8Array, shadowBytes: Uint8Array): boolean
     {
         if (!this.levelGrid3D || !tile || !this.bulletPool) return false;
 
@@ -589,8 +589,8 @@ export class LevelController extends Component implements ILevelController
         this.levelGrid3D.reserveTile(tile);
 
         const bullet = this.bulletPool.getBullet();
-        // Pooled: whatever the last shot left it holding, it leaves this muzzle empty-handed.
         const bulletItem = bullet.getComponent(BulletItem);
+        bulletItem?.setColor(colorBytes, shadowBytes);
         bulletItem?.beginApproach();
         // The cell it is going to land on, in the holder's own space so it stays right as the map
         // turns: the bee weaves across the open air and unwinds onto the line as it closes on it.
@@ -752,13 +752,7 @@ export class LevelController extends Component implements ILevelController
     {
         const bulletItem = bullet.getComponent(BulletItem);
         if (!bulletItem) return;
-
-        const colorBytes = this.levelGrid3D.getCubeColorBytes(tile.getColorID());
-
-        bulletItem.grabCube(
-            colorBytes ? colorBytes.color : null,
-            colorBytes ? colorBytes.shadow : null,
-        );
+        bulletItem.grabCube();
     }
 
     /**

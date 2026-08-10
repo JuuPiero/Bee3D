@@ -61,7 +61,7 @@ export interface ILevelController
      * Flies a bullet from `startPos` into `tile` along a corridor of empty cells (so no other
      * cube is hit), removes that cube, then flies the bullet on out of the screen.
      */
-    shootBulletAtTile(tile: IGridTile3D, startPos: Vec3): boolean
+    shootBulletAtTile(tile: IGridTile3D, startPos: Vec3, colorBytes: Uint8Array, shadowBytes: Uint8Array): boolean
 }
 
 

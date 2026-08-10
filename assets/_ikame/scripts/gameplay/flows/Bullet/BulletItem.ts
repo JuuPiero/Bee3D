@@ -99,7 +99,6 @@ export class BulletItem extends Component
 
     private _phase: BulletPhase = BulletPhase.Idle;
 
-    private _cubeRenderer: MeshRenderer = null;
     private readonly _facing = new Quat();
 
     // Where the pull direction lands in the bullet's own space. landOnFace() aims the bullet down
@@ -168,13 +167,12 @@ export class BulletItem extends Component
     private readonly _characterPos = new Vec3();
     private readonly _characterRestPos = new Vec3();
 
+    @property([MeshRenderer]) private mainRenderers: MeshRenderer[] = [];
+
     protected onLoad(): void
     {
         if (!this.characterRoot) this.characterRoot = this.node.getChildByName(CHARACTER_NODE_NAME);
         if (!this.cubeNode) this.cubeNode = this.node.getChildByName(CUBE_NODE_NAME);
-
-        // The renderer usually sits on a child of the cube (CubeRoot/Render), not on the cube node.
-        this._cubeRenderer = this.cubeNode ? this.cubeNode.getComponentInChildren(MeshRenderer) : null;
 
         // Facing is owned here now, for every beat of the flight, so the shared component is stood
         // down for good rather than toggled per phase. It sampled the position in update(), which
@@ -287,18 +285,28 @@ export class BulletItem extends Component
      * Bee and cube stay rigid through the heave that follows - they are one piece until the cube is
      * free of the wall.
      */
-    public grabCube(colorBytes: Uint8Array, shadowBytes: Uint8Array): void
+    public grabCube(): void
     {
         this._phase = BulletPhase.PlugOut;
 
         if (!this.cubeNode) return;
 
         this.cubeNode.active = true;
+        this.setColor(this.colorBytes, this.shadowBytes);
+    }
 
-        if (this._cubeRenderer && colorBytes && shadowBytes)
-        {
-            this._cubeRenderer.setInstancedAttribute('a_instColor', colorBytes);
-            this._cubeRenderer.setInstancedAttribute('a_instColorShadow', shadowBytes);
+    private colorBytes: Uint8Array = new Uint8Array(4);
+    private shadowBytes: Uint8Array = new Uint8Array(4); 
+
+ 
+    public setColor(colorBytes: Uint8Array, shadowBytes: Uint8Array): void
+    {
+        this.colorBytes = colorBytes;
+        this.shadowBytes = shadowBytes;
+
+        for (const renderer of this.mainRenderers) {
+            renderer.setInstancedAttribute('a_instColor', this.colorBytes);
+            renderer.setInstancedAttribute('a_instColorShadow', this.shadowBytes);
         }
     }
 

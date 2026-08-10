@@ -3,7 +3,7 @@ import { EShooterState } from "../EShooterState";
 import { ShooterAnimationName } from "../ShooterAnimationName";
 import { ShooterStateBase } from "../ShooterStateBase";
 
-const FIRE_INTERVAL = 0.2;
+const FIRE_INTERVAL = 0.5;
 
 export class ShooterInConveyorShootState extends ShooterStateBase {
 
@@ -21,7 +21,7 @@ export class ShooterInConveyorShootState extends ShooterStateBase {
             return;
         }
 
-        await this._shooter.rotateTowardsTargetAsync(this._shooter.getAngleDeltaToTile(target));
+        // await this._shooter.rotateTowardsTargetAsync(this._shooter.getAngleDeltaToTile(target));
 
         this._shooter.pauseAnimation();
         this._shooter.changeAnimation(ShooterAnimationName.Attack, true);

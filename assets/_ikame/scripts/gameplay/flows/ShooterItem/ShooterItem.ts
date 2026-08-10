@@ -69,7 +69,6 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     private _ammoDisplayCount: number = 0;
     private _cacheSlotIndex: number = -1;
 
-    @property(SkeletalAnimation) animator: SkeletalAnimation = null;
     private _curAnimationName: string = "";
     private _pauseAfterAnimationName: string = "";
 
@@ -117,13 +116,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     @property(Collider) private hitCollider: Collider = null;
 
-    private _rowSign: number = 0;
-    private _colIndex: number = 0;
 
-    @property(Node)
-    private connectionRoot: Node = null;
+    // @property(Node)
+    // private connectionRoot: Node = null;
 
-    @property(Node) shadowNode: Node;
+    // @property(Node) shadowNode: Node;
 
     public setLinkedShooters(shooterLeft: IShooterItem, shooterRight: IShooterItem, firstChainShooter: IShooterItem): void {
         console.log("Setting linked shooters for shooter ID:", this.id, "Left:", shooterLeft ? shooterLeft : "null", "Right:", shooterRight ? shooterRight : "null");
@@ -138,9 +135,9 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
         this._firstChainShooter = firstChainShooter;
         this._rightLinkedShooter = shooterRight;
-        if (this._firstChainShooter) {
-            this.connectionRoot.active = true;
-        }
+    //     if (this._firstChainShooter) {
+    //         this.connectionRoot.active = true;
+    //     }
     }
 
     public reduceAmmoCount(amount: number): number {
@@ -235,7 +232,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             return false;
         }
 
-        const didShoot = this._levelController.shootBulletAtTile(tile, this.getFirePointWorldPosition());
+        const didShoot = this._levelController.shootBulletAtTile(tile, this.getFirePointWorldPosition(), this.colorByte, this.shadowByte);
         if (!didShoot) {
             return false;
         }
@@ -245,9 +242,10 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
         return true;
     }
 
+    private colorByte: Uint8Array = new Uint8Array(4);
+    private shadowByte: Uint8Array = new Uint8Array(4);
+
     public init(shooterData: ShooterSpawnData3D, colorQueue: IColorQueue, levelController: ILevelController): void {
-        this._rowSign = 0;
-        this._colIndex = 0
         this.id = shooterData.uid;
         this.spline = levelController.getSpline();
         this.colorID = shooterData.color;
@@ -263,11 +261,11 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
             if (!charColors) console.warn("Color not found for colorID:", EColor[shooterData.color]);
         }
         if (charColors) {
-            const colorBytes = new Uint8Array([charColors.color.r, charColors.color.g, charColors.color.b, charColors.color.a]);
-            const shadowBytes = new Uint8Array([charColors.shadow.r, charColors.shadow.g, charColors.shadow.b, charColors.shadow.a]);
+            this.colorByte = new Uint8Array([charColors.color.r, charColors.color.g, charColors.color.b, charColors.color.a]);
+            this.shadowByte = new Uint8Array([charColors.shadow.r, charColors.shadow.g, charColors.shadow.b, charColors.shadow.a]);
             this.characterMeshs.forEach(mesh => {
-                mesh.setInstancedAttribute('a_instColor', colorBytes);
-                mesh.setInstancedAttribute('a_instColorShadow', shadowBytes);
+                mesh.setInstancedAttribute('a_instColor', this.colorByte);
+                mesh.setInstancedAttribute('a_instColorShadow', this.shadowByte);
             });
         }
 
@@ -325,16 +323,16 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     }
 
     changeAnimation(animationName: string, force: boolean): void {
-        if (this.isPauseTriggered)
-        {
-            this.animator.off(Animation.EventType.LASTFRAME, this.onAnimationFinishedPause, this);
-        }
-        this.isPauseTriggered = false;
-        if (this._curAnimationName === animationName && !force) {
-            return;
-        }
-        this.animator.crossFade(animationName, 0.1);
-        this._curAnimationName = animationName;
+        // if (this.isPauseTriggered)
+        // {
+        //     this.animator.off(Animation.EventType.LASTFRAME, this.onAnimationFinishedPause, this);
+        // }
+        // this.isPauseTriggered = false;
+        // if (this._curAnimationName === animationName && !force) {
+        //     return;
+        // }
+        // this.animator.crossFade(animationName, 0.1);
+        // this._curAnimationName = animationName;
     }
 
     onChangeState(stateFrom: EShooterState, toState: EShooterState): void {
@@ -347,7 +345,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public async jumpToConveyor(): Promise<void> {
         try {
-            this.shadowNode.active = false;
+            // this.shadowNode.active = false;
             EventDispatcher.dispatch(EventName.PlaySFX, this.jumpSound);
             this._floater = this._levelController.getBestFloaterSlot();
             EventDispatcher.dispatch(EventName.ShooterInConvey, true);
@@ -797,7 +795,7 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
     public finishSelf(): void
     {
         this.changeState(EShooterState.Finish);
-        this.connectionRoot.active = false;
+        // this.connectionRoot.active = false;
         this._levelController.removeShooterCount();
     }
 
@@ -1017,15 +1015,15 @@ export class ShooterItem extends SplineFollowerSpeed implements IStateHolder<ESh
 
     public pauseAnimation(): void {
 
-        if (this.isPauseTriggered) {
-            return;
-        }
-        this.isPauseTriggered = true;
-        this.animator.once(Animation.EventType.LASTFRAME, this.onAnimationFinishedPause, this);
+        // if (this.isPauseTriggered) {
+        //     return;
+        // }
+        // this.isPauseTriggered = true;
+        // this.animator.once(Animation.EventType.LASTFRAME, this.onAnimationFinishedPause, this);
     }
 
     private onAnimationFinishedPause(): void {
-        this.animator.pause();
+        // this.animator.pause();
     }
 
 
