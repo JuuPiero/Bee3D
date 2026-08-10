@@ -14,13 +14,13 @@ enum BulletPhase
 {
     /** Parked in the pool, or flying empty-handed - nothing here touches the transform. */
     Idle,
-    /** On its way to a cube. RotateToForwardVelocity points it down its own travel direction. */
+    /** On its way to a cube, empty-handed and free to turn any way its heading goes. */
     Approach,
     /** Settled on the face it is about to pull, holding still for a beat before it heaves. */
     Landing,
     /** Heaving the cube out of the wall. Bee and cube are one rigid piece for this. */
     PlugOut,
-    /** Hauling the cube away: the cube hangs off the bee's node, gravity lays the rig out. */
+    /** Hauling the cube away: the cube hangs off the bee's node, and the rig only ever yaws. */
     Carry,
 }
 
@@ -34,10 +34,11 @@ enum BulletPhase
  * sees being plugged out.
  *
  * The flight is four beats - fly in, land on a face, plug the cube out, haul it away - and each
- * one owns the pose differently, which is why the phase is explicit. The one that matters most is
- * the last: from the moment the cube comes free the rig is laid out by GRAVITY, bee on top and
- * cube hanging below, and the only thing movement does to it is tilt it. Everything before that is
- * about the face being pulled, and everything after is about which way is down.
+ * one owns the pose differently, which is why the phase is explicit. Facing is the clearest case:
+ * empty-handed on the way in the bee turns freely down its heading, the two beats at the cube are
+ * held square to the face being pulled, and loaded on the way out it may only YAW - bee on top and
+ * cube hanging below is the whole read of a load being carried, and any pitch or roll swings that
+ * rig out sideways and breaks it.
  *
  * The moment the cube comes free it is REPARENTED under the bee, so from there on it is carried by
  * the scene graph and nothing in here touches its transform again. A per-frame chase (which is what
@@ -69,14 +70,14 @@ export class BulletItem extends Component
     @property({ type: CCFloat, tooltip: 'Extra clearance between the bee and the cube face it grips, on top of whatever gap the prefab was authored with. Positive lifts it off the face, negative sinks it in.' })
     public extraCharacterGap: number = 0;
 
-    @property({ type: CCFloat, tooltip: 'Degrees per second the bee turns onto the face it lands on, and the rig tips as it leans. Lower is lazier.' })
+    @property({ type: CCFloat, tooltip: 'Degrees per second the bee itself turns onto the face it lands on, and back off it once the cube is free. Lower is lazier.' })
     public characterRotateSpeed: number = 220;
 
-    @property({ type: CCFloat, tooltip: 'How far (degrees) the rig leans into its travel direction at full speed, as a load being dragged does.' })
-    public maxLeanAngle: number = 25;
+    @property({ type: CCFloat, tooltip: 'Degrees per second the bee turns onto its heading on the way in, where it is free to pitch as well as yaw. 0 snaps straight onto it.' })
+    public travelTurnSpeed: number = 720;
 
-    @property({ type: CCFloat, tooltip: 'Speed (world units per second) at which the lean reaches maxLeanAngle. Match it to the bullet speed for a full lean on the fast legs.' })
-    public leanReferenceSpeed: number = 22;
+    @property({ type: CCFloat, tooltip: 'Degrees per second the loaded bee yaws onto its heading on the way out. Lower than travelTurnSpeed reads as the weight of the cube. 0 snaps.' })
+    public carryTurnSpeed: number = 220;
 
     @property({ type: CCFloat, tooltip: 'How quickly the bee slides back to its authored spot above the cube once it starts hauling, per second.' })
     public characterSettleSpeed: number = 8;
@@ -111,14 +112,19 @@ export class BulletItem extends Component
     private readonly _turnScratch = new Quat();
     private _isTurning = false;
 
-    // Measured per frame, so the carry can tilt against the flight's actual direction rather than
-    // against whichever leg happens to be running.
+    // Measured per frame, so the pose answers to the flight's actual direction rather than to
+    // whichever leg happens to be running. Two of them, because the weave makes the difference
+    // matter: _frameMove is movement along the PATH, which is what the weave takes its own sideways
+    // axis from (reading its own output back would make it wander); _renderMove is movement as
+    // FLOWN, weave included, which is what the bee is pointed down.
     private readonly _worldPosNow = new Vec3();
     private readonly _prevWorldPos = new Vec3();
     private readonly _frameMove = new Vec3();
     private _hasPrevWorldPos = false;
-    private readonly _leanDir = new Vec3();
-    private readonly _leanUp = new Vec3();
+    private readonly _prevRenderPos = new Vec3();
+    private readonly _renderMove = new Vec3();
+    private _hasPrevRenderPos = false;
+    private readonly _travelDir = new Vec3();
     private readonly _poseScratch = new Quat();
 
     // The weave. It rides ON TOP of whatever is flying the bullet, so what is tracked here is the
@@ -142,10 +148,6 @@ export class BulletItem extends Component
     // Latched once the straightening starts, so a leg that weaves can stop weaving but never take
     // it back up - which is what keeps the run-in to a face or an exit monotonically straighter.
     private _swayClosed = false;
-
-    // Aims the bullet's forward down its velocity while it flies in; stood down from the landing
-    // onwards, where the pose is driven from here instead.
-    private _travelFacing: RotateToForwardVelocity = null;
 
     // The prefab's authored layout, captured once and restored on every release - a grab only ever
     // measures its changes against these, so repeated shots cannot drift.
@@ -174,7 +176,14 @@ export class BulletItem extends Component
         // The renderer usually sits on a child of the cube (CubeRoot/Render), not on the cube node.
         this._cubeRenderer = this.cubeNode ? this.cubeNode.getComponentInChildren(MeshRenderer) : null;
 
-        this._travelFacing = this.getComponent(RotateToForwardVelocity);
+        // Facing is owned here now, for every beat of the flight, so the shared component is stood
+        // down for good rather than toggled per phase. It sampled the position in update(), which
+        // is before the tweens move the bullet, so what it aimed down was always a frame stale -
+        // and its authored rotateSpeed made the catching-up slower still, which is why the bee flew
+        // pointing somewhere other than where it was going. faceAlongTravel() reads the movement
+        // after it has happened, and per phase decides how much freedom that facing gets.
+        const travelFacing = this.getComponent(RotateToForwardVelocity);
+        if (travelFacing) travelFacing.enabled = false;
 
         if (this.cubeNode)
         {
@@ -257,9 +266,6 @@ export class BulletItem extends Component
         // the standoff below is measured against the cell, so it has to start on it.
         this.clearSway();
 
-        // From here the pose is ours; the travel-facing component would fight every write.
-        if (this._travelFacing) this._travelFacing.enabled = false;
-
         this.faceOutward(outwardDir);
 
         if (!this.cubeNode || !this.characterRoot) return;
@@ -308,7 +314,7 @@ export class BulletItem extends Component
      * gripped the face from, so undoing the grip rotation puts the cube exactly where the prefab
      * has it, under a bee that is back on top of it.
      *
-     * From here gravity lays the whole rig out and movement tilts it - see carryUnderGravity().
+     * From here the rig stays upright and only turns about world up - see faceAlongTravel().
      */
     public beginCarry(): void
     {
@@ -351,14 +357,14 @@ export class BulletItem extends Component
 
         this._isTurning = false;
         this._hasPrevWorldPos = false;
-        this._leanDir.set(0, 0, 0);
+        this._hasPrevRenderPos = false;
+        this._renderMove.set(0, 0, 0);
 
         // Dropped where it is: a parked bullet is about to be moved to a muzzle anyway, so the
         // offset is only forgotten, not taken back off.
         this._swayOffset.set(0, 0, 0);
         this._hasSway = false;
         this.setSwayTarget(null, null);
-        if (this._travelFacing) this._travelFacing.enabled = true;
     }
 
     public isCarryingCube(): boolean
@@ -380,9 +386,17 @@ export class BulletItem extends Component
         this.trackPathPosition();
         this.measureMovement();
 
-        if (this._phase === BulletPhase.Carry) this.carryUnderGravity(dt);
-
+        // The weave first, then the facing off the back of it: the bee is pointed down the flight
+        // it has just been given, this frame, rather than down the one it made last frame.
         this.applySway(dt);
+        this.measureRenderMovement();
+
+        if (this._phase === BulletPhase.Approach || this._phase === BulletPhase.Carry)
+        {
+            this.faceAlongTravel(dt);
+        }
+
+        if (this._phase === BulletPhase.Carry) this.settleCharacter(dt);
     }
 
     /**
@@ -600,72 +614,78 @@ export class BulletItem extends Component
     }
 
     /**
-     * Lays the rig out by gravity and tilts it by movement: the bullet's up vector is world up,
-     * leaned over into the direction of travel by an angle that grows with speed.
+     * Points the bullet down the way it is actually moving - measured AFTER the weave has been
+     * applied, so what is faced is the real path through the air rather than the line underneath
+     * it, and the bee noses into its own wander instead of sliding across it sideways.
      *
-     * Up is the whole point. The bee is authored above the cube, so an up vector that stays near
-     * vertical keeps the bee on top and the cube hanging below on every leg, however the flight
-     * turns - which the previous rule (up along the heading) could not do, since it left no such
-     * thing as "above" and rolled the pair over as the exit arch swung round.
+     * The two travelling beats want different freedoms:
      *
-     * Only the part of the heading perpendicular to up leans it, so a straight climb stands upright
-     * - there is no leaning into "up" - and that falls out of the maths rather than needing a case
-     * of its own. The rotation is the minimal one onto that leaned up vector, so the rig never
-     * picks up yaw or roll of its own; and it is a WORLD rotation, because during the corridor leg
-     * the bullet is still parented to the rotating cube holder and gravity does not rotate with the
-     * level.
+     * - On the way in, free. An empty bee darts, and a dive down into the pile should read as a
+     *   dive - pitch and all - so the facing is simply the travel direction.
+     *
+     * - On the way out, yaw only, about WORLD up. There is a cube hanging under the bee now, and
+     *   the whole layout of that rig is "bee on top, cube below" - any pitch or roll swings the
+     *   load out sideways and it stops reading as weight being carried. So only the horizontal part
+     *   of the heading is faced, which by construction is a turn about world Y and nothing else:
+     *   Quat.fromViewUp() of a direction that is already perpendicular to up can only yaw.
+     *
+     * World rotation in both cases, not local - through the pile the bullet is parented to the
+     * holder the map turns with, and neither "which way am I going" nor "which way is up" turns
+     * with the level.
      */
-    private carryUnderGravity(dt: number): void
+    private faceAlongTravel(dt: number): void
     {
-        if (dt > 1e-6 && this._frameMove.lengthSqr() > 1e-10)
+        this._travelDir.set(this._renderMove);
+
+        // Yaw only for the carry: flatten the heading before it is faced.
+        if (this._phase === BulletPhase.Carry)
         {
-            // Horizontal part of this frame's movement: what there is to lean into.
-            const vertical = Vec3.dot(this._frameMove, Vec3.UP);
-            this._leanDir.set(
-                this._frameMove.x - Vec3.UP.x * vertical,
-                this._frameMove.y - Vec3.UP.y * vertical,
-                this._frameMove.z - Vec3.UP.z * vertical,
+            const vertical = Vec3.dot(this._travelDir, Vec3.UP);
+            this._travelDir.set(
+                this._travelDir.x - Vec3.UP.x * vertical,
+                this._travelDir.y - Vec3.UP.y * vertical,
+                this._travelDir.z - Vec3.UP.z * vertical,
             );
-
-            const horizontalSpeed = this._leanDir.length() / dt;
-            if (horizontalSpeed > 1e-4)
-            {
-                this._leanDir.normalize();
-
-                const reference = Math.max(1e-4, this.leanReferenceSpeed);
-                const leanFactor = Math.min(1, horizontalSpeed / reference) * Math.tan(this.maxLeanAngle * DEG_TO_RAD);
-
-                this._leanUp.set(
-                    Vec3.UP.x + this._leanDir.x * leanFactor,
-                    Vec3.UP.y + this._leanDir.y * leanFactor,
-                    Vec3.UP.z + this._leanDir.z * leanFactor,
-                );
-                this._leanUp.normalize();
-            }
-            else
-            {
-                this._leanUp.set(Vec3.UP);
-            }
         }
-        else
+
+        // Too little movement to read a direction off - a straight climb has no yaw of its own, and
+        // guessing one would spin the load. Hold whatever is being faced.
+        if (this._travelDir.lengthSqr() < 1e-10) return;
+
+        this._travelDir.normalize();
+
+        // Dead vertical has no sideways to build a basis from, and Quat.fromViewUp() answers that
+        // with the identity rotation - which would snap the bee to an unrelated pose part-way up a
+        // climb. Hold the last good facing through it; the flight comes off vertical soon enough.
+        if (Math.abs(Vec3.dot(this._travelDir, Vec3.UP)) > 0.9995) return;
+
+        Quat.fromViewUp(this._poseScratch, this._travelDir);
+
+        const turnSpeed = this._phase === BulletPhase.Carry ? this.carryTurnSpeed : this.travelTurnSpeed;
+        if (turnSpeed <= 0)
         {
-            this._leanUp.set(Vec3.UP);
+            this.node.setWorldRotation(this._poseScratch);
+            return;
         }
 
-        Quat.rotationTo(this._poseScratch, Vec3.UP, this._leanUp);
-        BulletItem.stepRotation(this._turnScratch, this.node.worldRotation, this._poseScratch, this.characterRotateSpeed, dt);
+        BulletItem.stepRotation(this._turnScratch, this.node.worldRotation, this._poseScratch, turnSpeed, dt);
         this.node.setWorldRotation(this._turnScratch);
+    }
 
-        // The bee slides back to sitting on top of the cube - the prefab's arrangement, but
-        // measured against the map's cube size rather than the one the prefab was authored with.
-        if (this.characterRoot)
-        {
-            this.standoffAlong(this._characterRestPos, this._characterBaseDir);
+    /**
+     * Slides the bee back to the spot the prefab gave it above the cube, now that it is done
+     * gripping a face - measured against the map's cube size rather than the one the prefab was
+     * authored with, so it sits on the cube it is actually holding.
+     */
+    private settleCharacter(dt: number): void
+    {
+        if (!this.characterRoot) return;
 
-            const t = 1 - Math.exp(-Math.max(0, this.characterSettleSpeed) * dt);
-            Vec3.lerp(this._characterPos, this.characterRoot.position, this._characterRestPos, t);
-            this.characterRoot.setPosition(this._characterPos);
-        }
+        this.standoffAlong(this._characterRestPos, this._characterBaseDir);
+
+        const t = 1 - Math.exp(-Math.max(0, this.characterSettleSpeed) * dt);
+        Vec3.lerp(this._characterPos, this.characterRoot.position, this._characterRestPos, t);
+        this.characterRoot.setPosition(this._characterPos);
     }
 
     /**
@@ -681,11 +701,11 @@ export class BulletItem extends Component
     }
 
     /**
-     * How far, and which way, the bullet moved this frame - the flight's actual direction.
+     * How far, and which way, the bullet moved along its PATH this frame.
      *
-     * Measured on the path, not on the swayed position, so the two things that read it back - the
-     * carry lean and the weave's own sideways axis - see where the flight is going rather than
-     * which way the weave happens to be swinging. A weave that steered itself would wander.
+     * Measured with the weave discounted, because what reads it back is the weave's own sideways
+     * axis: a weave that took its axis from its own output would steer itself off course. The
+     * facing wants the opposite - see measureRenderMovement().
      */
     private measureMovement(): void
     {
@@ -700,6 +720,28 @@ export class BulletItem extends Component
         }
 
         this._prevWorldPos.set(this._swayBasePos);
+    }
+
+    /**
+     * How far, and which way, the bullet moved this frame as it will actually be drawn - the weave
+     * included, since it has been applied by the time this runs. This is the movement vector the
+     * bee is pointed down, so that what it faces is where it is really going.
+     */
+    private measureRenderMovement(): void
+    {
+        this.node.getWorldPosition(this._worldPosNow);
+
+        if (this._hasPrevRenderPos)
+        {
+            Vec3.subtract(this._renderMove, this._worldPosNow, this._prevRenderPos);
+        }
+        else
+        {
+            this._renderMove.set(0, 0, 0);
+            this._hasPrevRenderPos = true;
+        }
+
+        this._prevRenderPos.set(this._worldPosNow);
     }
 
     /**
@@ -742,14 +784,23 @@ export class BulletItem extends Component
 
     /**
      * Points the bullet down `outwardDir` - the direction the cube will be pulled out in. Uses the
-     * same Quat.fromViewUp() as RotateToForwardVelocity, which is what lets the grip pose be
+     * same Quat.fromViewUp() as the travel facing does, which is what lets the grip pose be
      * expressed against one fixed local axis (see cacheGripPose).
      */
     public faceOutward(outwardDir: Readonly<Vec3>): void
     {
         if (!outwardDir || outwardDir.lengthSqr() < 1e-8) return;
 
-        Quat.fromViewUp(this._facing, outwardDir as Vec3);
+        this._travelDir.set(outwardDir as Vec3);
+        this._travelDir.normalize();
+
+        // Cubes come out upwards as readily as sideways, and a straight-up view against the default
+        // up has no basis - Quat.fromViewUp() gives back the identity there, which would leave the
+        // bee gripping thin air off some unrelated face. Any up not parallel to the pull will do:
+        // it only fixes the roll about an axis the bee is symmetrical enough about, and the pull
+        // axis itself - which is what the grip pose is built on - comes out the same either way.
+        const upright = Math.abs(Vec3.dot(this._travelDir, Vec3.UP)) > 0.9995;
+        Quat.fromViewUp(this._facing, this._travelDir, upright ? Vec3.FORWARD : Vec3.UP);
         this.node.setWorldRotation(this._facing);
     }
 }
