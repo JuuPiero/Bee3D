@@ -1,7 +1,6 @@
 import { Camera, Vec3 } from 'cc';
-import { ScreenProjector } from '../../cube-occlusion/core/ScreenProjector';
 import { VisibilityResult } from '../../cube-occlusion/data/VisibilityResult';
-import type { ProjectedTriangle } from './ProjectedTriangle';
+import type { VisibilityPass } from './VisibilityPass';
 
 export interface IGridTile3D {
     getCoordX(): number;
@@ -45,11 +44,14 @@ export interface IGridTile3D {
     isEnclosed(): boolean;
 
     /**
-     * Recomputes and returns this tile's visibility against the given camera and the
-     * current frame's projected occluder triangles. [excludeStart, excludeEnd) marks this
-     * tile's own triangle range within `triangles`, which is skipped so it can't self-occlude.
+     * Recomputes and returns this tile's visibility against the camera and the bucketed occluder
+     * triangles `pass` was prepared with. `ownerIndex` is this tile's index in the pass's tile
+     * list, stamped on its own triangles so they are skipped and it can't self-occlude.
+     * `worldCenter` is this tile's world position as of that pass - passed in, together with the
+     * pass's frozen holder rotation, so the samples land in the same transform as the occluders
+     * even when the map has rotated since the pass began.
      */
-    computeVisibility(camera: Camera, projector: ScreenProjector, triangles: readonly ProjectedTriangle[], excludeStart: number, excludeEnd: number): VisibilityResult;
+    computeVisibility(pass: VisibilityPass, ownerIndex: number, worldCenter: Readonly<Vec3>): VisibilityResult;
     getVisibilityResult(): VisibilityResult;
 
     /**

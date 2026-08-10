@@ -21,18 +21,26 @@ export interface ICubePlacement
     localPos: Vec3;
 }
 
+/** The 6 axis-aligned neighbour offsets that can enclose a cube. */
+const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [number, number, number]> = [
+    [1, 0, 0], [-1, 0, 0],
+    [0, 1, 0], [0, -1, 0],
+    [0, 0, 1], [0, 0, -1],
+];
+
 /**
  * Renders a whole 3D cube grid as a single dynamic mesh under one MeshRenderer.
  *
- * Unlike GridMapMesh3D (which this supersedes - that class is left on disk for reference only,
- * do not extend it), there is no topological enclosure culling: every cube passed to build()
- * is drawn until removeBlock() is called for its coordinate. Since a cube's visibility is
- * therefore only ever changed by an explicit removeBlock() call and nothing else (no camera,
- * no neighbour state, no time), removeBlock() patches and re-uploads just its own chunk's index
- * buffer synchronously - there is no lateUpdate()/per-frame rebuild here, deliberately.
+ * A cube whose 6 axis-aligned neighbours all exist and are all still present is fully enclosed
+ * and never contributes a visible fragment, so it is skipped: its vertices are written but it
+ * gets no slot in its chunk's index range. Removing a cube can expose the (up to 6) neighbours
+ * around it, so removeBlock() re-checks exactly those and gives any newly exposed one a slot.
+ * Visibility therefore only ever changes as a consequence of build()/removeBlock() - nothing
+ * camera- or time-driven - so both patch the index buffers synchronously and there is no
+ * lateUpdate()/per-frame rebuild here, deliberately.
  *
  * Vertex data (position/normal/color/a_capLocal) is written once per cube in build() and never
- * touched again; removeBlock() only ever rewrites indices.
+ * touched again; build() and removeBlock() only ever rewrite indices.
  */
 @ccclass('GridMeshGrid3D')
 export class GridMeshGrid3D extends Component
@@ -66,16 +74,19 @@ export class GridMeshGrid3D extends Component
     /** LevelData3D.gridKey(x, y, z) -> cube ordinal. */
     private _ordinalByKey: Map<string, number> = new Map<string, number>();
     private _removed: Uint8Array = null;
-    /** Slot this cube occupies in its chunk's packed index range, or -1 once removed. */
+    /** Slot this cube occupies in its chunk's packed index range, or -1 when it is not drawn. */
     private _slotOfCube: Int32Array = null;
     /** chunkIndex * cubesPerChunk + slot -> cube ordinal. */
     private _cubeOfSlot: Int32Array = null;
+    /** Grid coordinate of every cube, 3 entries per ordinal, for neighbour lookups. */
+    private _coords: Int32Array = null;
 
     private _cubeCount = 0;
 
     /**
-     * Combines every cube in `cubes` into one dynamic mesh, one MeshRenderer, N chunks. Every
-     * cube is drawn immediately - there is no enclosure test - until removeBlock() removes it.
+     * Combines every cube in `cubes` into one dynamic mesh, one MeshRenderer, N chunks. Cubes
+     * enclosed by all 6 neighbours are written but not drawn; every other cube is drawn until
+     * removeBlock() removes it.
      * Callers must not pass duplicate (x, y, z) entries; the last one wins the coordinate but
      * the earlier one's vertex data stays permanently drawn in a dead slot.
      */
@@ -112,18 +123,21 @@ export class GridMeshGrid3D extends Component
         this._builder = new GridMeshBuilder(this._source, this._cubeCount);
 
         this._removed = new Uint8Array(this._cubeCount);
-        this._slotOfCube = new Int32Array(this._cubeCount);
+        this._slotOfCube = new Int32Array(this._cubeCount).fill(-1);
         this._cubeOfSlot = new Int32Array(this._builder.chunks.length * this._builder.cubesPerChunk).fill(-1);
+        this._coords = new Int32Array(this._cubeCount * 3);
 
-        this._writeVerticesAndAssignSlots(cubes);
+        this._writeVertices(cubes);
+        this._assignSlots();
 
         return this._createMesh();
     }
 
     /**
-     * Removes the cube at (x, y, z) from the draw set immediately: patches and re-uploads only
-     * its own chunk's index buffer. Returns false if the coordinate was never built, or was
-     * already removed (double-removal is a no-op, not an error).
+     * Removes the cube at (x, y, z) immediately: drops it from the draw set (a no-op if it was
+     * enclosed and therefore never drawn), draws any of its 6 neighbours the removal exposed,
+     * and re-uploads. Returns false if the coordinate was never built, or was already removed
+     * (double-removal is a no-op, not an error).
      */
     public removeBlock (x: number, y: number, z: number): boolean
     {
@@ -147,16 +161,29 @@ export class GridMeshGrid3D extends Component
             return false;
         }
 
-        this._hideCube(ordinal);
         this._removed[ordinal] = 1;
+        this._hideCube(ordinal);
+        this._revealNeighboursOf(ordinal);
+
+        // One recreate covering the removal and every neighbour it exposed, so Cocos sees the
+        // new draw ranges immediately - deliberately more conservative than index-only updates.
+        this._rebuildMesh();
 
         return true;
     }
 
+    /** True only when the cube is actually being drawn - an enclosed cube reports false. */
     public isCubeVisible (x: number, y: number, z: number): boolean
     {
         const ordinal = this._ordinalByKey.get(LevelData3D.gridKey(x, y, z));
         return ordinal !== undefined && this._slotOfCube[ordinal] >= 0;
+    }
+
+    /** True while the cube still occupies its cell, whether or not it is drawn. */
+    public isCubePresent (x: number, y: number, z: number): boolean
+    {
+        const ordinal = this._ordinalByKey.get(LevelData3D.gridKey(x, y, z));
+        return ordinal !== undefined && this._removed[ordinal] === 0;
     }
 
     /** Cubes in the grid, cubes actually being drawn, chunk count and triangle count. */
@@ -195,6 +222,7 @@ export class GridMeshGrid3D extends Component
         this._slotOfCube = null;
         this._cubeOfSlot = null;
         this._removed = null;
+        this._coords = null;
         this._cubeCount = 0;
     }
 
@@ -204,12 +232,11 @@ export class GridMeshGrid3D extends Component
     }
 
     /**
-     * Writes every cube's vertex data and, since nothing starts hidden, gives every cube a
-     * slot in the same pass - slot == local ordinal for every cube at build time.
+     * Writes every cube's vertex data - enclosed cubes included, so that a later removeBlock()
+     * can reveal them by writing indices alone - and registers their coordinates.
      */
-    private _writeVerticesAndAssignSlots (cubes: ICubePlacement[]): void
+    private _writeVertices (cubes: ICubePlacement[]): void
     {
-        const cubesPerChunk = this._builder.cubesPerChunk;
         const white = new Color(255, 255, 255, 255);
         const black = new Color(0, 0, 0, 255);
         const placement: IMergedCube = {
@@ -225,6 +252,10 @@ export class GridMeshGrid3D extends Component
             const key = LevelData3D.gridKey(cube.x, cube.y, cube.z);
             this._ordinalByKey.set(key, ordinal);
 
+            this._coords[ordinal * 3] = cube.x;
+            this._coords[ordinal * 3 + 1] = cube.y;
+            this._coords[ordinal * 3 + 2] = cube.z;
+
             const tones = this.colorData ? this.colorData.getBlockColors(cube.colorID as EColor) : null;
             placement.x = cube.x;
             placement.y = cube.y;
@@ -234,20 +265,80 @@ export class GridMeshGrid3D extends Component
             placement.shadow = tones ? tones.shadow : black;
 
             this._builder.writeCube(ordinal, placement);
-
-            const chunkIndex = Math.floor(ordinal / cubesPerChunk);
-            const chunk = this._builder.chunks[chunkIndex];
-            const localOrdinal = ordinal % cubesPerChunk;
-            const slotBase = chunkIndex * cubesPerChunk;
-
-            this._builder.writeIndices(chunk, localOrdinal, localOrdinal);
-            this._cubeOfSlot[slotBase + localOrdinal] = ordinal;
-            this._slotOfCube[ordinal] = localOrdinal;
-            chunk.liveCount = localOrdinal + 1;
         }
     }
 
-    /** Frees a slot by moving the last live cube into it, keeping the draw range contiguous. */
+    /** Gives a slot to every cube that is not fully enclosed by its 6 neighbours. */
+    private _assignSlots (): void
+    {
+        for (let ordinal = 0; ordinal < this._cubeCount; ordinal++)
+        {
+            if (this._isEnclosed(ordinal)) continue;
+
+            this._showCube(ordinal);
+        }
+    }
+
+    /** True when all 6 axis-aligned neighbours exist and none of them has been removed. */
+    private _isEnclosed (ordinal: number): boolean
+    {
+        const x = this._coords[ordinal * 3];
+        const y = this._coords[ordinal * 3 + 1];
+        const z = this._coords[ordinal * 3 + 2];
+
+        for (const offset of NEIGHBOUR_OFFSETS)
+        {
+            const neighbour = this._ordinalByKey.get(
+                LevelData3D.gridKey(x + offset[0], y + offset[1], z + offset[2])
+            );
+
+            if (neighbour === undefined || this._removed[neighbour]) return false;
+        }
+
+        return true;
+    }
+
+    /** Draws any neighbour of `ordinal` that its removal just exposed. */
+    private _revealNeighboursOf (ordinal: number): void
+    {
+        const x = this._coords[ordinal * 3];
+        const y = this._coords[ordinal * 3 + 1];
+        const z = this._coords[ordinal * 3 + 2];
+
+        for (const offset of NEIGHBOUR_OFFSETS)
+        {
+            const neighbour = this._ordinalByKey.get(
+                LevelData3D.gridKey(x + offset[0], y + offset[1], z + offset[2])
+            );
+
+            if (neighbour === undefined) continue;
+            if (this._removed[neighbour] || this._slotOfCube[neighbour] >= 0) continue;
+
+            this._showCube(neighbour);
+        }
+    }
+
+    /** Appends a cube to the end of its chunk's packed draw range. */
+    private _showCube (ordinal: number): void
+    {
+        if (this._slotOfCube[ordinal] >= 0) return;
+
+        const cubesPerChunk = this._builder.cubesPerChunk;
+        const chunkIndex = Math.floor(ordinal / cubesPerChunk);
+        const chunk = this._builder.chunks[chunkIndex];
+        const localOrdinal = ordinal % cubesPerChunk;
+        const slot = chunk.liveCount;
+
+        this._builder.writeIndices(chunk, localOrdinal, slot);
+        this._cubeOfSlot[chunkIndex * cubesPerChunk + slot] = ordinal;
+        this._slotOfCube[ordinal] = slot;
+        chunk.liveCount = slot + 1;
+    }
+
+    /**
+     * Frees a slot by moving the last live cube into it, keeping the draw range contiguous.
+     * A no-op for a cube that was never drawn (an enclosed one). The caller re-uploads.
+     */
     private _hideCube (ordinal: number): void
     {
         const slot = this._slotOfCube[ordinal];
@@ -288,10 +379,6 @@ export class GridMeshGrid3D extends Component
         this._cubeOfSlot[slotBase + lastSlot] = -1;
         this._slotOfCube[ordinal] = -1;
         chunk.liveCount = lastSlot;
-
-        // Recreate the dynamic mesh so Cocos sees the new draw ranges immediately.
-        // This is deliberately more conservative than an index-only updateSubMesh call.
-        this._rebuildMesh();
     }
 
     private _createMesh (): boolean

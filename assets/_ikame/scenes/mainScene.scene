@@ -664,14 +664,14 @@
     "cameraMain": {
       "__id__": 16
     },
-    "debugDrawMapBorder": true,
+    "debugDrawMapBorder": false,
     "levelJsonAssets": [
       {
-        "__uuid__": "14828ae0-58d4-4e4e-bcfb-313703c69ece",
+        "__uuid__": "4dd383e9-d99c-4f5d-bb39-05f279de6ab2",
         "__expectedType__": "cc.JsonAsset"
       }
     ],
-    "tutQueueIndex": 5,
+    "tutQueueIndex": 3,
     "bulletExitTarget": {
       "__id__": 26
     },
@@ -739,11 +739,14 @@
     "occlusionSampleGridSize": 3,
     "occlusionSampleMargin": 0.1,
     "visibilitySampleCountHideThreshold": 0,
+    "visibilityRefreshInterval": 0.1,
+    "visibilityTilesPerFrame": 0,
     "debugDrawVisibility": false,
     "debugPointRadius": 1.15,
     "extractionRadius": 0.5,
     "reachabilityTurnCap": 2,
-    "debugFindTargetOnNumberKeys": true,
+    "reachabilityRefreshInterval": 0.15,
+    "debugFindTargetOnNumberKeys": false,
     "debugRemoveID": 12,
     "_id": "4aaAM3cFVJI6cAr8r9bwAU"
   },

@@ -34,6 +34,7 @@ export interface ILevelController
     getBestFloaterSlot(): Floater 
 
     doUpdate(dt: number): void
+    dolateUpdate(dt: number): void
     checkLose(): void
 
     trackLevelProgress(): void

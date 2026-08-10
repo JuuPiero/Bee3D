@@ -7,11 +7,10 @@ import { EColor } from '../../enums/EColor';
 import { ScreenProjector } from '../../cube-occlusion/core/ScreenProjector';
 import { ProjectedTriangle } from './ProjectedTriangle';
 import { GridMeshGrid3D, ICubePlacement } from './GridMeshGrid3D';
+import { ScreenTriangleGrid } from './ScreenTriangleGrid';
+import { VisibilityPass } from './VisibilityPass';
+import { ViewSnapshot } from './ViewSnapshot';
 const { ccclass, property } = _decorator;
-
-// Seconds between reachability rebuilds while the map rotates. Cheap enough at these grid sizes,
-// and short enough that a shooter never picks a cube whose corridor has swung out of reach.
-const REACHABILITY_REFRESH_INTERVAL = 0.15;
 
 @ccclass('LevelGrid3D')
 export class LevelGrid3D extends Component
@@ -47,6 +46,12 @@ export class LevelGrid3D extends Component
     @property({ type: CCInteger, group: 'Occlusion' })
     public visibilitySampleCountHideThreshold: number = 0;
 
+    @property({ type: CCFloat, min: 0, group: 'Occlusion', tooltip: 'Seconds between occlusion passes. The pass is a full sweep over every cube, so it runs on this timer instead of every frame - and is skipped entirely while neither the camera nor the map has moved. findTargetTile() forces a fresh pass on demand, so raising this only adds latency to the cube show/hide, never to targeting. 0 = every frame.' })
+    public visibilityRefreshInterval: number = 0.1;
+
+    @property({ type: CCInteger, min: 0, group: 'Occlusion', tooltip: 'Max cubes resolved per frame, spreading one pass over several frames. 0 = the whole map in one frame.' })
+    public visibilityTilesPerFrame: number = 0;
+
     @property({ type: CCBoolean, group: 'Occlusion', tooltip: 'Draws a cross at each cube (green = visible, red = hidden) using the camera\'s geometry renderer.' })
     public debugDrawVisibility: boolean = false;
 
@@ -62,6 +67,12 @@ export class LevelGrid3D extends Component
     // Max 90° turns a greedy L-route is allowed before giving up on a candidate exit face.
     @property({ type: CCInteger, min: 0, group: 'Reachability' })
     public reachabilityTurnCap: number = 2;
+
+    // Seconds between reachability rebuilds while the map rotates. Cheap enough at these grid
+    // sizes, and short enough that a shooter never picks a cube whose corridor has swung out of
+    // reach. Removing a cube rebuilds immediately regardless.
+    @property({ type: CCFloat, min: 0, group: 'Reachability' })
+    public reachabilityRefreshInterval: number = 0.15;
 
     // Debug-only: press number keys 0-9 to call findTargetTile(colorID) and remove it, like a
     // bee pulling that cube out, so the peel-order logic can be sanity-checked directly in the
@@ -85,6 +96,11 @@ export class LevelGrid3D extends Component
     // Every tile currently holding a cube. This list feeds the debug visibility computation
     // and the camera-occlusion show/hide below.
     private _solidTiles: GridTile3D[] = [];
+
+    // Index-aligned with _solidTiles: the MeshRenderer the occlusion pass switches on and off for
+    // that tile (null on the merged-mesh path). Kept as an array rather than looked up by gridKey
+    // per tile per pass, which allocated a key string for every cube every frame.
+    private _solidTileRenderers: (MeshRenderer | null)[] = [];
 
     // occlusionBoxSize scaled by cubeBlockHolder's world scale, i.e. the box in world units.
     private readonly _occlusionBoxWorldSize = new Vec3();
@@ -126,16 +142,36 @@ export class LevelGrid3D extends Component
         KeyCode.DIGIT_5, KeyCode.DIGIT_6, KeyCode.DIGIT_7, KeyCode.DIGIT_8, KeyCode.DIGIT_9,
     ];
 
-    // Reused every lateUpdate(): every solid tile's occlusion box projected into up to 12
-    // triangles each, concatenated into one shared array. _tileTriangleStart/_tileTriangleCount
-    // (index-aligned with _solidTiles) mark each tile's own slice, which computeVisibility
-    // skips so a tile can never self-occlude.
-    private _reachabilityTimer: number = 0;
-
+    // Reused every occlusion pass: every solid tile's occlusion box projected into up to 6
+    // camera-facing triangles each, concatenated into one shared array and then bucketed by screen
+    // position in _occluderGrid. Each triangle carries the index of the tile it came from, so a
+    // tile's own box is skipped and it can never self-occlude.
     private _trianglePool: ProjectedTriangle[] = [];
     private _triangles: ProjectedTriangle[] = [];
-    private _tileTriangleStart: number[] = [];
-    private _tileTriangleCount: number[] = [];
+
+    // Each solid tile's world position as of the pass in flight, index-aligned with _solidTiles for
+    // the length of that pass only (a grow-only scratch pool, rewritten by every beginVisibilityPass
+    // - so it needs no splicing when a cube is removed). Frozen because the map rotates: a sliced
+    // pass has to keep testing samples against occluders from the same moment, and because
+    // getWorldPos() returns the tile's own reused Vec3, which the next tile's call overwrites.
+    private _solidTileWorldPos: Vec3[] = [];
+    private readonly _occluderGrid = new ScreenTriangleGrid();
+    private readonly _visibilityPass = new VisibilityPass();
+
+    private _reachabilityTimer: number = 0;
+    private _visibilityTimer: number = 0;
+
+    // Where a time-sliced pass got to, or -1 when no pass is in flight.
+    private _visibilityCursor: number = -1;
+
+    // Set when a cube is added or removed: the last pass's results no longer describe the map, so
+    // the next one must run even if nothing moved.
+    private _visibilityStale: boolean = true;
+
+    // What each pass was last computed against, so an idle frame can skip the work instead of
+    // recomputing an identical answer.
+    private readonly _reachabilityView = new ViewSnapshot();
+    private readonly _visibilityView = new ViewSnapshot();
 
     start()
     {
@@ -295,16 +331,16 @@ export class LevelGrid3D extends Component
         }
 
         this._solidTiles.length = 0;
-        this._tileTriangleStart.length = 0;
-        this._tileTriangleCount.length = 0;
+        this._solidTileRenderers.length = 0;
         for (const tile of this._gridMap.values())
         {
             if (!tile.isContainBlock()) continue;
             this._solidTiles.push(tile);
-            this._tileTriangleStart.push(0);
-            this._tileTriangleCount.push(0);
+            const tileKey = LevelData3D.gridKey(tile.getCoordX(), tile.getCoordY(), tile.getCoordZ());
+            this._solidTileRenderers.push(this._cubeRenderers.get(tileKey) ?? null);
         }
 
+        this.invalidateVisibility();
         this.computeReachabilityForSolidTiles();
 
         console.log(`[LevelGrid3D] Grid ${gridSize.x}x${gridSize.y}x${gridSize.z}, tiles: ${this._gridMap.size}, spawned ${spawnedCount}/${this.levelData.cubes.length} cubes (${this.useMergedMesh ? 'merged mesh' : 'prefab nodes'})`);
@@ -424,19 +460,22 @@ export class LevelGrid3D extends Component
 
         tile?.clearCubeData();
 
-        // Drop the emptied tile from _solidTiles (and its index-aligned triangle-bookkeeping
-        // slots) - otherwise lateUpdate() keeps projecting an occlusion box for a cell that no
-        // longer holds a cube, permanently blocking line-of-sight to whatever is behind it.
+        // Drop the emptied tile from _solidTiles (and its index-aligned renderer slot) - otherwise
+        // the occlusion pass keeps projecting an occlusion box for a cell that no longer holds a
+        // cube, permanently blocking line-of-sight to whatever is behind it.
         if (tile)
         {
             const index = this._solidTiles.indexOf(tile);
             if (index !== -1)
             {
                 this._solidTiles.splice(index, 1);
-                this._tileTriangleStart.splice(index, 1);
-                this._tileTriangleCount.splice(index, 1);
+                this._solidTileRenderers.splice(index, 1);
             }
         }
+
+        // Every remaining tile's index just shifted, and the hole may have exposed cubes behind it,
+        // so any pass in flight is meaningless now - drop it and start over.
+        this.invalidateVisibility();
 
         // Removing a cube can open a corridor for its neighbours, so recompute reachability
         // for every remaining solid tile - the same full-rebuild approach _solidTiles itself
@@ -474,6 +513,8 @@ export class LevelGrid3D extends Component
     {
         if (!this.camera || !this.levelData) return;
 
+        this._reachabilityView.capture(this.camera.node, this.cubeBlockHolder);
+
         for (const tile of this._solidTiles)
         {
             tile.computeReachability(this.camera, this.extractionRadius, this.levelData.cellSize, this.reachabilityTurnCap);
@@ -482,86 +523,199 @@ export class LevelGrid3D extends Component
 
     /**
      * Whether `tile`'s last computeVisibility() result clears visibilitySampleCountHideThreshold.
-     * Single source of truth for "is this cube currently visible", shared by lateUpdate()'s
-     * debug draw and findTargetTile()'s eligibility filter.
+     * Single source of truth for "is this cube currently visible", shared by the debug draw and
+     * findTargetTile()'s eligibility filter.
      */
     private isTileVisible(tile: GridTile3D): boolean
     {
         return tile.getVisibilityResult().visibleSamples > this.visibilitySampleCountHideThreshold;
     }
 
-    lateUpdate(dt: number): void
+    dolateUpdate(dt: number): void
     {
         if (!this.camera || this._solidTiles.length === 0) return;
 
-        // Reachability is scored against the camera-facing faces, so a rotating map invalidates
-        // it continuously - not just when a cube is removed. Recompute on a timer rather than
-        // every frame: it is a full scan over every solid tile, and the answer only changes as
-        // fast as the map turns.
+        this.updateReachability(dt);
+        this.updateVisibility(dt);
+
+        // Outside the pass: the geometry renderer is cleared every frame, so the crosses have to be
+        // re-submitted every frame even though the results behind them only change per pass.
+        if (this.debugDrawVisibility) this.drawVisibilityDebug();
+    }
+
+    /**
+     * Reachability is scored against the camera-facing faces, so a rotating map invalidates it
+     * continuously - not just when a cube is removed. It is a full scan over every solid tile, so
+     * it runs on a timer, and only when the view has actually moved since the last rebuild
+     * (removing a cube rebuilds synchronously in removeCube(), so no timer is involved there).
+     */
+    private updateReachability(dt: number): void
+    {
         this._reachabilityTimer += dt;
-        if (this._reachabilityTimer >= REACHABILITY_REFRESH_INTERVAL)
+        if (this._reachabilityTimer < this.reachabilityRefreshInterval) return;
+
+        // Timer stays armed while the view is still, so the next real movement is picked up at once.
+        if (!this._reachabilityView.hasChanged(this.camera.node, this.cubeBlockHolder)) return;
+
+        this._reachabilityTimer = 0;
+        this.computeReachabilityForSolidTiles();
+    }
+
+    /**
+     * Drives the occlusion pass. Three things keep it off the per-frame budget:
+     *   - it only starts a pass every visibilityRefreshInterval seconds;
+     *   - it skips even that while neither the camera nor the map has moved and no cube has been
+     *     removed, since the answer would be identical;
+     *   - one pass can be spread over several frames (visibilityTilesPerFrame).
+     * findTargetTile() forces a fresh pass when it needs one, so none of this can hand a shooter a
+     * stale target - the interval only delays the cosmetic cube show/hide.
+     */
+    private updateVisibility(dt: number): void
+    {
+        // A time-sliced pass in flight finishes first, on the occluders it started with.
+        if (this._visibilityCursor >= 0)
         {
-            this._reachabilityTimer = 0;
-            this.computeReachabilityForSolidTiles();
+            this.stepVisibilityPass(this.visibilityTilesPerFrame);
+            return;
         }
 
+        this._visibilityTimer += dt;
+        if (this._visibilityTimer < this.visibilityRefreshInterval) return;
+
+        // Same as above: leave the timer expired so a change is acted on the frame it happens.
+        if (!this._visibilityStale && !this._visibilityView.hasChanged(this.camera.node, this.cubeBlockHolder)) return;
+
+        this._visibilityTimer = 0;
+        this.beginVisibilityPass();
+        this.stepVisibilityPass(this.visibilityTilesPerFrame);
+    }
+
+    /**
+     * Makes sure the visibility results are current before they are read for gameplay. Cheap when
+     * nothing has moved since the last pass - which is the common case for several shooters
+     * querying in the same frame.
+     */
+    private ensureVisibilityFresh(): void
+    {
+        if (this._solidTiles.length === 0) return;
+
+        if (this._visibilityCursor >= 0)
+        {
+            this.stepVisibilityPass(0); // finish the in-flight pass now
+            return;
+        }
+
+        if (!this._visibilityStale && !this._visibilityView.hasChanged(this.camera.node, this.cubeBlockHolder)) return;
+
+        this._visibilityTimer = 0;
+        this.beginVisibilityPass();
+        this.stepVisibilityPass(0);
+    }
+
+    /** Forces the next pass to run even if nothing moved - call whenever a cube is added or removed. */
+    private invalidateVisibility(): void
+    {
+        this._visibilityStale = true;
+        this._visibilityCursor = -1;
+    }
+
+    /**
+     * Projects every solid tile's occlusion box into the shared triangle list, buckets those
+     * triangles by screen position, and arms the pass at tile 0.
+     */
+    private beginVisibilityPass(): void
+    {
         this._screenProjector.prepare(this.camera);
 
         // Same rotation for every tile (they all share cubeBlockHolder), so fetch it once.
         this.cubeBlockHolder.getWorldRotation(this._holderWorldRotation);
 
-        // Step 1: project every solid tile's occlusion box once, into a shared triangle list.
-        // Each tile's own [start, end) slice is recorded so its check can skip it below.
+        // The snapshot is taken here, not at the end: a sliced pass describes the map as it was
+        // when its occluders were built.
+        this._visibilityView.capture(this.camera.node, this.cubeBlockHolder);
+        this._visibilityStale = false;
+
         this._triangles.length = 0;
         let poolIndex = 0;
         for (let i = 0; i < this._solidTiles.length; i++)
         {
-            const start = this._triangles.length;
-            poolIndex = GridTile3D.projectOcclusionTriangles(this.camera, this._screenProjector, this._solidTiles[i].getWorldPos(), this._occlusionHalfExtents, this._holderWorldRotation, this._trianglePool, poolIndex, this._triangles);
-            this._tileTriangleStart[i] = start;
-            this._tileTriangleCount[i] = this._triangles.length - start;
+            // Snapshot the tile's world position, then project from the snapshot - the pass reuses
+            // it for that tile's samples, so occluders and samples share one transform.
+            let worldPos = this._solidTileWorldPos[i];
+            if (!worldPos)
+            {
+                worldPos = new Vec3();
+                this._solidTileWorldPos[i] = worldPos;
+            }
+            worldPos.set(this._solidTiles[i].getWorldPos());
+
+            poolIndex = GridTile3D.projectOcclusionTriangles(this.camera, this._screenProjector, worldPos, this._occlusionHalfExtents, this._holderWorldRotation, i, this._trianglePool, poolIndex, this._triangles);
         }
 
-        const debugRenderer = this.debugDrawVisibility ? this.camera.camera?.geometryRenderer : null;
+        this._visibilityPass.prepare(this.camera, this._screenProjector, this._occluderGrid, this._holderWorldRotation, this.visibilitySampleCountHideThreshold, false);
+        this._occluderGrid.build(
+            this._triangles,
+            this._visibilityPass.viewportMinX, this._visibilityPass.viewportMinY,
+            this._visibilityPass.viewportMaxX, this._visibilityPass.viewportMaxY,
+        );
 
-        // Step 2: check every tile against those triangles, excluding its own slice.
-        for (let i = 0; i < this._solidTiles.length; i++)
+        this._visibilityCursor = 0;
+    }
+
+    /**
+     * Resolves up to `budget` tiles of the pass in flight (0 = all of them), and applies each
+     * result to that cube's renderer. Clears the cursor once the pass is done.
+     */
+    private stepVisibilityPass(budget: number): void
+    {
+        if (this._visibilityCursor < 0) return;
+
+        const tileCount = this._solidTiles.length;
+        const end = budget > 0 ? Math.min(tileCount, this._visibilityCursor + budget) : tileCount;
+
+        for (let i = this._visibilityCursor; i < end; i++)
         {
             const tile = this._solidTiles[i];
-
-            const excludeStart = this._tileTriangleStart[i];
-            const excludeEnd = excludeStart + this._tileTriangleCount[i];
-
-            tile.computeVisibility(this.camera, this._screenProjector, this._triangles, excludeStart, excludeEnd);
-
-            const visible = this.isTileVisible(tile);
+            tile.computeVisibility(this._visibilityPass, i, this._solidTileWorldPos[i]);
 
             // Feed the camera-visibility result straight into the cube's own MeshRenderer.
             // Only meaningful for the per-node path - GridMeshGrid3D has no per-cube show/hide
             // (only permanent removeBlock), so occlusion-driven hiding is dropped while
-            // useMergedMesh is on; the debug cross and findTargetTile's visibility filter
-            // below are unaffected either way.
+            // useMergedMesh is on; the debug cross and findTargetTile's visibility filter are
+            // unaffected either way.
             if (!this.useMergedMesh)
             {
-                const key = LevelData3D.gridKey(tile.getCoordX(), tile.getCoordY(), tile.getCoordZ());
-                const renderer = this._cubeRenderers.get(key);
-                if (renderer) renderer.enabled = visible;
+                const renderer = this._solidTileRenderers[i];
+                const visible = this.isTileVisible(tile);
+                if (renderer && renderer.enabled !== visible) renderer.enabled = visible;
             }
+        }
 
-            if (debugRenderer && visible)
-            {
-                debugRenderer.addCross(tile.getWorldPos(), this.debugPointRadius,  Color.WHITE, true);
-            }
+        this._visibilityCursor = end >= tileCount ? -1 : end;
+    }
+
+    /** Re-submits the debug crosses for the last pass's results. */
+    private drawVisibilityDebug(): void
+    {
+        const debugRenderer = this.camera.camera?.geometryRenderer;
+        if (!debugRenderer) return;
+
+        for (const tile of this._solidTiles)
+        {
+            if (!this.isTileVisible(tile)) continue;
+            debugRenderer.addCross(tile.getWorldPos(), this.debugPointRadius, Color.WHITE, true);
         }
     }
 
     public clearLevel(): void
     {
         this._solidTiles.length = 0;
+        this._solidTileRenderers.length = 0;
         this._triangles.length = 0;
-        this._tileTriangleStart.length = 0;
-        this._tileTriangleCount.length = 0;
+        this._occluderGrid.clear();
         this._reservedTiles.clear();
+        this.invalidateVisibility();
+        this._reachabilityView.invalidate();
 
         for (const node of this._cubeNodes.values()) node.destroy();
         this._cubeNodes.clear();
@@ -593,6 +747,10 @@ export class LevelGrid3D extends Component
     public findTargetTile(colorID: number): IGridTile3D | null
     {
         if (!this.camera) return null;
+
+        // The occlusion pass runs on an interval, so bring it up to date before its results decide
+        // a shot. No-ops unless the view moved or a cube was removed since the last pass.
+        this.ensureVisibilityFresh();
 
         const candidates = this._solidTiles.filter(tile =>
             tile.isMatchingColorID(colorID) &&

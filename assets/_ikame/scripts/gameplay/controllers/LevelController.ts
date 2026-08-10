@@ -331,7 +331,7 @@ export class LevelController extends Component implements ILevelController
 
     protected lateUpdate(dt: number): void
     {
-        this._debugDrawSpline();
+        // this._debugDrawSpline();
     }
 
     public getShooterEdge(x: number, z: number): EDirection
@@ -499,6 +499,11 @@ export class LevelController extends Component implements ILevelController
     public doUpdate(dt: number): void
     {
         this.colorQueueControllers.doUpdate(dt);
+    }
+
+    public dolateUpdate(dt: number): void
+    {
+        this.levelGrid3D.dolateUpdate(dt);
     }
 
     public trackLevelProgress(): void

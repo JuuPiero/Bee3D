@@ -1,19 +1,18 @@
-import { Camera, geometry, Mat4, Node, Quat, screen, Vec3 } from 'cc';
+import { Camera, geometry, Mat4, Node, Quat, Vec3 } from 'cc';
 import { IGridTile3D } from './IGridTile3D';
 import { ProjectedTriangle } from './ProjectedTriangle';
 import { CubeFace, CubeFaceSampler, FaceSamples } from '../../cube-occlusion/core/CubeFaceSampler';
 import { ScreenProjector } from '../../cube-occlusion/core/ScreenProjector';
 import { VisibilityResult } from '../../cube-occlusion/data/VisibilityResult';
+import { VisibilityPass } from './VisibilityPass';
 
 // Reused every check to avoid per-sample/per-corner allocations.
 const _worldSampleScratch = new Vec3();
 const _screenSampleScratch = new Vec3();
-const _directionScratch = new Vec3();
 const _rotatedVectorScratch = new Vec3();
 const _localCornerScratch = new Vec3();
 const _cornerScratch = new Vec3();
 const _reachCameraDirScratch = new Vec3();
-const _reachCandidateWorldScratch = new Vec3();
 const _screenCorners: Vec3[] = Array.from({ length: 8 }, () => new Vec3());
 const _cornerInFront: boolean[] = new Array(8).fill(false);
 
@@ -31,21 +30,54 @@ const FACE_TRIANGLE_INDICES: readonly (readonly [number, number, number])[] = [
     [0, 1, 5], [0, 5, 4], // -Z
 ];
 
+// FACE_TRIANGLE_INDICES' face order (-Y, +Y, +X, -X, +Z, -Z) expressed as indices into
+// FACE_NEIGHBORS (+Y, -Y, -Z, +Z, -X, +X), so a box face can look up its already-rotated normal
+// instead of rotating its own copy.
+const BOX_FACE_TO_NEIGHBOR_INDEX: readonly number[] = [1, 0, 5, 4, 3, 2];
+
 export class GridTile3D implements IGridTile3D
 {
-    // Shared by every tile: local-space face samples depend only on the (level-wide) cube
-    // size, so they are generated once via configureOcclusion() instead of per tile.
-    private static _faceSamplesByFace: Map<CubeFace, FaceSamples> = null;
+    // Shared by every tile: local-space face samples depend only on the (level-wide) cube size, so
+    // they are generated once via configureOcclusion() instead of per tile. Stored index-aligned
+    // with FACE_NEIGHBORS, so the hot loops index it instead of doing a Map lookup per face per
+    // tile.
+    private static _faceSamplesByIndex: FaceSamples[] = null;
 
-    // Face -> neighbour-getter, matching the axis mapping documented on IGridTile3D.
-    private static readonly FACE_NEIGHBORS: { face: CubeFace; getNeighbor: (tile: GridTile3D) => IGridTile3D }[] = [
-        { face: CubeFace.PositiveY, getNeighbor: t => t._upLinkedTile },     // +Y
-        { face: CubeFace.NegativeY, getNeighbor: t => t._downLinkedTile },  // -Y
-        { face: CubeFace.NegativeZ, getNeighbor: t => t._topLinkedTile },   // -Z
-        { face: CubeFace.PositiveZ, getNeighbor: t => t._bottomLinkedTile },// +Z
-        { face: CubeFace.NegativeX, getNeighbor: t => t._leftLinkedTile },  // -X
-        { face: CubeFace.PositiveX, getNeighbor: t => t._rightLinkedTile }, // +X
+    // Face -> neighbour-getter, matching the axis mapping documented on IGridTile3D. Typed on the
+    // interface, so the corridor walks below can carry an IGridTile3D without downcasting at
+    // every hop.
+    private static readonly FACE_NEIGHBORS: { face: CubeFace; getNeighbor: (tile: IGridTile3D) => IGridTile3D }[] = [
+        { face: CubeFace.PositiveY, getNeighbor: t => t.getUpLinkedTile() },     // +Y
+        { face: CubeFace.NegativeY, getNeighbor: t => t.getDownLinkedTile() },   // -Y
+        { face: CubeFace.NegativeZ, getNeighbor: t => t.getTopLinkedTile() },    // -Z
+        { face: CubeFace.PositiveZ, getNeighbor: t => t.getBottomLinkedTile() }, // +Z
+        { face: CubeFace.NegativeX, getNeighbor: t => t.getLeftLinkedTile() },   // -X
+        { face: CubeFace.PositiveX, getNeighbor: t => t.getRightLinkedTile() },  // +X
     ];
+
+    // Local-space face normals, index-aligned with FACE_NEIGHBORS.
+    private static readonly FACE_NORMALS: readonly Vec3[] = [
+        new Vec3(0, 1, 0), new Vec3(0, -1, 0),
+        new Vec3(0, 0, -1), new Vec3(0, 0, 1),
+        new Vec3(-1, 0, 0), new Vec3(1, 0, 0),
+    ];
+
+    // For each face, every face perpendicular to it - i.e. every face except itself and its
+    // opposite. Precomputed because it depends only on the (fixed) local axes; it used to be
+    // rebuilt with a FACE_NEIGHBORS.filter() on every L-route attempt, which allocated an array
+    // per face per tile per reachability rebuild.
+    private static readonly PERPENDICULAR_FACE_INDICES: readonly (readonly number[])[] = [
+        [2, 3, 4, 5], [2, 3, 4, 5], // +Y, -Y
+        [0, 1, 4, 5], [0, 1, 4, 5], // -Z, +Z
+        [0, 1, 2, 3], [0, 1, 2, 3], // -X, +X
+    ];
+
+    // FACE_NORMALS rotated into world space, cached against the rotation they were built from.
+    // Every tile shares cubeBlockHolder, so this is recomputed once per pass rather than 6
+    // transformQuat calls per tile.
+    private static readonly _rotatedFaceNormals: Vec3[] = Array.from({ length: 6 }, () => new Vec3());
+    private static readonly _rotatedFaceNormalsKey = new Quat();
+    private static _hasRotatedFaceNormals: boolean = false;
 
     private _coordX: number;
     private _coordY: number;
@@ -97,18 +129,46 @@ export class GridTile3D implements IGridTile3D
 
         const faceSamples = CubeFaceSampler.generate(bounds, sampleGridSize, sampleMargin);
 
-        GridTile3D._faceSamplesByFace = new Map<CubeFace, FaceSamples>();
-        for (const fs of faceSamples) GridTile3D._faceSamplesByFace.set(fs.face, fs);
+        GridTile3D._faceSamplesByIndex = GridTile3D.FACE_NEIGHBORS.map(
+            entry => faceSamples.find(fs => fs.face === entry.face),
+        );
     }
 
     /**
-     * Projects an axis-aligned world-space box (a cube's occlusion bounds) into up to 12
-     * screen-space triangles (2 per face), appending them to `outTriangles` and pulling from
-     * `trianglePool` (grown lazily, reused across frames) starting at `poolIndex`. A triangle
-     * is skipped entirely if any of its 3 corners is behind the camera - no near-plane
-     * clipping. Returns the updated poolIndex.
+     * FACE_NORMALS in world space for `rotation`, index-aligned with FACE_NEIGHBORS. Recomputed
+     * only when the rotation actually differs from the cached one, so a whole pass over the map
+     * pays for it once.
      */
-    public static projectOcclusionTriangles(camera: Camera, projector: ScreenProjector, worldCenter: Readonly<Vec3>, halfExtents: Readonly<Vec3>, rotation: Readonly<Quat>, trianglePool: ProjectedTriangle[], poolIndex: number, outTriangles: ProjectedTriangle[]): number
+    private static getRotatedFaceNormals(rotation: Readonly<Quat>): Vec3[]
+    {
+        if (GridTile3D._hasRotatedFaceNormals && Quat.equals(GridTile3D._rotatedFaceNormalsKey, rotation))
+        {
+            return GridTile3D._rotatedFaceNormals;
+        }
+
+        for (let i = 0; i < 6; i++)
+        {
+            Vec3.transformQuat(GridTile3D._rotatedFaceNormals[i], GridTile3D.FACE_NORMALS[i], rotation);
+        }
+        Quat.copy(GridTile3D._rotatedFaceNormalsKey, rotation);
+        GridTile3D._hasRotatedFaceNormals = true;
+
+        return GridTile3D._rotatedFaceNormals;
+    }
+
+    /**
+     * Projects an axis-aligned world-space box (a cube's occlusion bounds) into screen-space
+     * triangles, appending them to `outTriangles` and pulling from `trianglePool` (grown lazily,
+     * reused across passes) starting at `poolIndex`. Returns the updated poolIndex.
+     *
+     * Only the box's camera-facing faces are emitted - 6 triangles instead of 12. A back face can
+     * never be the nearest surface along a view ray, so it can never be what hides a sample; the
+     * front faces already cover the whole screen silhouette. A triangle is skipped entirely if any
+     * of its 3 corners is behind the camera - no near-plane clipping.
+     *
+     * `ownerIndex` is stamped on every emitted triangle so the owning tile can skip its own box.
+     */
+    public static projectOcclusionTriangles(camera: Camera, projector: ScreenProjector, worldCenter: Readonly<Vec3>, halfExtents: Readonly<Vec3>, rotation: Readonly<Quat>, ownerIndex: number, trianglePool: ProjectedTriangle[], poolIndex: number, outTriangles: ProjectedTriangle[]): number
     {
         const hx = halfExtents.x, hy = halfExtents.y, hz = halfExtents.z;
 
@@ -133,8 +193,28 @@ export class GridTile3D implements IGridTile3D
             _cornerInFront[corner] = projector.isInFront(_screenCorners[corner].z);
         }
 
-        for (const [a, b, c] of FACE_TRIANGLE_INDICES)
+        const normals = GridTile3D.getRotatedFaceNormals(rotation);
+        const cameraPos = camera.node.worldPosition;
+        const toCameraX = cameraPos.x - worldCenter.x;
+        const toCameraY = cameraPos.y - worldCenter.y;
+        const toCameraZ = cameraPos.z - worldCenter.z;
+
+        for (let i = 0; i < FACE_TRIANGLE_INDICES.length; i++)
         {
+            // Two triangles per box face, so both share one facing test.
+            if ((i & 1) === 0)
+            {
+                const normal = normals[BOX_FACE_TO_NEIGHBOR_INDEX[i >> 1]];
+                const facing = normal.x * toCameraX + normal.y * toCameraY + normal.z * toCameraZ;
+                if (facing <= FACING_EPSILON)
+                {
+                    i++; // skip this face's second triangle too
+                    continue;
+                }
+            }
+
+            const corners = FACE_TRIANGLE_INDICES[i];
+            const a = corners[0], b = corners[1], c = corners[2];
             if (!_cornerInFront[a] || !_cornerInFront[b] || !_cornerInFront[c]) continue;
 
             let triangle = trianglePool[poolIndex];
@@ -144,34 +224,12 @@ export class GridTile3D implements IGridTile3D
                 trianglePool.push(triangle);
             }
 
-            triangle.set(_screenCorners[a], _screenCorners[b], _screenCorners[c]);
+            triangle.set(_screenCorners[a], _screenCorners[b], _screenCorners[c], ownerIndex);
             outTriangles.push(triangle);
             poolIndex++;
         }
 
         return poolIndex;
-    }
-
-    /**
-     * Barycentric-interpolated depth of the triangle at screen position (x, y), or null if
-     * the point falls outside the triangle (with a small tolerance so floating-point error
-     * at a shared edge between two adjacent triangles never leaves a gap).
-     */
-    private static getTriangleDepthAtPoint(x: number, y: number, tri: ProjectedTriangle): number | null
-    {
-        const { p0, p1, p2 } = tri;
-
-        const denom = (p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y);
-        if (Math.abs(denom) < 1e-8) return null; // degenerate (edge-on) triangle
-
-        const w1 = ((x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (y - p0.y)) / denom;
-        const w2 = ((p1.x - p0.x) * (y - p0.y) - (x - p0.x) * (p1.y - p0.y)) / denom;
-        const w0 = 1 - w1 - w2;
-
-        const edgeTolerance = -1e-4;
-        if (w0 < edgeTolerance || w1 < edgeTolerance || w2 < edgeTolerance) return null;
-
-        return w0 * p0.z + w1 * p1.z + w2 * p2.z;
     }
 
     getCoordX(): number
@@ -315,62 +373,87 @@ export class GridTile3D implements IGridTile3D
     }
 
     /**
-     * Camera-space visibility check for this tile. Faces sealed by a neighbouring cube are
-     * skipped entirely (they can never contribute a visible sample), and fully-enclosed
-     * tiles skip sampling altogether.
+     * Camera-space visibility check for this tile, against the occluders `pass` was prepared with.
+     * `ownerIndex` identifies this tile's own triangles, which are skipped so it cannot
+     * self-occlude. Faces sealed by a neighbouring cube are skipped entirely (they can never
+     * contribute a visible sample), as are faces pointing away from the camera - so a fully
+     * enclosed tile does no sampling at all.
+     *
+     * `worldCenter` is this tile's world position as of the pass, and the rotation comes from the
+     * pass too - neither is read live here. The map rotates continuously, so samples have to be
+     * placed in the same frame's transform as the occluders they are tested against.
+     *
+     * Stops early once the pass's visible-sample threshold is cleared, since that is the whole
+     * question the caller asks; set pass.exactCounts when the visibility *ratio* is needed too.
      */
-    computeVisibility(camera: Camera, projector: ScreenProjector, triangles: readonly ProjectedTriangle[], excludeStart: number, excludeEnd: number): VisibilityResult
+    computeVisibility(pass: VisibilityPass, ownerIndex: number, worldCenter: Readonly<Vec3>): VisibilityResult
     {
         const result = this._visibilityResult;
-        result.samples.length = 0;
+        if (result.samples.length > 0) result.samples.length = 0;
         result.visibleSamples = 0;
         result.totalSamples = 0;
 
-        const faceSamplesByFace = GridTile3D._faceSamplesByFace;
+        const faceSamplesByIndex = GridTile3D._faceSamplesByIndex;
 
-        if (!this.isContainBlock() || !faceSamplesByFace)
+        if (!this.isContainBlock() || !faceSamplesByIndex)
         {
             result.visibility = 0;
             return result;
         }
 
-        const rotation = this.getWorldRotation();
+        const camera = pass.camera;
+        const projector = pass.projector;
+        const occluders = pass.occluders;
+        const threshold = pass.visibleSampleThreshold;
+        const canExitEarly = !pass.exactCounts;
 
-        for (const entry of GridTile3D.FACE_NEIGHBORS)
+        // Both come from the pass, so this tile's samples are placed in exactly the transform its
+        // occluders were projected from. Hoisted out of the sample loop too: the old code refetched
+        // the parent world matrix once per *sample*.
+        const worldPosX = worldCenter.x, worldPosY = worldCenter.y, worldPosZ = worldCenter.z;
+        const rotation = pass.holderRotation;
+        const normals = GridTile3D.getRotatedFaceNormals(rotation);
+        const cameraPos = camera.node.worldPosition;
+
+        for (let f = 0; f < GridTile3D.FACE_NEIGHBORS.length; f++)
         {
-            const neighbor = entry.getNeighbor(this);
+            const neighbor = GridTile3D.FACE_NEIGHBORS[f].getNeighbor(this);
             if (neighbor && neighbor.isContainBlock()) continue; // sealed face, no need to sample it
 
-            const faceSamples = faceSamplesByFace.get(entry.face);
-            if (!faceSamples || !this.isFaceFacingCamera(camera, faceSamples.normal, rotation)) continue;
+            const faceSamples = faceSamplesByIndex[f];
+            if (!faceSamples || !GridTile3D.isFacingCamera(normals[f], cameraPos, worldPosX, worldPosY, worldPosZ)) continue;
 
-            for (const localSample of faceSamples.samples)
+            const samples = faceSamples.samples;
+            for (let s = 0; s < samples.length; s++)
             {
                 result.totalSamples++;
-                const worldPos = this.getWorldPos();
-                Vec3.transformQuat(_rotatedVectorScratch, localSample, rotation);
+
+                Vec3.transformQuat(_rotatedVectorScratch, samples[s], rotation);
                 _worldSampleScratch.set(
-                    worldPos.x + _rotatedVectorScratch.x,
-                    worldPos.y + _rotatedVectorScratch.y,
-                    worldPos.z + _rotatedVectorScratch.z,
+                    worldPosX + _rotatedVectorScratch.x,
+                    worldPosY + _rotatedVectorScratch.y,
+                    worldPosZ + _rotatedVectorScratch.z,
                 );
 
                 projector.project(camera, _worldSampleScratch, _screenSampleScratch);
 
+                const screenX = _screenSampleScratch.x;
+                const screenY = _screenSampleScratch.y;
                 const depth = _screenSampleScratch.z;
-                let visible = depth >= camera.near && depth <= camera.far;
 
-                if (visible && !this.isInsideViewport(camera, _screenSampleScratch.x, _screenSampleScratch.y))
+                if (depth < pass.near || depth > pass.far) continue;
+                if (screenX < pass.viewportMinX || screenX > pass.viewportMaxX) continue;
+                if (screenY < pass.viewportMinY || screenY > pass.viewportMaxY) continue;
+                if (occluders.isBlocked(screenX, screenY, depth, DEPTH_EPSILON, ownerIndex)) continue;
+
+                result.visibleSamples++;
+
+                // Already past the threshold - no sample can change the verdict from here.
+                if (canExitEarly && result.visibleSamples > threshold)
                 {
-                    visible = false;
+                    result.recalculate();
+                    return result;
                 }
-
-                if (visible && this.isBlocked(_screenSampleScratch, triangles, excludeStart, excludeEnd))
-                {
-                    visible = false;
-                }
-
-                if (visible) result.visibleSamples++;
             }
         }
 
@@ -395,10 +478,13 @@ export class GridTile3D implements IGridTile3D
     {
         this._isReachable = false;
 
-        const faceSamplesByFace = GridTile3D._faceSamplesByFace;
-        if (!this.isContainBlock() || !faceSamplesByFace || cellSize <= 0) return this._isReachable;
+        if (!this.isContainBlock() || !GridTile3D._faceSamplesByIndex || cellSize <= 0) return this._isReachable;
 
         const rotation = this.getWorldRotation();
+        const normals = GridTile3D.getRotatedFaceNormals(rotation);
+        const worldPos = this.getWorldPos();
+        const worldPosX = worldPos.x, worldPosY = worldPos.y, worldPosZ = worldPos.z;
+        const cameraPos = camera.node.worldPosition;
 
         // ceil(R / cellSize) + 2 cells, per the straight-corridor spec.
         const cellsForR = extractionRadius / cellSize;
@@ -408,16 +494,15 @@ export class GridTile3D implements IGridTile3D
         // Generous backstop against any pathological greedy loop.
         const hardStepCap = straightHops * 3;
 
-        for (const entry of GridTile3D.FACE_NEIGHBORS)
+        for (let f = 0; f < GridTile3D.FACE_NEIGHBORS.length; f++)
         {
-            const neighbor = entry.getNeighbor(this);
+            const neighbor = GridTile3D.FACE_NEIGHBORS[f].getNeighbor(this);
             if (neighbor && neighbor.isContainBlock()) continue; // sealed face, not a candidate exit
 
-            const faceSamples = faceSamplesByFace.get(entry.face);
-            if (!faceSamples || !this.isFaceFacingCamera(camera, faceSamples.normal, rotation)) continue;
+            if (!GridTile3D.isFacingCamera(normals[f], cameraPos, worldPosX, worldPosY, worldPosZ)) continue;
 
-            if (this.isStraightPathClear(entry, straightHops) ||
-                this.isLRoutePathClear(camera, rotation, entry, exitThresholdCells, turnCap, hardStepCap))
+            if (this.isStraightPathClear(f, straightHops) ||
+                this.isLRoutePathClear(cameraPos, normals, f, exitThresholdCells, turnCap, hardStepCap))
             {
                 this._isReachable = true;
                 break;
@@ -427,13 +512,14 @@ export class GridTile3D implements IGridTile3D
         return this._isReachable;
     }
 
-    /** Walks the linked-tile chain in `entry`'s direction; true if every cell out to `hops` is empty. */
-    private isStraightPathClear(entry: (typeof GridTile3D.FACE_NEIGHBORS)[number], hops: number): boolean
+    /** Walks the linked-tile chain in face `faceIndex`'s direction; true if every cell out to `hops` is empty. */
+    private isStraightPathClear(faceIndex: number, hops: number): boolean
     {
-        let current: GridTile3D = this;
+        const getNeighbor = GridTile3D.FACE_NEIGHBORS[faceIndex].getNeighbor;
+        let current: IGridTile3D = this;
         for (let i = 0; i < hops; i++)
         {
-            const next = entry.getNeighbor(current) as GridTile3D | null;
+            const next = getNeighbor(current);
             if (!next) return true; // exited the pile/grid
             if (next.isContainBlock()) return false; // blocked
             current = next;
@@ -442,43 +528,37 @@ export class GridTile3D implements IGridTile3D
     }
 
     /**
-     * Greedy L-route: walk out through empty cells starting in `primaryEntry`'s direction;
+     * Greedy L-route: walk out through empty cells starting in face `primaryFace`'s direction;
      * when blocked, 90°-turn toward whichever perpendicular side scores highest on
      * "clearest outward" + "camera-ward", up to `turnCap` turns, until the path exits the
-     * pile (radial distance from this tile ≥ `exitThresholdCells`).
+     * pile (radial distance from this tile >= `exitThresholdCells`).
      */
-    private isLRoutePathClear(camera: Camera, rotation: Readonly<Quat>, primaryEntry: (typeof GridTile3D.FACE_NEIGHBORS)[number], exitThresholdCells: number, turnCap: number, hardStepCap: number): boolean
+    private isLRoutePathClear(cameraPos: Readonly<Vec3>, worldNormals: readonly Vec3[], primaryFace: number, exitThresholdCells: number, turnCap: number, hardStepCap: number): boolean
     {
-        const faceSamplesByFace = GridTile3D._faceSamplesByFace;
-        const primaryNormal = faceSamplesByFace.get(primaryEntry.face)!.normal;
+        const perpendicularFaces = GridTile3D.PERPENDICULAR_FACE_INDICES[primaryFace];
 
-        // Every face whose local normal is perpendicular to the primary direction - i.e. every
-        // face except the primary one and its opposite.
-        const perpendicularEntries = GridTile3D.FACE_NEIGHBORS.filter(e =>
-        {
-            const normal = faceSamplesByFace.get(e.face)?.normal;
-            return normal && Math.abs(Vec3.dot(normal, primaryNormal)) < FACING_EPSILON;
-        });
-
-        const originX = this.getCoordX(), originY = this.getCoordY(), originZ = this.getCoordZ();
+        const originX = this._coordX, originY = this._coordY, originZ = this._coordZ;
 
         // Camera-ward direction, from this tile toward the camera (world space) - reused for
         // every turn decision below.
         const originWorldPos = this.getWorldPos();
         _reachCameraDirScratch.set(
-            camera.node.worldPosition.x - originWorldPos.x,
-            camera.node.worldPosition.y - originWorldPos.y,
-            camera.node.worldPosition.z - originWorldPos.z,
+            cameraPos.x - originWorldPos.x,
+            cameraPos.y - originWorldPos.y,
+            cameraPos.z - originWorldPos.z,
         );
         _reachCameraDirScratch.normalize();
 
-        let currentEntry = primaryEntry;
-        let current: GridTile3D = this;
+        // Squared, so the per-step exit test needs no sqrt.
+        const exitThresholdSqr = exitThresholdCells * exitThresholdCells;
+
+        let currentFace = primaryFace;
+        let current: IGridTile3D = this;
         let turnsUsed = 0;
 
         for (let step = 0; step < hardStepCap; step++)
         {
-            const next = currentEntry.getNeighbor(current) as GridTile3D | null;
+            const next = GridTile3D.FACE_NEIGHBORS[currentFace].getNeighbor(current);
 
             if (!next) return true; // exited the pile/grid
 
@@ -488,87 +568,57 @@ export class GridTile3D implements IGridTile3D
                 const dx = current.getCoordX() - originX;
                 const dy = current.getCoordY() - originY;
                 const dz = current.getCoordZ() - originZ;
-                if (Math.hypot(dx, dy, dz) >= exitThresholdCells) return true;
+                if (dx * dx + dy * dy + dz * dz >= exitThresholdSqr) return true;
                 continue;
             }
 
             // Blocked: turn toward the clearest-outward + camera-ward perpendicular side.
             if (turnsUsed >= turnCap) return false;
 
-            let bestEntry: (typeof GridTile3D.FACE_NEIGHBORS)[number] | null = null;
+            let bestFace = -1;
             let bestScore = -Infinity;
-            for (const candidate of perpendicularEntries)
+            for (let i = 0; i < perpendicularFaces.length; i++)
             {
-                const candidateNext = candidate.getNeighbor(current) as GridTile3D | null;
+                const candidateFace = perpendicularFaces[i];
+                const candidateNext = GridTile3D.FACE_NEIGHBORS[candidateFace].getNeighbor(current);
                 if (candidateNext && candidateNext.isContainBlock()) continue; // immediately blocked too
 
-                const localNormal = faceSamplesByFace.get(candidate.face)!.normal;
-                Vec3.transformQuat(_reachCandidateWorldScratch, localNormal, rotation);
+                const localNormal = GridTile3D.FACE_NORMALS[candidateFace];
+                const worldNormal = worldNormals[candidateFace];
 
                 const outwardDot = localNormal.x * (current.getCoordX() - originX)
                     + localNormal.y * (current.getCoordY() - originY)
                     + localNormal.z * (current.getCoordZ() - originZ);
-                const cameraDot = Vec3.dot(_reachCandidateWorldScratch, _reachCameraDirScratch);
+                const cameraDot = Vec3.dot(worldNormal, _reachCameraDirScratch);
                 const score = outwardDot + cameraDot;
 
                 if (score > bestScore)
                 {
                     bestScore = score;
-                    bestEntry = candidate;
+                    bestFace = candidateFace;
                 }
             }
 
-            if (!bestEntry) return false; // dead end, no viable turn
+            if (bestFace < 0) return false; // dead end, no viable turn
 
-            currentEntry = bestEntry;
+            currentFace = bestFace;
             turnsUsed++;
         }
 
         return false; // exceeded the hard step cap without exiting
     }
 
-    private isFaceFacingCamera(camera: Camera, localNormal: Readonly<Vec3>, rotation: Readonly<Quat>): boolean
+    /**
+     * Whether a face with the (already world-space) normal `worldNormal` on a cube centered at
+     * (centerX, centerY, centerZ) points towards the camera. Using the tile center rather than the
+     * exact face center is a safe approximation since cubes are unscaled and cameras sit well
+     * outside a single cube's half-extent.
+     */
+    private static isFacingCamera(worldNormal: Readonly<Vec3>, cameraPos: Readonly<Vec3>, centerX: number, centerY: number, centerZ: number): boolean
     {
-        // Direction from this tile's center to the camera. Using the tile center (rather
-        // than the exact face center) is a safe approximation since cubes are unscaled and
-        // cameras sit well outside a single cube's half-extent. The face normal is defined
-        // in the grid's local space, so it must be rotated by the holder's world rotation
-        // before comparing against this world-space direction.
-        const wPos = this.getWorldPos();
-        Vec3.transformQuat(_rotatedVectorScratch, localNormal, rotation);
-
-        _directionScratch.set(
-            camera.node.worldPosition.x - wPos.x,
-            camera.node.worldPosition.y - wPos.y,
-            camera.node.worldPosition.z - wPos.z,
-        );
-
-        return Vec3.dot(_rotatedVectorScratch, _directionScratch) > FACING_EPSILON;
-    }
-
-    private isInsideViewport(camera: Camera, x: number, y: number): boolean
-    {
-        const windowSize = screen.windowSize;
-        const viewport = camera.rect;
-
-        const minX = viewport.x * windowSize.width;
-        const minY = viewport.y * windowSize.height;
-        const maxX = (viewport.x + viewport.width) * windowSize.width;
-        const maxY = (viewport.y + viewport.height) * windowSize.height;
-
-        return x >= minX && x <= maxX && y >= minY && y <= maxY;
-    }
-
-    private isBlocked(screenPosition: Readonly<Vec3>, triangles: readonly ProjectedTriangle[], excludeStart: number, excludeEnd: number): boolean
-    {
-        for (let i = 0; i < triangles.length; i++)
-        {
-            if (i >= excludeStart && i < excludeEnd) continue; // this tile's own triangles
-
-            const depth = GridTile3D.getTriangleDepthAtPoint(screenPosition.x, screenPosition.y, triangles[i]);
-            if (depth === null) continue;
-            if (depth + DEPTH_EPSILON < screenPosition.z) return true;
-        }
-        return false;
+        const dot = worldNormal.x * (cameraPos.x - centerX)
+            + worldNormal.y * (cameraPos.y - centerY)
+            + worldNormal.z * (cameraPos.z - centerZ);
+        return dot > FACING_EPSILON;
     }
 }
