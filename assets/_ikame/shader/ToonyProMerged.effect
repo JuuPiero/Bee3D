@@ -1,0 +1,719 @@
+// Merged-mesh variant of ToonyPro.effect, the way cubeColorMerged.effect is the merged-mesh
+// variant of cubeColor.effect.
+//
+// Target: the dynamic mesh produced by GridMeshBuilder / GridMeshGrid3D. That mesh supplies
+// exactly five vertex streams and nothing else:
+//
+//   a_position    RGB32F  final per-cube geometry, cell offset already added
+//   a_normal      RGB32F  final normal (scale + rotation already baked)
+//   a_color       RGBA8N  the cube's main tone      (ColorConfig.getBlockColors().color)
+//   a_colorShadow RGBA8N  the cube's shadow tone    (ColorConfig.getBlockColors().shadow)
+//   a_capLocal    RGB32F  pre-baked fake-SSS vector (see bakeCubeSource)
+//
+// Consequences, all deliberate:
+//   - There is no a_texCoord and no a_tangent, so every UV-sampled TCP2 feature is gone:
+//     albedo / shadow-albedo / normal / specular / emission / occlusion / matcap-mask maps and
+//     alpha testing. Only the two textures that do not need a UV survive: the ramp texture
+//     (UV derived from N.L) and the matcap (UV derived from the view-space normal).
+//   - The per-material `mainColor` / `shadowAlbedoTint` no longer *are* the cube colors; they
+//     are tints multiplied onto a_color / a_colorShadow, so one material can drive the whole
+//     grid while each cube keeps its own two tones.
+//   - a_colorShadow takes the role TCP2 gave the Shadow Albedo texture: albedo is lerped to it
+//     by the ramp. Set DISABLE_VERTEX_SHADOW_TONE to ignore it and shade from a_color alone.
+//   - Vertex colors are treated as sRGB (like ToonyPro treats its albedo map) unless
+//     VERTEX_COLOR_IS_LINEAR is set.
+//   - USE_CAP_SSS re-adds cubeColorMerged's fake-SSS term, which samples the matcap's blue
+//     channel through a_capLocal. Off by default; requires a matcap texture.
+//
+// Everything else - ramp shading, specular, rim, matcap, reflections, outline, forward-add,
+// shadow caster - is the same TCP2 math as ToonyPro.effect.
+
+CCEffect %{
+  techniques:
+  - name: opaque
+    passes:
+    - &outline
+      switch: USE_OUTLINE
+      vert: outline-vs:vert
+      frag: outline-fs:frag
+      rasterizerState: { cullMode: front }
+      depthStencilState: { depthFunc: less_equal, depthTest: true, depthWrite: true }
+      properties:
+        outlineColor:       { value: [0.0, 0.0, 0.0, 1.0], linear: true, editor: { displayName: "Outline Color", type: color } }
+        outlineWidth:       { value: 1.0, target: outlineParams.x, editor: { displayName: "Outline Width", slide: true, range: [0.0, 10.0], step: 0.01 } }
+        outlineMinWidth:    { value: 1.0, target: outlineParams.y, editor: { displayName: "Outline Minimum Width (Pixels)", slide: true, range: [0.0, 20.0], step: 0.01 } }
+        outlineMaxWidth:    { value: 4.0, target: outlineParams.z, editor: { displayName: "Outline Maximum Width (Pixels)", slide: true, range: [0.0, 40.0], step: 0.01 } }
+    - vert: toon-vs:vert
+      frag: toon-fs:frag
+      properties: &props
+        # ---- Base --------------------------------------------------------------------------
+        # Tints, not colors: both are multiplied onto the per-vertex tones.
+        mainColor:          { value: [1.0, 1.0, 1.0, 1.0], target: baseColor, linear: true, editor: { displayName: "Color Tint (x a_color)", type: color } }
+        shadowAlbedoTint:   { value: [1.0, 1.0, 1.0, 1.0], linear: true, editor: { displayName: "Shadow Tone Tint (x a_colorShadow)", type: color } }
+        highlightColor:     { value: [1.0, 1.0, 1.0, 1.0], linear: true, editor: { displayName: "Highlight Color", type: color } }
+        shadowColor:        { value: [0.2, 0.2, 0.2, 1.0], linear: true, editor: { displayName: "Shadow Color", type: color } }
+
+        # ---- Ramp Shading ------------------------------------------------------------------
+        rampThreshold:      { value: 0.75, target: rampParams.x, editor: { displayName: "Ramp Threshold", slide: true, range: [0.01, 1.0], step: 0.001 } }
+        rampSmoothing:      { value: 0.1,  target: rampParams.y, editor: { displayName: "Ramp Smoothing", slide: true, range: [0.0, 1.0], step: 0.001 } }
+        rampBands:          { value: 4.0,  target: rampParams.z, editor: { displayName: "Ramp Bands Count", slide: true, range: [1.0, 20.0], step: 1.0 } }
+        rampBandsSmoothing: { value: 0.1,  target: rampParams.w, editor: { displayName: "Ramp Bands Smoothing", slide: true, range: [0.0, 1.0], step: 0.001 } }
+        rampMap:            { value: grey, editor: { displayName: "Ramp Texture (RGB)" } }
+        rampScale:          { value: 1.0,  target: rampTexParams.x, editor: { displayName: "Ramp Texture Scale" } }
+        rampOffset:         { value: 0.0,  target: rampTexParams.y, editor: { displayName: "Ramp Texture Offset" } }
+
+        # ---- Specular ----------------------------------------------------------------------
+        specularColor:      { value: [0.75, 0.75, 0.75, 1.0], linear: true, editor: { parent: USE_SPECULAR, displayName: "Specular Color", type: color } }
+        specularToonSize:   { value: 0.25, target: specularParams.x, editor: { parent: USE_SPECULAR, displayName: "Specular Size", slide: true, range: [0.001, 1.0], step: 0.001 } }
+        specularSmoothness: { value: 0.05, target: specularParams.y, editor: { parent: USE_SPECULAR, displayName: "Specular Smoothing", slide: true, range: [0.0, 1.0], step: 0.001 } }
+        specularRoughness:  { value: 0.5,  target: specularParams.z, editor: { parent: USE_SPECULAR, displayName: "Specular Roughness", slide: true, range: [0.0, 1.0], step: 0.001 } }
+
+        # ---- Emission ----------------------------------------------------------------------
+        emissionColor:      { value: [0.0, 0.0, 0.0, 1.0], linear: true, editor: { parent: USE_EMISSION, displayName: "Emission Color", type: color } }
+
+        # ---- Rim Lighting ------------------------------------------------------------------
+        rimColor:           { value: [0.8, 0.8, 0.8, 1.0], linear: true, editor: { parent: USE_RIM_LIGHTING, displayName: "Rim Color", type: color } }
+        rimMin:             { value: 0.5, target: rimParams.x, editor: { parent: USE_RIM_LIGHTING, displayName: "Rim Min", slide: true, range: [0.0, 2.0], step: 0.001 } }
+        rimMax:             { value: 1.0, target: rimParams.y, editor: { parent: USE_RIM_LIGHTING, displayName: "Rim Max", slide: true, range: [0.0, 2.0], step: 0.001 } }
+
+        # ---- MatCap ------------------------------------------------------------------------
+        matcapMap:          { value: black, editor: { displayName: "MatCap Texture (also used by Cap SSS)" } }
+        matcapColor:        { value: [1.0, 1.0, 1.0, 1.0], linear: true, editor: { parent: USE_MATCAP, displayName: "MatCap Color", type: color } }
+
+        # ---- Fake SSS (a_capLocal, from cubeColorMerged) ------------------------------------
+        capSSSStrength:     { value: 0.22, target: miscParams.w, editor: { parent: USE_CAP_SSS, displayName: "Cap SSS Strength", slide: true, range: [0.0, 2.0], step: 0.001 } }
+
+        # ---- Global Illumination -----------------------------------------------------------
+        indirectIntensity:  { value: 1.0, target: miscParams.x, editor: { displayName: "Indirect Diffuse Strength", slide: true, range: [0.0, 1.0], step: 0.001 } }
+        reflectionColor:    { value: [1.0, 1.0, 1.0, 1.0], linear: true, editor: { parent: USE_REFLECTIONS, displayName: "Reflection Color", type: color } }
+        reflectionSmooth:   { value: 0.5, target: reflectionParams.x, editor: { parent: USE_REFLECTIONS, displayName: "Reflection Smoothness", slide: true, range: [0.0, 1.0], step: 0.001 } }
+        fresnelMin:         { value: 0.0, target: reflectionParams.y, editor: { parent: USE_REFLECTIONS_FRESNEL, displayName: "Fresnel Min", slide: true, range: [0.0, 2.0], step: 0.001 } }
+        fresnelMax:         { value: 1.5, target: reflectionParams.z, editor: { parent: USE_REFLECTIONS_FRESNEL, displayName: "Fresnel Max", slide: true, range: [0.0, 2.0], step: 0.001 } }
+      rasterizerState: { cullMode: back }
+      depthStencilState: { depthTest: true, depthWrite: true }
+    - &forward-add
+      vert: toon-vs:vert
+      frag: toon-add-fs:frag
+      phase: forward-add
+      propertyIndex: 1
+      embeddedMacros: { CC_FORWARD_ADD: true }
+      rasterizerState: { cullMode: back }
+      depthStencilState:
+        depthFunc: equal
+        depthTest: true
+        depthWrite: false
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: one
+          blendDst: one
+          blendSrcAlpha: zero
+          blendDstAlpha: one
+    - &shadow-caster
+      vert: shadow-caster-vs:vert
+      frag: shadow-caster-fs:frag
+      phase: shadow-caster
+      propertyIndex: 1
+      rasterizerState: { cullMode: front }
+  - name: transparent
+    passes:
+    - *outline
+    - vert: toon-vs:vert
+      frag: toon-fs:frag
+      properties: *props
+      rasterizerState: { cullMode: back }
+      depthStencilState: { depthTest: true, depthWrite: false }
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendDst: one_minus_src_alpha
+          blendDstAlpha: one_minus_src_alpha
+    - *forward-add
+    - *shadow-caster
+}%
+
+
+CCProgram shared-ubos %{
+  uniform Constants {
+    vec4 baseColor;             // tint multiplied onto a_color
+    vec4 shadowAlbedoTint;      // tint multiplied onto a_colorShadow
+    vec4 highlightColor;        // _HColor
+    vec4 shadowColor;           // _SColor
+    vec4 rampParams;            // x: _RampThreshold, y: _RampSmoothing, z: _RampBands, w: _RampBandsSmoothing
+    vec4 rampTexParams;         // x: _RampScale, y: _RampOffset
+    vec4 specularColor;         // _SpecularColor
+    vec4 specularParams;        // x: _SpecularToonSize, y: _SpecularToonSmoothness, z: _SpecularRoughness
+    vec4 emissionColor;         // _EmissionColor
+    vec4 rimColor;              // _RimColor
+    vec4 rimParams;             // x: _RimMin, y: _RimMax
+    vec4 matcapColor;           // _MatCapColor
+    vec4 reflectionColor;       // _ReflectionColor
+    vec4 reflectionParams;      // x: _ReflectionSmoothness, y: _FresnelMin, z: _FresnelMax
+    vec4 miscParams;            // x: _IndirectIntensity, w: fake-SSS strength (y, z reserved)
+    vec4 outlineColor;          // _OutlineColor
+    vec4 outlineParams;         // x: _OutlineWidth, y: _OutlineMinWidth, z: _OutlineMaxWidth
+  };
+}%
+
+
+// ----------------------------------------------------------------------------------------------
+// Material macros - the subset of TCP2 keywords that survives without UVs / tangents
+// ----------------------------------------------------------------------------------------------
+CCProgram toony-macros %{
+  #pragma define-meta USE_SPECULAR                    // TCP2_SPECULAR
+  #pragma define-meta USE_EMISSION                    // _EMISSION (flat color, no texture)
+  #pragma define-meta USE_RIM_LIGHTING                // TCP2_RIM_LIGHTING
+  #pragma define-meta USE_RIM_LIGHTING_LIGHTMASK      // TCP2_RIM_LIGHTING_LIGHTMASK
+  #pragma define-meta USE_MATCAP                      // TCP2_MATCAP
+  #pragma define-meta USE_REFLECTIONS                 // TCP2_REFLECTIONS
+  #pragma define-meta USE_REFLECTIONS_FRESNEL         // TCP2_REFLECTIONS_FRESNEL
+
+  // Merged-mesh specific
+  #pragma define-meta USE_CAP_SSS                     // cubeColorMerged's fake-SSS term
+  #pragma define-meta DISABLE_VERTEX_SHADOW_TONE      // ignore a_colorShadow entirely
+  #pragma define-meta VERTEX_COLOR_IS_LINEAR          // skip the sRGB -> linear conversion
+
+  // Ramp Type: 0 Default | 1 Crisp | 2 Bands | 3 Bands Crisp | 4 Texture
+  #pragma define-meta RAMP_TYPE range([0, 4])
+  // Specular Type: 0 GGX | 1 Stylized | 2 Crisp
+  #pragma define-meta SPECULAR_TYPE range([0, 2])
+  // MatCap Blending: 0 Additive | 1 Replace
+  #pragma define-meta MATCAP_TYPE range([0, 1])
+}%
+
+
+// ----------------------------------------------------------------------------------------------
+// TCP2 lighting math - identical to ToonyPro.effect
+// ----------------------------------------------------------------------------------------------
+CCProgram toony-lighting %{
+  #pragma extension([GL_OES_standard_derivatives, __VERSION__ < 110])
+
+  #define TCP2_PI      3.14159265359
+  #define TCP2_INV_PI  0.31830988618
+  #define TCP2_EPSILON 1e-7
+
+  #if RAMP_TYPE == 4
+    uniform sampler2D rampMap;
+  #endif
+
+  vec3 CalculateRamp (float ndlWrapped) {
+    #if RAMP_TYPE == 4
+      // Ramp texture
+      float u = rampTexParams.y + (ndlWrapped - 0.5) * rampTexParams.x + 0.5;
+      return texture(rampMap, vec2(u, 0.5)).rgb;
+    #elif RAMP_TYPE == 2 || RAMP_TYPE == 3
+      // Bands / Bands Crisp
+      float bands = max(rampParams.z, 1.0);
+      float rampSmooth = rampParams.y * 0.5;
+      float x = smoothstep(rampParams.x - rampSmooth, rampParams.x + rampSmooth, ndlWrapped);
+      #if RAMP_TYPE == 3
+        float bandsSmooth = fwidth(ndlWrapped) * (2.0 + bands);
+      #else
+        float bandsSmooth = rampParams.w * 0.5;
+      #endif
+      float banded = (smoothstep(0.5 - bandsSmooth, 0.5 + bandsSmooth, fract(x * bands)) + floor(x * bands)) / bands;
+      return vec3(clamp(banded, 0.0, 1.0));
+    #else
+      // Default / Crisp
+      #if RAMP_TYPE == 1
+        float rampSmooth = fwidth(ndlWrapped) * 0.5;
+      #else
+        float rampSmooth = rampParams.y * 0.5;
+      #endif
+      return vec3(smoothstep(rampParams.x - rampSmooth, rampParams.x + rampSmooth, ndlWrapped));
+    #endif
+  }
+
+  #if USE_SPECULAR
+    float TCP2_GGX (float NdotH, float roughness) {
+      float a2 = roughness * roughness;
+      float d = (NdotH * a2 - NdotH) * NdotH + 1.0;
+      return TCP2_INV_PI * a2 / (d * d + TCP2_EPSILON);
+    }
+
+    float CalculateSpecular (vec3 L, vec3 V, vec3 N, float specularMask) {
+      vec3 H = normalize(L + V);
+      float nh = clamp(dot(N, H), 0.0, 1.0);
+
+      #if SPECULAR_TYPE == 1 || SPECULAR_TYPE == 2
+        // Stylized / Crisp
+        float specSize = 1.0 - (specularParams.x * specularMask);
+        float invRange = 1.0 / max(1.0 - specSize, 1e-4);
+        nh = nh * invRange - specSize * invRange;
+        #if SPECULAR_TYPE == 2
+          float specSmoothness = fwidth(nh);
+        #else
+          float specSmoothness = specularParams.y;
+        #endif
+        float spec = smoothstep(0.0, max(specSmoothness, 1e-5), nh);
+      #else
+        // GGX (linear colorspace branch of the original)
+        float specularRoughness = max(0.00001, specularParams.z) * specularMask;
+        float roughness = specularRoughness * specularRoughness;
+        float spec = TCP2_GGX(nh, clamp(roughness, 0.0, 1.0));
+        spec *= TCP2_PI * 0.05;
+        spec *= 1.0 / (roughness * roughness + 1.0); // surface reduction
+      #endif
+
+      return max(0.0, spec);
+    }
+  #endif
+}%
+
+
+// ----------------------------------------------------------------------------------------------
+// Per-vertex tone decoding, shared by every fragment program
+// ----------------------------------------------------------------------------------------------
+CCProgram toony-vertex-color %{
+  // a_color / a_colorShadow come from ColorConfig, i.e. they are authored in sRGB just like the
+  // albedo texture ToonyPro runs through SRGBToLinear.
+  vec3 DecodeVertexTone (vec3 tone) {
+    #if VERTEX_COLOR_IS_LINEAR
+      return tone;
+    #else
+      return SRGBToLinear(tone);
+    #endif
+  }
+}%
+
+
+// ----------------------------------------------------------------------------------------------
+// Vertex program shared by the base and forward-add passes
+// ----------------------------------------------------------------------------------------------
+CCProgram toon-vs %{
+  precision highp float;
+  #include <legacy/input>
+  #include <builtin/uniforms/cc-global>
+  #include <legacy/decode-base>
+  #include <legacy/local-batch>
+  #include <shared-ubos>
+  #include <toony-macros>
+  #include <legacy/fog-vs>
+  #include <legacy/shadow-map-vs>
+
+  #pragma format(RGBA8)
+  in lowp vec4 a_color;
+  #pragma format(RGBA8)
+  in lowp vec4 a_colorShadow;
+  #if USE_CAP_SSS
+    in vec3 a_capLocal;
+  #endif
+
+  out vec3 v_worldPos;
+  out mediump vec3 v_worldNormal;
+  out lowp vec4 v_color;
+  out lowp vec4 v_colorShadow;
+
+  #if USE_CAP_SSS
+    out mediump vec2 v_capUV;
+  #endif
+  #if CC_RECEIVE_SHADOW
+    out mediump vec2 v_shadowBias;
+  #endif
+
+  #if USE_CAP_SSS
+    // Scale of the mesh holder, read back from the world matrix columns.
+    vec3 getObjectScale (mat4 m) {
+      vec3 sx = vec3(m[0].x, m[1].x, m[2].x);
+      vec3 sy = vec3(m[0].y, m[1].y, m[2].y);
+      vec3 sz = vec3(m[0].z, m[1].z, m[2].z);
+      return vec3(length(sx), length(sy), length(sz));
+    }
+  #endif
+
+  vec4 vert () {
+    vec4 position;
+    CCVertInput(position);
+
+    mat4 matWorld, matWorldIT;
+    CCGetWorldMatrixFull(matWorld, matWorldIT);
+
+    vec4 worldPos = matWorld * position;
+    v_worldPos = worldPos.xyz;
+    v_worldNormal = normalize((matWorldIT * vec4(a_normal, 0.0)).xyz);
+
+    v_color = a_color;
+    v_colorShadow = a_colorShadow;
+
+    #if USE_CAP_SSS
+      // Same derivation as cubeColorMerged-vs: a_capLocal is already the per-cube adjusted
+      // local vector, so only the holder's own rotation / scale still has to be applied.
+      vec3 holderScale = getObjectScale(matWorld);
+      vec4 capWorld = matWorld * vec4(a_capLocal, 1.0);
+      vec3 capNoTrans = capWorld.xyz - vec3(matWorld[3].x, matWorld[3].y, matWorld[3].z);
+      capNoTrans /= holderScale;
+      vec3 capViewPos = (cc_matView * vec4(capNoTrans, 0.0)).xyz;
+      v_capUV = clamp(vec2(capViewPos.x, -capViewPos.y) + 0.5, 0.0, 1.0);
+    #endif
+
+    #if CC_RECEIVE_SHADOW
+      v_shadowBias = CCGetShadowBias();
+    #endif
+
+    CC_TRANSFER_SHADOW(worldPos);
+    CC_TRANSFER_FOG(worldPos);
+
+    return cc_matProj * (cc_matView * worldPos);
+  }
+}%
+
+
+// ----------------------------------------------------------------------------------------------
+// Base pass - main directional light, ramp shading and the TCP2 extras that need no UV
+// ----------------------------------------------------------------------------------------------
+CCProgram toon-fs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #include <common/common-define>
+  #include <common/color/gamma>
+  #include <common/data/unpack>
+  #include <common/texture/texture-lod>
+  #include <builtin/uniforms/cc-environment>
+  #include <legacy/output-standard>
+  #include <shared-ubos>
+  #include <toony-macros>
+  #include <toony-lighting>
+  #include <toony-vertex-color>
+  #include <legacy/fog-fs>
+  #include <legacy/shadow-map-fs>
+
+  in vec3 v_worldPos;
+  in mediump vec3 v_worldNormal;
+  in lowp vec4 v_color;
+  in lowp vec4 v_colorShadow;
+
+  #if USE_CAP_SSS
+    in mediump vec2 v_capUV;
+  #endif
+  #if CC_RECEIVE_SHADOW
+    in mediump vec2 v_shadowBias;
+  #endif
+
+  #if USE_MATCAP || USE_CAP_SSS
+    uniform sampler2D matcapMap;
+  #endif
+
+  vec4 frag () {
+    // ---------------------------------------------------------------- albedo (per-vertex tone)
+    vec4 albedo = baseColor * vec4(DecodeVertexTone(v_color.rgb), v_color.a);
+
+    // ---------------------------------------------------------------- geometry
+    vec3 N = normalize(v_worldNormal);
+    vec3 V = normalize(cc_cameraPos.xyz - v_worldPos);
+    vec3 L = normalize(-cc_mainLitDir.xyz);
+    float ndv = clamp(dot(N, V), 0.0, 1.0);
+
+    vec3 mainLitColor = cc_mainLitColor.rgb * cc_mainLitColor.w;
+
+    // ---------------------------------------------------------------- matcap
+    #if USE_MATCAP
+      // view-space normal; build the rotation part explicitly (mat3(mat4) is not valid GLSL ES 1.00)
+      mat3 matViewRot = mat3(cc_matView[0].xyz, cc_matView[1].xyz, cc_matView[2].xyz);
+      vec2 matcapUV = (matViewRot * N).xy * 0.5 + 0.5;
+      vec3 matcap = SRGBToLinear(texture(matcapMap, matcapUV).rgb) * matcapColor.rgb;
+    #endif
+
+    // ---------------------------------------------------------------- ramp
+    float ndlRaw = dot(N, L);
+    float ndlWrapped = ndlRaw * 0.5 + 0.5;
+    float ndl = clamp(ndlRaw, 0.0, 1.0);
+
+    vec3 ramp = CalculateRamp(ndlWrapped);
+
+    // main light shadow map -> the original's `atten`
+    float atten = 1.0;
+    #if CC_RECEIVE_SHADOW && CC_SHADOW_TYPE == CC_SHADOW_MAP
+      if (ndlRaw > 0.0 && cc_mainLitDir.w > 0.0) {
+        #if CC_DIR_LIGHT_SHADOW_TYPE == CC_DIR_LIGHT_SHADOW_CASCADED
+          atten = CCCSMFactorBase(v_worldPos, N, v_shadowBias);
+        #endif
+        #if CC_DIR_LIGHT_SHADOW_TYPE == CC_DIR_LIGHT_SHADOW_UNIFORM
+          atten = CCShadowFactorBase(CC_SHADOW_POSITION, N, v_shadowBias);
+        #endif
+      }
+    #endif
+    ramp *= atten;
+
+    #if USE_RIM_LIGHTING
+      #if USE_RIM_LIGHTING_LIGHTMASK
+        vec3 rimMask = ramp.xxx * mainLitColor;
+      #else
+        vec3 rimMask = vec3(1.0);
+      #endif
+    #endif
+
+    // ------------------------------------------------ shadow tone (TCP2's shadow albedo slot)
+    #if !DISABLE_VERTEX_SHADOW_TONE
+      vec4 shadowAlbedo = shadowAlbedoTint * vec4(DecodeVertexTone(v_colorShadow.rgb), v_colorShadow.a);
+      albedo = mix(shadowAlbedo, albedo, ramp.x);
+    #endif
+
+    // matcap replaces albedo in Replace mode, otherwise it is added on top
+    vec3 emission = vec3(0.0);
+    #if USE_MATCAP
+      #if MATCAP_TYPE == 1
+        albedo.rgb = matcap;
+      #else
+        emission += matcap;
+      #endif
+    #endif
+
+    // ---------------------------------------------------------------- highlight / shadow colors
+    vec3 highlight = highlightColor.rgb * mainLitColor;
+    vec3 lit = mix(shadowColor.rgb, highlight, ramp);
+
+    vec3 color = albedo.rgb * lit;
+
+    // ---------------------------------------------------------------- fake SSS (a_capLocal)
+    #if USE_CAP_SSS
+      float sss = texture(matcapMap, v_capUV).z;
+      color += color * sss * miscParams.w;
+    #endif
+
+    // ---------------------------------------------------------------- indirect diffuse
+    if (miscParams.x > 0.0) {
+      float fAmb = max(EPSILON, 0.5 - N.y * 0.5);
+      vec3 ambDiff = mix(cc_ambientSky.rgb, cc_ambientGround.rgb, fAmb) * cc_ambientSky.w;
+      color += albedo.rgb * ambDiff * miscParams.x;
+    }
+
+    // ---------------------------------------------------------------- rim lighting
+    #if USE_RIM_LIGHTING
+      emission += rimMask * smoothstep(rimParams.x, rimParams.y, ndv) * rimColor.rgb;
+    #endif
+
+    // ---------------------------------------------------------------- specular
+    #if USE_SPECULAR
+      emission += CalculateSpecular(L, V, N, 1.0) * atten * ndl * mainLitColor * specularColor.rgb;
+    #endif
+
+    // ---------------------------------------------------------------- emission
+    #if USE_EMISSION
+      emission += emissionColor.rgb;
+    #endif
+
+    // ---------------------------------------------------------------- environment reflections
+    #if USE_REFLECTIONS && CC_USE_IBL
+      float reflRoughness = 1.0 - reflectionParams.x;
+      vec3 R = normalize(reflect(-V, N));
+      vec4 envmap = fragTextureLod(cc_environment, R, reflRoughness * (cc_ambientGround.w - 1.0));
+      #if CC_USE_IBL == IBL_RGBE
+        vec3 env = unpackRGBE(envmap);
+      #else
+        vec3 env = SRGBToLinear(envmap.rgb);
+      #endif
+      vec3 reflections = env * reflectionColor.rgb;
+      reflections /= (reflRoughness * reflRoughness + 1.0); // surface reduction, as in TCP2
+      #if USE_REFLECTIONS_FRESNEL
+        reflections *= smoothstep(reflectionParams.y, reflectionParams.z, ndv);
+      #endif
+      emission += reflections;
+    #endif
+
+    color += emission;
+
+    vec4 finalColor = vec4(color, albedo.a);
+    CC_APPLY_FOG(finalColor, v_worldPos);
+    return CCFragOutput(finalColor);
+  }
+}%
+
+
+// ----------------------------------------------------------------------------------------------
+// Forward-add pass - punctual / additional lights
+// ----------------------------------------------------------------------------------------------
+CCProgram toon-add-fs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #include <common/common-define>
+  #include <common/color/gamma>
+  #include <common/lighting/attenuation>
+  #include <builtin/uniforms/cc-forward-light>
+  #include <legacy/output-standard>
+  #include <shared-ubos>
+  #include <toony-macros>
+  #include <toony-lighting>
+  #include <toony-vertex-color>
+
+  in vec3 v_worldPos;
+  in mediump vec3 v_worldNormal;
+  in lowp vec4 v_color;
+  in lowp vec4 v_colorShadow;
+
+  #if USE_CAP_SSS
+    in mediump vec2 v_capUV;
+  #endif
+  #if CC_RECEIVE_SHADOW
+    in mediump vec2 v_shadowBias;
+  #endif
+
+  vec4 frag () {
+    vec4 albedo = baseColor * vec4(DecodeVertexTone(v_color.rgb), v_color.a);
+
+    vec3 N = normalize(v_worldNormal);
+    vec3 V = normalize(cc_cameraPos.xyz - v_worldPos);
+
+    vec3 finalColor = vec3(0.0);
+
+    for (int i = 0; i < LIGHTS_PER_PASS; i++) {
+      vec3 lightVec = IS_RANGED_DIRECTIONAL_LIGHT(cc_lightPos[i].w) ? -cc_lightDir[i].xyz : cc_lightPos[i].xyz - v_worldPos;
+      float dist = length(lightVec);
+      vec3 L = lightVec / max(dist, 1e-5);
+
+      float atten = 1.0;
+      if (!IS_RANGED_DIRECTIONAL_LIGHT(cc_lightPos[i].w)) {
+        atten = CalculateDistanceAttenuation(dist * dist, cc_lightSizeRangeAngle[i].x, cc_lightSizeRangeAngle[i].y, cc_lightPos[i].w);
+        if (IS_SPOT_LIGHT(cc_lightPos[i].w)) {
+          atten *= CalculateAngleAttenuation(-cc_lightDir[i].xyz, L, cc_lightSizeRangeAngle[i].z);
+        }
+      }
+
+      float ndlRaw = dot(N, L);
+      float ndl = clamp(ndlRaw, 0.0, 1.0);
+      vec3 ramp = CalculateRamp(ndlRaw * 0.5 + 0.5) * atten;
+
+      vec3 lightColor = cc_lightColor[i].rgb * cc_lightColor[i].a;
+
+      // the additive pass lerps from black instead of the shadow color
+      vec3 lit = mix(vec3(0.0), highlightColor.rgb * lightColor, ramp);
+
+      finalColor += albedo.rgb * lit;
+
+      #if USE_SPECULAR
+        finalColor += CalculateSpecular(L, V, N, 1.0) * atten * ndl * lightColor * specularColor.rgb;
+      #endif
+
+      #if USE_RIM_LIGHTING && USE_RIM_LIGHTING_LIGHTMASK
+        float ndv = clamp(dot(N, V), 0.0, 1.0);
+        finalColor += ramp * lightColor * smoothstep(rimParams.x, rimParams.y, ndv) * rimColor.rgb;
+      #endif
+    }
+
+    return CCFragOutput(vec4(finalColor, 0.0));
+  }
+}%
+
+
+// ----------------------------------------------------------------------------------------------
+// Outline pass - inverted hull. Expands every cube's own hull, so interior cubes get an
+// outline too; that is the same thing cubeOutline.effect does on the prefab path.
+// ----------------------------------------------------------------------------------------------
+CCProgram outline-vs %{
+  precision highp float;
+  #include <legacy/input>
+  #include <builtin/uniforms/cc-global>
+  #include <common/common-define>
+  #include <legacy/decode-base>
+  #include <legacy/local-batch>
+  #include <shared-ubos>
+  #include <legacy/fog-vs>
+
+  // Pixel Size: 0 Disabled | 1 Constant | 2 Minimum | 3 Min Max
+  #pragma define-meta OUTLINE_PIXEL_SIZE range([0, 3])
+
+  vec4 vert () {
+    vec4 position;
+    CCVertInput(position);
+
+    mat4 matWorld, matWorldIT;
+    CCGetWorldMatrixFull(matWorld, matWorldIT);
+
+    vec4 worldPos = matWorld * position;
+    vec3 worldNormal = normalize((matWorldIT * vec4(a_normal, 0.0)).xyz);
+
+    vec4 viewPos = cc_matView * worldPos;
+    mat3 matViewRot = mat3(cc_matView[0].xyz, cc_matView[1].xyz, cc_matView[2].xyz);
+    vec3 viewNormal = normalize(matViewRot * worldNormal);
+
+    float width = outlineParams.x * 0.01;
+
+    #if OUTLINE_PIXEL_SIZE != 0
+      // one pixel expressed in world units at this view depth
+      float pixelScale = abs(viewPos.z) * 2.0 / max(cc_matProj[1][1], EPSILON) / max(cc_screenSize.y, 1.0);
+      #if OUTLINE_PIXEL_SIZE == 1
+        width = outlineParams.x * pixelScale;
+      #elif OUTLINE_PIXEL_SIZE == 2
+        width = max(width, outlineParams.y * pixelScale);
+      #else
+        width = clamp(width, outlineParams.y * pixelScale, outlineParams.z * pixelScale);
+      #endif
+    #endif
+
+    viewPos.xyz += viewNormal * width;
+
+    CC_TRANSFER_FOG(cc_matViewInv * viewPos);
+
+    return cc_matProj * viewPos;
+  }
+}%
+
+CCProgram outline-fs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #include <legacy/output-standard>
+  #include <shared-ubos>
+  #include <legacy/fog-fs>
+
+  vec4 frag () {
+    vec4 color = outlineColor;
+    CC_APPLY_FOG(color);
+    return CCFragOutput(color);
+  }
+}%
+
+
+// ----------------------------------------------------------------------------------------------
+// Shadow caster - no alpha test, so nothing but depth
+// ----------------------------------------------------------------------------------------------
+CCProgram shadow-caster-vs %{
+  precision highp float;
+  #include <legacy/input>
+  #include <legacy/decode-base>
+  #include <legacy/local-batch>
+  #include <shared-ubos>
+  #include <builtin/uniforms/cc-shadow>
+
+  out vec3 v_worldPos;
+  out highp vec2 v_clip_depth;
+
+  vec4 vert () {
+    vec4 position;
+    CCVertInput(position);
+
+    mat4 matWorld;
+    CCGetWorldMatrix(matWorld);
+
+    vec4 worldPos = matWorld * position;
+    v_worldPos = worldPos.xyz;
+
+    vec4 clipPos = cc_matLightViewProj * worldPos;
+    v_clip_depth = clipPos.zw;
+    return clipPos;
+  }
+}%
+
+CCProgram shadow-caster-fs %{
+  precision highp float;
+  #include <common/data/packing>
+  #include <legacy/shadow-map-base>
+  #include <shared-ubos>
+
+  in vec3 v_worldPos;
+  in highp vec2 v_clip_depth;
+
+  vec4 frag () {
+    highp float clipDepth = v_clip_depth.x / v_clip_depth.y * 0.5 + 0.5;
+    #if CC_SHADOWMAP_USE_LINEAR_DEPTH
+      if (IS_SPOT_LIGHT(cc_shadowLPNNInfo.x)) {
+        clipDepth = CCGetLinearDepth(v_worldPos);
+      }
+    #endif
+
+    #if CC_SHADOWMAP_FORMAT == SHADOWMAP_FORMAT_RGBA8
+      return packDepthToRGBA(clipDepth);
+    #else
+      return vec4(clipDepth, 1.0, 1.0, 1.0);
+    #endif
+  }
+}%

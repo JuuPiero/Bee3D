@@ -41,11 +41,9 @@ const LAND_HOVER_DURATION = 0.12;
 const POP_DISTANCE_CELLS = 0.9;
 const POP_DURATION = 0.14;
 
-// Bee flight over open air: how far the path bows off the straight line (as a fraction of the
-// leg's own length), and the sideways weave laid over that bow.
+// Bee flight over open air: how far the path bows off the straight line, as a fraction of the
+// leg's own length. The sideways weave over that bow belongs to BulletItem.
 const ARC_HEIGHT_RATIO = 0.35;
-const WEAVE_CYCLES = 1.5;
-const WEAVE_AMPLITUDE = 0.25;
 
 @ccclass('LevelController')
 export class LevelController extends Component implements ILevelController
@@ -587,7 +585,11 @@ export class LevelController extends Component implements ILevelController
 
         const bullet = this.bulletPool.getBullet();
         // Pooled: whatever the last shot left it holding, it leaves this muzzle empty-handed.
-        bullet.getComponent(BulletItem)?.beginApproach();
+        const bulletItem = bullet.getComponent(BulletItem);
+        bulletItem?.beginApproach();
+        // The cell it is going to land on, in the holder's own space so it stays right as the map
+        // turns: the bee weaves across the open air and unwinds onto the line as it closes on it.
+        bulletItem?.setSwayTarget(this.levelGrid3D.cubeBlockHolder, corridor[0]);
         bullet.setWorldPosition(startPos);
         // keepWorldTransform, so parenting neither teleports the bullet nor shrinks it into the
         // holder's fit scale.
@@ -606,6 +608,10 @@ export class LevelController extends Component implements ILevelController
 
         this.flyBulletAlongArc(bullet, bullet.position.clone(), mouth, cellWorldSize, () =>
         {
+            // Into the pile: the corridor gets flown straight however long it is, so a weave that
+            // has not finished unwinding by the mouth finishes here instead of inside the cubes.
+            bulletItem?.holdSwayStraight();
+
             this.flyBulletStraight(bullet, flyIn, cellWorldSize, () =>
             {
                 this.landBulletOnFace(bullet, corridor);
@@ -650,10 +656,14 @@ export class LevelController extends Component implements ILevelController
     }
 
     /**
-     * Flies the bullet between two holder-local points the way a bee actually crosses open air:
-     * an arc that lifts off the straight line, with a weave laid over it. Only ever used outside
-     * the pile - inside it the corridor is the one line that is guaranteed clear of cubes, and
-     * that leg is flown straight by flyBulletStraight().
+     * Flies the bullet between two holder-local points the way a bee actually crosses open air: an
+     * arc that lifts off the straight line. Only ever used outside the pile - inside it the corridor
+     * is the one line that is guaranteed clear of cubes, and that leg is flown straight by
+     * flyBulletStraight().
+     *
+     * The wander across that arc is not here: BulletItem lays it over whatever path this writes, so
+     * it is one weave with one set of knobs, and it can straighten onto the cell being landed on
+     * (which spans this leg and the corridor leg both) rather than onto the end of this one.
      */
     private flyBulletAlongArc(bullet: Node, fromLocal: Vec3, toLocal: Vec3, cellWorldSize: number, onArrived: () => void): void
     {
@@ -666,15 +676,6 @@ export class LevelController extends Component implements ILevelController
             (fromLocal.z + toLocal.z) * 0.5 + up.z * span * ARC_HEIGHT_RATIO,
         );
 
-        // Weave sideways across the arc: perpendicular to both the flight line and up, so it reads
-        // as a bee wandering rather than as the whole path being crooked.
-        const flightDir = new Vec3();
-        Vec3.subtract(flightDir, toLocal, fromLocal);
-        const weaveAxis = new Vec3();
-        Vec3.cross(weaveAxis, flightDir, up);
-        if (weaveAxis.lengthSqr() > 1e-8) weaveAxis.normalize();
-        else weaveAxis.set(0, 0, 0);
-
         const pos = new Vec3();
         const arcObj = { t: 0 };
         tween(arcObj)
@@ -684,14 +685,6 @@ export class LevelController extends Component implements ILevelController
                 {
                     if (!bullet.isValid) return;
                     quadraticBezier(pos, fromLocal, control, toLocal, arcObj.t);
-
-                    // Fades in and out with sin(pi*t), so both ends of the leg land exactly on
-                    // their points - the far end is the corridor mouth, which has to be hit dead on.
-                    const weave = Math.sin(arcObj.t * Math.PI) * Math.sin(arcObj.t * Math.PI * 2 * WEAVE_CYCLES) * WEAVE_AMPLITUDE;
-                    pos.x += weaveAxis.x * weave;
-                    pos.y += weaveAxis.y * weave;
-                    pos.z += weaveAxis.z * weave;
-
                     bullet.setPosition(pos);
                 },
                 onComplete: () =>
@@ -816,6 +809,11 @@ export class LevelController extends Component implements ILevelController
     {
         if (!bullet.isValid) return;
 
+        // Dead straight down the corridor: it is the one line through the pile guaranteed clear of
+        // cubes, and a cube in hand wandering off it would go through its neighbours. The weave is
+        // taken back up by the exit leg, in open air.
+        bullet.getComponent(BulletItem)?.holdSwayStraight();
+
         const localPos = new Vec3();
 
         const corridorObj = { t: 0 };
@@ -870,6 +868,14 @@ export class LevelController extends Component implements ILevelController
         const fallbackEnd = new Vec3(climbFrom.x, peakY, climbFrom.z);
 
         const target = this.bulletExitTarget;
+
+        // Straighten the weave out onto the exit the same way it straightens onto a face. A moving
+        // target is handed over as its own node so the bee measures against where it is now, not
+        // where it was when the leg started.
+        const bulletItem = bullet.getComponent(BulletItem);
+        if (target) bulletItem?.setSwayTarget(target, Vec3.ZERO);
+        else bulletItem?.setSwayTarget(null, fallbackEnd);
+
         const flyPos = new Vec3();
         const exitObj = { t: 0 };
 

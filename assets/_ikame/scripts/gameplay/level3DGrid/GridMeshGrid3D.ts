@@ -43,7 +43,7 @@ export class GridMeshGrid3D extends Component
     @property({ type: CCInteger, group: 'Source', tooltip: 'Submesh of sourceMesh to use.' })
     public sourcePrimitiveIndex: number = 0;
 
-    @property({ type: Material, group: 'Source', tooltip: 'Material using cubeColorMerged.effect (non-instanced a_color/a_colorShadow/a_capLocal). No such material asset exists yet - create one in-editor before this will render anything.' })
+    @property({ type: Material, group: 'Source', tooltip: 'Material using cubeColorMerged.effect or ToonyProMerged.effect (both read the non-instanced a_color/a_colorShadow/a_capLocal streams this component writes). Create one in-editor before this will render anything.' })
     public material: Material = null;
 
     @property({ type: ColorConfig, group: 'Source' })

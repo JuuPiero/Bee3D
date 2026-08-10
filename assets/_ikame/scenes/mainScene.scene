@@ -380,10 +380,10 @@
     },
     "_lrot": {
       "__type__": "cc.Quat",
-      "x": -0.08404522078628375,
-      "y": -0.8752687537537738,
-      "z": -0.4469342485143538,
-      "w": 0.1645927916714774
+      "x": 0.004678726892503093,
+      "y": -0.4751565325074572,
+      "z": -0.8244664550332138,
+      "w": -0.30734255099989133
     },
     "_lscale": {
       "__type__": "cc.Vec3",
@@ -395,9 +395,9 @@
     "_layer": 1073741824,
     "_euler": {
       "__type__": "cc.Vec3",
-      "x": -54.1,
-      "y": -158.7,
-      "z": -7.951386703658792e-16
+      "x": -114.57,
+      "y": -200.286,
+      "z": 30.155
     },
     "_id": "c0y6F5f+pAvI805TdmxIjx"
   },
@@ -826,12 +826,12 @@
     "_enabled": true,
     "__prefab": null,
     "sourceMesh": {
-      "__uuid__": "c350b087-9503-48d2-a537-c1ca9d4ade37@2f6d1",
+      "__uuid__": "cacfef58-beb9-4244-a16c-ec7da5c44bcf@e2349",
       "__expectedType__": "cc.Mesh"
     },
     "sourcePrimitiveIndex": 0,
     "material": {
-      "__uuid__": "6a41d27e-0c95-4f3b-8d62-71ae5b0c93d4",
+      "__uuid__": "36e1f003-db3f-4225-b6a7-6bb5d13c691a",
       "__expectedType__": "cc.Material"
     },
     "colorData": {

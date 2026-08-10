@@ -5,7 +5,7 @@
   "__editorExtras__": {},
   "_native": "",
   "_effectAsset": {
-    "__uuid__": "cfb1d069-af83-4ba4-8c9e-3aa87b9d1ba1",
+    "__uuid__": "b41f7d02-6c39-4a57-8e15-2d7cba90e614",
     "__expectedType__": "cc.EffectAsset"
   },
   "_techIdx": 0,
@@ -63,18 +63,11 @@
   "_props": [
     {},
     {
-      "mainColor": {
-        "__type__": "cc.Color",
-        "r": 1,
-        "g": 104,
-        "b": 226,
-        "a": 255
-      },
       "shadowColor": {
         "__type__": "cc.Color",
-        "r": 41,
-        "g": 74,
-        "b": 204,
+        "r": 255,
+        "g": 255,
+        "b": 255,
         "a": 255
       },
       "rampThreshold": 0.773,

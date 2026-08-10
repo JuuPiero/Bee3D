@@ -1,0 +1,96 @@
+{
+  "ver": "2.3.14",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "cacfef58-beb9-4244-a16c-ec7da5c44bcf",
+  "files": [],
+  "subMetas": {
+    "e2349": {
+      "importer": "gltf-mesh",
+      "uuid": "cacfef58-beb9-4244-a16c-ec7da5c44bcf@e2349",
+      "displayName": "",
+      "id": "e2349",
+      "name": "Mesh.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 108
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "8d883": {
+      "importer": "gltf-material",
+      "uuid": "cacfef58-beb9-4244-a16c-ec7da5c44bcf@8d883",
+      "displayName": "",
+      "id": "8d883",
+      "name": "lambert1.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "479b5": {
+      "importer": "gltf-scene",
+      "uuid": "cacfef58-beb9-4244-a16c-ec7da5c44bcf@479b5",
+      "displayName": "",
+      "id": "479b5",
+      "name": "bee-cube.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "cacfef58-beb9-4244-a16c-ec7da5c44bcf@e2349"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [
+        "cacfef58-beb9-4244-a16c-ec7da5c44bcf@8d883"
+      ],
+      "scenes": [
+        "cacfef58-beb9-4244-a16c-ec7da5c44bcf@479b5"
+      ]
+    }
+  }
+}
