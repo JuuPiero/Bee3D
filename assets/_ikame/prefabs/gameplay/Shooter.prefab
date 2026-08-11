@@ -149,9 +149,9 @@
     },
     "_lscale": {
       "__type__": "cc.Vec3",
-      "x": 0.749,
-      "y": 0.749,
-      "z": 0.749
+      "x": 0.507,
+      "y": 0.507,
+      "z": 0.507
     },
     "_mobility": 0,
     "_layer": 1073741824,
@@ -701,7 +701,6 @@
     "hitCollider": {
       "__id__": 29
     },
-    "connectionRoot": null,
     "ammoLabel": {
       "__id__": 16
     },
