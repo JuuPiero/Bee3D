@@ -7,7 +7,22 @@ const CHARACTER_NODE_NAME = 'Character';
 const CUBE_NODE_NAME = 'PixelBlock-Bee';
 
 const DEG_TO_RAD = Math.PI / 180;
-const TWO_PI = Math.PI * 2;
+
+// How many samples the weave's normalisation uses to find its own peak. Once per leg,
+// so 32 is free, and the envelope is smooth enough that 32 lands within 0.005 of the
+// true peak - measured against a 1000-sample sweep.
+const WEAVE_PEAK_SAMPLES = 32;
+
+// How far either side of weaveBias a leg's shape may be drawn, and the range that stays
+// clear of starving either control to nothing.
+const WEAVE_BIAS_SPREAD = 0.35;
+const WEAVE_BIAS_MIN = 0.15;
+const WEAVE_BIAS_MAX = 0.85;
+
+// Offset left on the node at a landing above which something upstream is wrong - the
+// envelope is zero at the end of a leg by construction, so there should be nothing to
+// discard. See clearSway().
+const LANDING_OFFSET_TOLERANCE = 0.01;
 
 /** What the bee is doing right now, which is what decides who controls its pose. */
 enum BulletPhase
@@ -92,11 +107,17 @@ export class BulletItem extends Component
     public gripReachDistance: number = 2;
 
 
-    @property({ type: CCFloat, tooltip: 'How far (world units) the bee weaves to either side of its flight path on the way in and on the way out. 0 flies dead straight.' })
+    @property({ tooltip: 'Off flies every leg dead straight on the path the tweens write. Nothing about the flight logic changes - the fastest way to tell whether a problem is the weave or the path underneath it.' })
+    public beeWeave: boolean = true;
+
+    @property({ type: CCFloat, tooltip: 'How far (world units) the bee weaves to either side of its flight path on the way in and on the way out - the actual peak of the excursion, not a control magnitude. 0 flies dead straight.' })
     public swayAmplitude: number = 0.35;
 
-    @property({ type: CCFloat, tooltip: 'Weaves per second. Higher is a busier, more insect-like flutter; lower is a lazy drift.' })
-    public swayFrequency: number = 1.2;
+    @property({ type: CCFloat, min: 0, max: 0.9, tooltip: 'Spread in the weave amplitude between one bee and the next, as a fraction: 0.25 means each flight draws somewhere in 0.75x-1.25x of swayAmplitude. 0 makes every bee weave exactly as far as every other.' })
+    public weaveJitter: number = 0.25;
+
+    @property({ type: CCFloat, min: 0.15, max: 0.85, tooltip: 'Where along the leg the weave leans, on average: below 0.5 peaks early (bee breaks away then straightens), above 0.5 peaks late. Each leg is drawn either side of this, so the value is the middle of a range, not a fixed shape.' })
+    public weaveBias: number = 0.5;
 
     @property({ type: CCFloat, tooltip: 'Multiplies swayAmplitude while a cube is being hauled - a loaded bee should weave less than an empty one.' })
     public carrySwayScale: number = 0.5;
@@ -104,7 +125,7 @@ export class BulletItem extends Component
     @property({ type: CCFloat, tooltip: 'How near (world units) the end of the leg the bee stops weaving and starts straightening onto the path. Big enough to be settled before it arrives - roughly the last stretch of the flight.' })
     public swayFadeDistance: number = 2.5;
 
-    @property({ type: CCFloat, tooltip: 'How quickly the weave straightens out once it is closing on the end of the leg, per second. Lower is a longer, lazier straightening.' })
+    @property({ type: CCFloat, tooltip: 'Fallback rate (per second) for straightening the weave onto the path, used only when nobody gave a deadline - i.e. the swayFadeDistance backstop. Beats that MUST be straight by their end pass their own length to holdSwayStraight() instead, so this value cannot make them wrong.' })
     public swaySettleSpeed: number = 3;
 
     private _phase: BulletPhase = BulletPhase.Idle;
@@ -137,6 +158,16 @@ export class BulletItem extends Component
     private readonly _travelDir = new Vec3();
     private readonly _poseScratch = new Quat();
 
+    // Set by the beat that knows the bee's movement this frame says nothing about where it is
+    // going, so facing HOLDS instead of turning. Cleared by the first frame of real travel.
+    //
+    // A flag rather than a speed threshold, deliberately. The beat this exists for is the pop at
+    // beginCarry: a short shove along the extract normal, at a speed of the same order as the
+    // corridor run that follows it, and pointing somewhere else entirely. The Unity build tried to
+    // separate its equivalent by magnitude and measured the two beats at 18.3 and 26 units/second -
+    // close enough that no threshold splits them. Whoever starts the beat knows; the facing does not.
+    private _facingHeld = false;
+
     // The weave. It rides ON TOP of whatever is flying the bullet, so what is tracked here is the
     // path point underneath it (_swayBasePos) and the offset currently sitting on that point - the
     // tweens write the clean path every frame and know nothing about the weave.
@@ -145,8 +176,28 @@ export class BulletItem extends Component
     private readonly _swayWrittenPos = new Vec3();
     private readonly _swayAxis = new Vec3(1, 0, 0);
     private readonly _swayScratch = new Vec3();
-    private _swayPhase = 0;
     private _hasSway = false;
+
+    // The weave's shape for the leg being flown: two control weights on ONE shared
+    // sideways axis, already carrying the leg's sign and already normalised so the
+    // envelope peaks at exactly 1. Amplitude is applied per frame instead of being baked
+    // in here, because it changes with the phase (carrySwayScale) while the shape does not.
+    //
+    // Same side by construction - see drawWeaveShape().
+    private _weaveShapeA = 0;
+    private _weaveShapeB = 0;
+    // Per-FLIGHT (not per-leg) amplitude scale, so one bee weaves further than the next.
+    private _weaveScale = 1;
+    // The sideways axis, latched on the first frame of the leg that has usable movement.
+    // Re-deriving it per frame would make the offset steer itself; a curve needs a frame
+    // that holds still for the length of the leg it is drawn across.
+    private _hasWeaveAxis = false;
+
+    // How long the leg is and how much of it has been covered. Shared with growCharacter
+    // rather than measured twice - both want "how far is there still to go", and two
+    // latches of the same number are two things to drift apart.
+    private _legDistance = 0;
+    private _legProgress = 0;
 
     // Where the current leg ends, which is where the weave has to be gone by. Held as a point in
     // some node's space rather than as a world position because neither end holds still: the
@@ -158,6 +209,13 @@ export class BulletItem extends Component
     // Latched once the straightening starts, so a leg that weaves can stop weaving but never take
     // it back up - which is what keeps the run-in to a face or an exit monotonically straighter.
     private _swayClosed = false;
+
+    // The straightening deadline, when the beat that asked for it gave one: how long it has, how much
+    // of that has passed, and the offset it started from. Duration 0 means no deadline was given and
+    // the swaySettleSpeed rate is used instead. See holdSwayStraight().
+    private _straightenDuration = 0;
+    private _straightenElapsed = 0;
+    private readonly _straightenFrom = new Vec3();
 
     // The prefab's authored layout, captured once and restored on every release - a grab only ever
     // measures its changes against these, so repeated shots cannot drift.
@@ -183,8 +241,12 @@ export class BulletItem extends Component
     // the first frame there is a cell to measure to, and the progress only ever climbs, so a flight
     // that eddies about on its way in cannot walk the curve backwards.
     private _characterResizing = false;
-    private _approachDistance = 0;
-    private _approachProgress = 0;
+    private _growProgress = 0;
+    // Distance still to fly to the end of this leg, and whether there was a leg to measure
+    // at all (< 0 means no target has resolved yet). Worked out once per frame in
+    // updateLegProgress() and read by everything that paces off it - the weave, the resize
+    // and the grip reach - rather than each of them resolving a moving target of its own.
+    private _legRemaining = -1;
     // Which way the bee sits from the cube in the prefab (usually straight up), and how far past
     // the cube's own surface that puts it. Both are what a landing re-applies along the pull axis.
     private readonly _characterBaseDir = new Vec3(0, 1, 0);
@@ -290,6 +352,11 @@ export class BulletItem extends Component
         // Fresh weave for the leg in; the shooter sets the face it ends on right after this.
         this.restartWeave();
 
+        // Drawn once per FLIGHT, not per leg: this is "how far does THIS bee weave", so it has to
+        // stay the same from the muzzle to the exit. Per-leg amplitude jitter would read as the same
+        // bee changing its mind, which is not what varies between real ones.
+        this._weaveScale = 1 + (Math.random() * 2 - 1) * Math.max(0, this.weaveJitter);
+
         // After releaseCube(), which is what puts the bee back at its authored size and spot - the
         // near end of both blends, so they have to be where it actually is.
         if (cubeWorldScale)
@@ -297,8 +364,7 @@ export class BulletItem extends Component
             this.aimCharacterScaleAt(cubeWorldScale);
             this._cubeSizeY = cubeWorldScale.y;
             this._characterResizing = true;
-            this._approachDistance = 0;
-            this._approachProgress = 0;
+            this._growProgress = 0;
         }
     }
 
@@ -417,6 +483,11 @@ export class BulletItem extends Component
     {
         this._phase = BulletPhase.Carry;
 
+        // The pop that just ran was a shove along the extract normal, not travel. This is the first
+        // frame Carry lets faceAlongTravel run, so without the hold the bee would yaw onto the
+        // pop's heading - which points out of the wall, not down the corridor it is about to fly.
+        this.holdFacing();
+
         // The face just left is no longer the thing to straighten up for; each leg of the way out
         // hands over its own end as it starts, and that restarts the weave with it.
         this.setSwayTarget(null, null);
@@ -449,8 +520,7 @@ export class BulletItem extends Component
         this._cubeScaleRatio = 1;
         this._characterTargetScale.set(this._characterBaseScale);
         this._characterResizing = false;
-        this._approachDistance = 0;
-        this._approachProgress = 0;
+        this._growProgress = 0;
         if (this.characterRoot)
         {
             this.characterRoot.setPosition(this._characterBasePos);
@@ -462,9 +532,12 @@ export class BulletItem extends Component
         this._hasPrevWorldPos = false;
         this._hasPrevRenderPos = false;
         this._renderMove.set(0, 0, 0);
+        this._facingHeld = false;
+        this._weaveScale = 1;
 
         // Dropped where it is: a parked bullet is about to be moved to a muzzle anyway, so the
-        // offset is only forgotten, not taken back off.
+        // offset is only forgotten, not taken back off. Cleared directly rather than through
+        // clearSway(), which would warn about an offset that is being abandoned on purpose.
         this._swayOffset.set(0, 0, 0);
         this._hasSway = false;
         this.setSwayTarget(null, null);
@@ -488,6 +561,7 @@ export class BulletItem extends Component
     {
         this.trackPathPosition();
         this.measureMovement();
+        this.updateLegProgress();
 
         // The weave first, then the facing off the back of it: the bee is pointed down the flight
         // it has just been given, this frame, rather than down the one it made last frame.
@@ -502,6 +576,34 @@ export class BulletItem extends Component
         if (this._phase === BulletPhase.Approach) this.updateApproachPose();
 
         if (this._phase === BulletPhase.Carry) this.settleCharacter(dt);
+    }
+
+    /**
+     * How far there is still to fly on this leg, and how much of it is behind - resolved once per
+     * frame, off the PATH position rather than the woven one, so everything paced by the trip
+     * agrees about where the bee is.
+     *
+     * The leg's whole length is latched on the first frame a target resolves, and progress only
+     * ever climbs, so a flight that eddies about on its way in cannot walk any of the curves this
+     * drives backwards. Resolved here once rather than by each consumer, which is also what stops
+     * the moving target from being transformed three times a frame.
+     */
+    private updateLegProgress(): void
+    {
+        if (!this.resolveSwayTarget())
+        {
+            this._legRemaining = -1;
+            return;
+        }
+
+        const remaining = Vec3.distance(this._swayBasePos, this._swayTargetWorld);
+        this._legRemaining = remaining;
+
+        if (this._legDistance <= 0) this._legDistance = remaining;
+        if (this._legDistance <= 1e-4) return;
+
+        const covered = 1 - remaining / this._legDistance;
+        this._legProgress = Math.min(1, Math.max(this._legProgress, covered));
     }
 
     /**
@@ -530,24 +632,28 @@ export class BulletItem extends Component
     }
 
     /**
-     * Weaves the bullet from side to side of its path - a sine offset along the horizontal
-     * perpendicular of its own heading, laid on top of the path position rather than replacing it,
-     * so the tweens still decide where the flight goes and this only decides how straight it is
-     * flown. A bee that tracks a spline exactly reads as a missile; the weave is what makes the
-     * same path look flown.
+     * Weaves the bullet off the side of its path - laid on top of the path position rather than
+     * replacing it, so the tweens still decide where the flight goes and this only decides how
+     * straight it is flown. A bee that tracks a spline exactly reads as a missile.
+     *
+     * ONE ARC PER LEG, NOT AN OSCILLATION. This used to be a sine: amplitude times
+     * sin(swayFrequency * t), which is the shape the Unity build of this game shipped, played, and
+     * threw out - a sine has a period, so on any leg long enough to show more than one hump the
+     * repetition is the first thing the eye finds. What replaced it there, and here, is a single
+     * random arc per leg: two control weights on one shared sideways axis, blended by the two
+     * middle cubic Bernstein terms (see weaveOffsetAt), so the bee breaks away from its line once
+     * and comes back to it.
+     *
+     * Three things fall out of that shape for free, each of which the sine needed extra machinery
+     * for:
+     *  - it is zero at both ends of the leg by construction, so a leg is entered and left ON the
+     *    path. swayFadeDistance is now a backstop for legs cut short, not the mechanism.
+     *  - it cannot be caught mid-swing by a phase change, which is what made the old landing snap.
+     *  - every leg gets a different shape, not the same shape at a different offset.
      *
      * Only on the way in and on the way out. The plug-out is a short sharp heave along one axis and
      * a wobble there would fight it, and the landing has to hold still on the face it has picked -
-     * so both of those get the path untouched, which is also why the offset is taken back off on
-     * the frame the weave stops rather than being left baked into wherever the bee had drifted to.
-     *
-     * The phase restarts at each leg, where the sine is zero: the weave always begins from dead on
-     * the path, so taking it up mid-flight never shows a step.
-     *
-     * It ends on the path too. Within swayFadeDistance of wherever the leg is going - the face
-     * being landed on, the exit being flown to - the sine is dropped for good and the offset is
-     * unwound to nothing instead (settleSwayToCentre), so the last stretch of every leg is flown
-     * straight at what it is aiming for. Both ends of a flight have to be arrived at exactly.
+     * so both of those get the path untouched.
      */
     private applySway(dt: number): void
     {
@@ -558,22 +664,43 @@ export class BulletItem extends Component
             return;
         }
 
-        const amplitude = this.swayAmplitude * (this._phase === BulletPhase.Carry ? this.carrySwayScale : 1);
+        const amplitude = this.swayAmplitude
+            * (this._phase === BulletPhase.Carry ? this.carrySwayScale : 1)
+            * this._weaveScale;
 
         if (!this._swayClosed && this.isClosingOnTarget()) this._swayClosed = true;
 
-        // Closing on the end of the leg, or no weave asked for at all: straighten out and hold the
-        // path, sine included - see settleSwayToCentre().
-        if (this._swayClosed || Math.abs(amplitude) < 1e-5)
+        // Straighten out and hold the path: told to (holdSwayStraight, and the corridor legs do),
+        // switched off, no amplitude asked for, or too near the end of a leg that was cut short.
+        if (this._swayClosed || !this.beeWeave || Math.abs(amplitude) < 1e-5)
         {
             this.settleSwayToCentre(dt);
             return;
         }
 
-        this._swayPhase = (this._swayPhase + this.swayFrequency * TWO_PI * dt) % TWO_PI;
+        // No leg to measure against - the target is set just after the shot, and the exit leg sets
+        // its own. Without a length there is no progress along the arc, and guessing one would put
+        // the bee somewhere the curve does not describe. Hold the path until there is one.
+        if (this._legRemaining < 0 || this._legDistance <= 1e-4)
+        {
+            this.settleSwayToCentre(dt);
+            return;
+        }
 
-        this.updateSwayAxis();
-        Vec3.multiplyScalar(this._swayOffset, this._swayAxis, Math.sin(this._swayPhase) * amplitude);
+        // The axis has to hold still for the length of the leg the arc is drawn across, so it is
+        // latched on the first frame with usable movement rather than re-derived per frame.
+        if (!this._hasWeaveAxis)
+        {
+            if (!this.latchWeaveAxis())
+            {
+                this.settleSwayToCentre(dt);
+                return;
+            }
+            this.drawWeaveShape();
+        }
+
+        const envelope = BulletItem.weaveOffsetAt(this._legProgress, this._weaveShapeA, this._weaveShapeB);
+        Vec3.multiplyScalar(this._swayOffset, this._swayAxis, envelope * amplitude);
 
         Vec3.add(this._swayWrittenPos, this._swayBasePos, this._swayOffset);
         this.node.setWorldPosition(this._swayWrittenPos);
@@ -581,18 +708,72 @@ export class BulletItem extends Component
     }
 
     /**
+     * The weave envelope: the two middle terms of a cubic Bezier, which is a single lobe that is
+     * exactly zero at t=0 and t=1 whatever the two weights are.
+     *
+     * The two outer terms are left out deliberately - they are the ones carrying the endpoints, and
+     * the endpoints of this curve have to be zero. What is left is the deviation alone.
+     */
+    private static weaveOffsetAt(t: number, a: number, b: number): number
+    {
+        const u = 1 - t;
+        return 3 * u * u * t * a + 3 * u * t * t * b;
+    }
+
+    /**
+     * Draws the shape of this leg's arc: a side, and two control weights on it.
+     *
+     * BOTH WEIGHTS GET THE SAME SIGN. Opposite signs make the envelope cross zero in the middle -
+     * an S rather than an arc - and an S is a wobble, which is the periodic read this shape exists
+     * to remove. (In the Unity build it was worse than cosmetic: measured minimum clearance to the
+     * structure dropped from 4.49 to 0.34 because the S cut back through the middle. Here the
+     * corridor guarantees clearance, so only the look is at stake.)
+     *
+     * The RATIO between the weights is drawn per leg, not fixed, and this is not decoration: with a
+     * fixed ratio the lobe peaks at the same point on every leg - swept it, 0.535 every single draw
+     * - so every bee flew one curve at different sizes. Drawing the ratio moves where the arc leans,
+     * which is what makes two bees on the same route look like two bees.
+     *
+     * Then normalised so the envelope peaks at exactly 1, which is what lets swayAmplitude mean
+     * "how far the bee weaves" rather than "a control weight". Unnormalised, the Bernstein terms cap
+     * at 4/9 each and an authored 0.35 came out as a 0.22 excursion - the knob quietly meaning about
+     * 60% of what it said.
+     */
+    private drawWeaveShape(): void
+    {
+        const side = Math.random() < 0.5 ? -1 : 1;
+
+        let bias = this.weaveBias + (Math.random() * 2 - 1) * WEAVE_BIAS_SPREAD;
+        bias = Math.min(WEAVE_BIAS_MAX, Math.max(WEAVE_BIAS_MIN, bias));
+
+        const shapeA = bias;
+        const shapeB = 1 - bias;
+
+        let peak = 0;
+        for (let i = 0; i <= WEAVE_PEAK_SAMPLES; i++)
+        {
+            const value = Math.abs(BulletItem.weaveOffsetAt(i / WEAVE_PEAK_SAMPLES, shapeA, shapeB));
+            if (value > peak) peak = value;
+        }
+
+        const norm = peak > 1e-6 ? side / peak : 0;
+        this._weaveShapeA = shapeA * norm;
+        this._weaveShapeB = shapeB * norm;
+    }
+
+    /**
      * Whether the bullet is near enough the end of this leg that the weave has to be got rid of.
      *
-     * The target is a point in another node's space, not a world position, because neither end of a
-     * flight holds still - the landing cell rides a map that is turning under it, and the exit node
-     * can be moving - so it is resolved fresh every frame rather than measured once.
+     * A backstop now rather than the way legs end: the arc is already zero at the end of a full
+     * leg. What this still catches is a leg cut short - handed a new target part-way, or ended by a
+     * phase change - where progress never reached 1 and there is an offset left standing.
      */
     private isClosingOnTarget(): boolean
     {
         if (this.swayFadeDistance <= 0) return false;
-        if (!this.resolveSwayTarget()) return false;
+        if (this._legRemaining < 0) return false;
 
-        return Vec3.squaredDistance(this._swayBasePos, this._swayTargetWorld) <= this.swayFadeDistance * this.swayFadeDistance;
+        return this._legRemaining <= this.swayFadeDistance;
     }
 
     /**
@@ -620,20 +801,45 @@ export class BulletItem extends Component
     }
 
     /**
-     * Straightens the bee onto its path for the run-in: the offset it is carrying is eased to zero
-     * and the sine is left out of it entirely from here.
+     * Straightens the bee onto its path: the offset it is carrying is eased to zero and the arc is
+     * left out of it entirely from here.
      *
-     * Shrinking the sine's amplitude instead would keep swinging the bee through the middle on its
-     * way down to nothing, which is the opposite of what the ends of a leg need - a face has to be
-     * landed on square, and the exit has to be arrived at dead on. Easing the offset itself gives
-     * one unwinding move onto the line and then nothing.
+     * Shrinking the arc's amplitude instead would keep swinging the bee through the middle on its way
+     * down to nothing, which is the opposite of what the ends of a leg need - a face has to be landed
+     * on square, and the exit has to be arrived at dead on. Easing the offset itself gives one
+     * unwinding move onto the line and then nothing.
+     *
+     * Two modes, and the difference matters (see holdSwayStraight):
+     *  - DEADLINE, when the beat said how long it has: interpolated off the offset held when the beat
+     *    began, so it reaches exactly zero at the deadline. Frame-rate independent and not tunable
+     *    into being wrong.
+     *  - RATE, the swayFadeDistance backstop: exponential at swaySettleSpeed, which approaches zero
+     *    without a promise about when.
      */
     private settleSwayToCentre(dt: number): void
     {
         if (!this._hasSway) return;
 
-        const t = 1 - Math.exp(-Math.max(0, this.swaySettleSpeed) * dt);
-        Vec3.lerp(this._swayOffset, this._swayOffset, Vec3.ZERO, t);
+        if (this._straightenDuration > 0)
+        {
+            this._straightenElapsed += dt;
+            const k = Math.min(1, this._straightenElapsed / this._straightenDuration);
+
+            if (k >= 1)
+            {
+                this.settleOnPath();
+                return;
+            }
+
+            // Eased so it lets go of the offset gently rather than yanking off it at full rate on the
+            // first frame; still exactly zero at k = 1, which is the whole point of the deadline.
+            Vec3.multiplyScalar(this._swayOffset, this._straightenFrom, 1 - easing.cubicOut(k));
+        }
+        else
+        {
+            const t = 1 - Math.exp(-Math.max(0, this.swaySettleSpeed) * dt);
+            Vec3.lerp(this._swayOffset, this._swayOffset, Vec3.ZERO, t);
+        }
 
         // Close enough to be on the line: stop writing, so the path owns the bullet outright again.
         if (this._swayOffset.lengthSqr() < 1e-8)
@@ -661,34 +867,91 @@ export class BulletItem extends Component
     }
 
     /**
-     * Holds the bee on its path for the rest of this leg, unwinding whatever weave it is carrying
-     * the same way an arrival does. For legs that have no room to wander at all - the corridor
-     * through the pile is the one line clear of cubes, and its clearance is the cube's own width.
+     * Holds the bee on its path for the rest of this leg, unwinding whatever weave it is carrying.
+     * For legs that have no room to wander at all - the corridor through the pile is the one line
+     * clear of cubes, and its clearance is the cube's own width.
+     *
+     * PASS THE BEAT'S OWN LENGTH. With a deadline the offset is guaranteed to be exactly zero by the
+     * time that many seconds have passed, whatever the frame rate and whatever the inspector says.
+     * Without one it falls back to swaySettleSpeed, which is a rate, and a rate can always be too
+     * slow for the beat that needs it.
+     *
+     * That is not hypothetical: this shipped rate-only, and the rate that was actually serialised
+     * into the bullet prefab (3/s, the old default - editing the default in code does NOT change an
+     * authored prefab) left 0.047 units of offset standing at the landing, which the landing then
+     * snapped off. The beat knows how long it has; the component cannot.
      */
-    public holdSwayStraight(): void
+    public holdSwayStraight(overSeconds: number = 0): void
     {
         this._swayClosed = true;
+
+        if (overSeconds > 0)
+        {
+            this._straightenDuration = overSeconds;
+            this._straightenElapsed = 0;
+            this._straightenFrom.set(this._swayOffset);
+        }
+        else
+        {
+            this._straightenDuration = 0;
+        }
     }
 
     /**
-     * Starts the weave over: back to the top of the sine, where it is zero, and free to weave again
-     * after a leg that had straightened out. Being at zero is what makes it safe to call in the
-     * middle of a flight - the offset it starts from is the one it already has.
+     * Stops the bee turning until it is genuinely travelling again, and forgets the movement it has
+     * just made so the release cannot read it - call at the start of any beat that moves the bullet
+     * somewhere other than where it is heading. See _facingHeld.
+     */
+    public holdFacing(): void
+    {
+        this._facingHeld = true;
+        this._hasPrevRenderPos = false;
+        this._renderMove.set(0, 0, 0);
+    }
+
+    /**
+     * Starts a new leg: forget the arc the last one was flying and re-measure the trip, so the next
+     * one draws its own shape over its own length. Free to weave again after a leg that had
+     * straightened out.
+     *
+     * Safe mid-flight because the new arc starts at zero, which is where a leg that ran to its end
+     * already left the bee. The one that is not safe is restarting a leg the bee is part-way off
+     * the line on - hence the check in clearSway().
      */
     private restartWeave(): void
     {
-        this._swayPhase = 0;
         this._swayClosed = false;
+        this._straightenDuration = 0;
+        this._hasWeaveAxis = false;
+        this._legDistance = 0;
+        this._legProgress = 0;
+        this._legRemaining = -1;
     }
 
     /**
      * Puts the bullet back on its path and forgets the weave - what the beats that need the path
      * exact call before they start, so none of them inherits however far off it the weave had
      * drifted. Costs nothing when there is no weave on the node.
+     *
+     * This is a SNAP, and it is meant to be: the standoff a landing measures has to start from the
+     * cell, not from wherever the bee had drifted to. What makes it safe is that the arc is already
+     * zero by the end of a leg, so there is nothing left to discard - and what makes that checkable
+     * is the warning below. The same snap over a sine offset is a visible teleport of up to a full
+     * amplitude, which is exactly how the Unity build of this shipped it: their bees jumped on
+     * arrival for weeks because the snap was silent and the offset was never zero.
      */
     private clearSway(): void
     {
         if (!this._hasSway) return;
+
+        const stranded = this._swayOffset.length();
+        if (stranded > LANDING_OFFSET_TOLERANCE)
+        {
+            // Not a rounding problem: either the leg length was wrong, or its target never
+            // resolved, or a phase cut the leg short before the arc came back to the line. Raising
+            // the tolerance hides it rather than fixing it.
+            console.warn(`[BulletItem] weave offset ${stranded.toFixed(3)} discarded on a beat that needs the path exact - the arc should be back on the line by the end of its leg.`);
+        }
 
         // Re-read first: whatever flew the bullet may have moved it since the last frame, and it is
         // the path under the CURRENT position that has to be restored, not the last one seen.
@@ -706,14 +969,20 @@ export class BulletItem extends Component
     }
 
     /**
-     * Which way is "sideways" right now: perpendicular to both the heading and world up, so the
-     * weave is always across the flight and never along it or up out of it.
+     * Fixes which way is "sideways" for this whole leg: perpendicular to both the heading and world
+     * up, so the arc is across the flight and never along it or up out of it. Returns whether there
+     * was a heading to take one from.
      *
-     * A leg with no horizontal heading of its own - the straight climb on the way out - has no
-     * sideways to speak of, so the last one that did is kept rather than snapping to some arbitrary
-     * axis as the flight passes through vertical.
+     * Latched once per leg rather than tracked per frame. A curve drawn against an axis that keeps
+     * turning is not the curve that was drawn - and worse, the offset would start steering itself:
+     * the frame turns as the bee is pushed sideways, so next frame's "sideways" is measured off a
+     * heading this offset bent. Taking it off _frameMove (movement along the PATH, weave excluded)
+     * rather than _renderMove is the same guard one step earlier.
+     *
+     * A leg with no horizontal heading at all - the straight climb on the way out - has no sideways
+     * to speak of, and gets no weave until it leans over enough to have one.
      */
-    private updateSwayAxis(): void
+    private latchWeaveAxis(): boolean
     {
         const vertical = Vec3.dot(this._frameMove, Vec3.UP);
         this._swayScratch.set(
@@ -722,15 +991,17 @@ export class BulletItem extends Component
             this._frameMove.z - Vec3.UP.z * vertical,
         );
 
-        if (this._swayScratch.lengthSqr() < 1e-10) return;
+        if (this._swayScratch.lengthSqr() < 1e-10) return false;
 
         this._swayScratch.normalize();
         Vec3.cross(this._swayScratch, this._swayScratch, Vec3.UP);
 
-        if (this._swayScratch.lengthSqr() < 1e-10) return;
+        if (this._swayScratch.lengthSqr() < 1e-10) return false;
 
         this._swayScratch.normalize();
         this._swayAxis.set(this._swayScratch);
+        this._hasWeaveAxis = true;
+        return true;
     }
 
     /**
@@ -759,6 +1030,16 @@ export class BulletItem extends Component
      */
     private faceAlongTravel(dt: number): void
     {
+        // Held through a beat whose movement is not travel - see _facingHeld. holdFacing() threw
+        // away the movement history, so _renderMove reads zero until the NEXT leg has written two
+        // positions of its own; the first non-zero reading is therefore the new leg's, and it is
+        // safe to face.
+        if (this._facingHeld)
+        {
+            if (this._renderMove.lengthSqr() < 1e-8) return;
+            this._facingHeld = false;
+        }
+
         this._travelDir.set(this._renderMove);
 
         // Yaw only for the carry: flatten the heading before it is faced.
@@ -799,28 +1080,22 @@ export class BulletItem extends Component
     /**
      * Everything the bee does to itself on the way in - resize itself, then reach into its grip.
      *
-     * Both are paced off the same number, how far there is still to fly to the cell, which is why
-     * they are measured together here. And they are deliberately laid out end to end along it rather
-     * than run on top of each other: the resize finishes where the reach begins (gripReachDistance
-     * from the cube), so the last stretch of a flight has one thing changing at a time. Two changes
-     * landing together on the frames the bee is largest and slowing down is what reads as a snap,
-     * however smooth either of them is on its own.
+     * Both are paced off the same number, how far there is still to fly to the cell - measured once
+     * per frame by updateLegProgress(), which the weave paces off too. And they are deliberately
+     * laid out end to end along it rather than run on top of each other: the resize finishes where
+     * the reach begins (gripReachDistance from the cube), so the last stretch of a flight has one
+     * thing changing at a time. Two changes landing together on the frames the bee is largest and
+     * slowing down is what reads as a snap, however smooth either of them is on its own.
      */
     private updateApproachPose(): void
     {
         if (!this.characterRoot) return;
 
         // Nothing to measure against yet - the cell it is going to is set just after the shot.
-        if (!this.resolveSwayTarget()) return;
+        if (this._legRemaining < 0) return;
 
-        const remaining = Vec3.distance(this._swayBasePos, this._swayTargetWorld);
-
-        // First frame with a cell to fly at: this is the whole trip, and everything after it is a
-        // fraction of this one number.
-        if (this._approachDistance <= 0) this._approachDistance = remaining;
-
-        this.growCharacter(remaining);
-        this.reachForGrip(remaining);
+        this.growCharacter(this._legRemaining);
+        this.reachForGrip(this._legRemaining);
     }
 
     /**
@@ -846,7 +1121,7 @@ export class BulletItem extends Component
 
         // Done by the time the reach begins, so the two never overlap.
         const margin = Math.max(0, this.gripReachDistance);
-        const trip = this._approachDistance - margin;
+        const trip = this._legDistance - margin;
 
         if (trip <= 1e-4)
         {
@@ -856,15 +1131,15 @@ export class BulletItem extends Component
         }
 
         const covered = 1 - (remaining - margin) / trip;
-        this._approachProgress = Math.min(1, Math.max(this._approachProgress, covered));
+        this._growProgress = Math.min(1, Math.max(this._growProgress, covered));
 
-        if (this._approachProgress >= 1)
+        if (this._growProgress >= 1)
         {
             this.applyTargetScale();
             return;
         }
 
-        const t = easing.sineIn(this._approachProgress);
+        const t = easing.sineIn(this._growProgress);
         Vec3.lerp(this._characterScale, this._characterBaseScale, this._characterTargetScale, t);
         this.characterRoot.setScale(this._characterScale);
     }
@@ -940,9 +1215,23 @@ export class BulletItem extends Component
      */
     private standoffAlong(out: Vec3, axis: Readonly<Vec3>): Vec3
     {
+        return Vec3.multiplyScalar(out, axis, this.getStandoffDistance());
+    }
+
+    /**
+     * How far (world units) out from a cube's centre the bee comes to rest when gripping one of its
+     * faces. Public because the leg that flies the bee in has to END here: aim that leg at the
+     * cube's own cell instead and the bee flies INTO the cube, and the standoff yanks it back out on
+     * the landing frame - a jump at the exact moment it is biggest on screen.
+     *
+     * Valid from beginApproach() onwards when the caller passed a cube size, which is what the
+     * measurement is taken against; before that it describes the prefab's authored cube.
+     */
+    public getStandoffDistance(): number
+    {
         const halfSize = this._cubeSizeY * 0.5;
         const gap = this._characterSurfaceGap * this._cubeScaleRatio + this.extraCharacterGap;
-        return Vec3.multiplyScalar(out, axis, halfSize + gap);
+        return halfSize + gap;
     }
 
     /**

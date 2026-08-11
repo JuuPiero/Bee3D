@@ -58,15 +58,16 @@ export class LevelGrid3D extends Component
     @property({ type: CCFloat, min: 0.001, group: 'Occlusion' })
     public debugPointRadius: number = 0.05;
 
-    // How far (world units) a bee needs to pull a cube straight out to dock and extract it.
-    // Drives both the straight-corridor length (ceil(R / cellSize) + 2 cells) and the
-    // L-route exit distance (R + cellSize) in GridTile3D.computeReachability().
-    @property({ type: CCFloat, min: 0, group: 'Reachability' })
-    public extractionRadius: number = 0.5;
-
-    // Max 90° turns a greedy L-route is allowed before giving up on a candidate exit face.
-    @property({ type: CCInteger, min: 0, group: 'Reachability' })
-    public reachabilityTurnCap: number = 2;
+    // Minimum cos(angle) between a face's normal and the direction to the camera for that face to
+    // count as a way in: 1 = head-on only, 0.3 ~= 72° off, 0 = anything not pointing away. Stops a
+    // cube whose only opening faces almost edge-on - one the player can barely see - from being
+    // chosen as a target. The shipped original runs ~0.30 (its own code default of 0.70 is not the
+    // value that ships).
+    //
+    // Targeting only. The occlusion pass deliberately does NOT use it: that pass also decides which
+    // cube renderers are on, and hiding edge-on faces there would pop cubes out of the picture.
+    @property({ type: CCFloat, min: 0, max: 1, step: 0.01, group: 'Reachability' })
+    public facingThreshold: number = 0.3;
 
     // Seconds between reachability rebuilds while the map rotates. Cheap enough at these grid
     // sizes, and short enough that a shooter never picks a cube whose corridor has swung out of
@@ -124,17 +125,6 @@ export class LevelGrid3D extends Component
     // block corridors) but findTargetTile() skips them, so two shooters can never pick the same
     // cube and fire two bullets at it.
     private readonly _reservedTiles = new Set<IGridTile3D>();
-
-    // Local-space axis + matching neighbour getter, per cube face. Drives buildBulletPath()'s
-    // straight-corridor scan the same way FACE_NEIGHBORS drives GridTile3D's reachability.
-    private static readonly EXIT_DIRECTIONS: readonly { dir: Vec3, getNeighbor: (tile: IGridTile3D) => IGridTile3D }[] = [
-        { dir: new Vec3(0, 1, 0), getNeighbor: t => t.getUpLinkedTile() },      // +Y
-        { dir: new Vec3(0, -1, 0), getNeighbor: t => t.getDownLinkedTile() },   // -Y
-        { dir: new Vec3(0, 0, -1), getNeighbor: t => t.getTopLinkedTile() },    // -Z
-        { dir: new Vec3(0, 0, 1), getNeighbor: t => t.getBottomLinkedTile() },  // +Z
-        { dir: new Vec3(-1, 0, 0), getNeighbor: t => t.getLeftLinkedTile() },   // -X
-        { dir: new Vec3(1, 0, 0), getNeighbor: t => t.getRightLinkedTile() },   // +X
-    ];
 
     // Digit key -> colorID, index-aligned (KEY_DIGIT_0 -> colorID 0, etc.).
     private static readonly DEBUG_COLOR_KEYS: readonly number[] = [
@@ -512,13 +502,16 @@ export class LevelGrid3D extends Component
 
     private computeReachabilityForSolidTiles(): void
     {
-        if (!this.camera || !this.levelData) return;
+        // Camera only: the walk reads the linked-tile chain and needs nothing from levelData now
+        // that corridor length is not derived from cellSize. One less way for this to no-op
+        // silently and leave every cube untargetable.
+        if (!this.camera) return;
 
         this._reachabilityView.capture(this.camera.node, this.cubeBlockHolder);
 
         for (const tile of this._solidTiles)
         {
-            tile.computeReachability(this.camera, this.extractionRadius, this.levelData.cellSize, this.reachabilityTurnCap);
+            tile.computeReachability(this.camera, this.facingThreshold);
         }
     }
 
@@ -828,6 +821,39 @@ export class LevelGrid3D extends Component
         return best;
     }
 
+    /**
+     * Every color that still has at least one cube a bee could fly into - i.e. the colors a shooter
+     * could still be given a target for. Written into `out`, which is cleared first.
+     *
+     * This is findTargetTile()'s gate minus the two filters that say "not right now" rather than
+     * "not at all":
+     *   - VISIBILITY is left out on purpose. A cube hidden behind another is still perfectly
+     *     shootable once the pile in front of it is peeled or the player turns the map, so counting
+     *     it as gone would call a level lost that is still winnable.
+     *   - RESERVATION is left out for the same reason: a reserved cube is one a bullet is already on
+     *     its way to, which is progress, not a dead end.
+     * Reachability itself stays in, since that is the actual "can a bee get to it" test.
+     *
+     * Only used by the lose check, which runs on a stuck conveyor - a plain scan over the solid
+     * tiles, reading the reachability flag each one already carries.
+     */
+    public collectReachableColors(out: Set<number>): Set<number>
+    {
+        out.clear();
+        for (const tile of this._solidTiles)
+        {
+            if (!tile.isReachable()) continue;
+            out.add(tile.getColorID());
+        }
+        return out;
+    }
+
+    /** Whether any cube is currently claimed by a bullet in flight. */
+    public hasReservedTiles(): boolean
+    {
+        return this._reservedTiles.size > 0;
+    }
+
     /** Marks `tile` as already being shot at, so findTargetTile() stops handing it out. */
     public reserveTile(tile: IGridTile3D): void
     {
@@ -850,6 +876,11 @@ export class LevelGrid3D extends Component
      * The corridor is a straight run along whichever unsealed face is clear all the way out of
      * the grid and points most towards the camera, so a bullet flying it (in either direction)
      * only ever passes through empty cells. Returns null when every face is blocked.
+     *
+     * Clearance comes from GridTile3D.isCorridorClearOfGrid() - the SAME test computeReachability()
+     * gates targets on, so a tile that passed findTargetTile() cannot fail to produce a path here.
+     * Keep it that way: a second, subtly different walk on this side is exactly the bug that made
+     * shooters loop on an unshootable target (see computeReachability's note).
      *
      * Local, not world, because the level keeps rotating: a world-space snapshot would be stale
      * the moment the holder turned, and the bullet would fly at where the cube used to be. In
@@ -876,39 +907,30 @@ export class LevelGrid3D extends Component
         );
         this._exitToCameraScratch.normalize();
 
-        let bestEntry: (typeof LevelGrid3D.EXIT_DIRECTIONS)[number] | null = null;
+        let bestFace = -1;
         let bestScore = -Infinity;
 
-        for (const entry of LevelGrid3D.EXIT_DIRECTIONS)
+        for (let face = 0; face < GridTile3D.faceCount; face++)
         {
-            let isClear = true;
-            let current: IGridTile3D = tile;
-            while (true)
-            {
-                const next = entry.getNeighbor(current);
-                if (!next) break;                                  // walked out of the grid: clear
-                if (next.isContainBlock()) { isClear = false; break; }
-                current = next;
-            }
-            if (!isClear) continue;
+            if (!GridTile3D.isCorridorClearOfGrid(tile, face)) continue;
 
-            Vec3.transformQuat(this._exitDirWorldScratch, entry.dir, this._holderWorldRotation);
+            Vec3.transformQuat(this._exitDirWorldScratch, GridTile3D.getFaceNormal(face), this._holderWorldRotation);
             const score = Vec3.dot(this._exitDirWorldScratch, this._exitToCameraScratch);
             if (score > bestScore)
             {
                 bestScore = score;
-                bestEntry = entry;
+                bestFace = face;
             }
         }
 
-        if (!bestEntry) return null;
+        if (bestFace < 0) return null;
 
         const path: Vec3[] = [ tile.getLocalPos().clone() ];
 
         let current: IGridTile3D = tile;
         while (true)
         {
-            const next = bestEntry.getNeighbor(current);
+            const next = GridTile3D.getFaceNeighbor(current, bestFace);
             if (!next) break;
             path.push(next.getLocalPos().clone());
             current = next;
@@ -917,9 +939,10 @@ export class LevelGrid3D extends Component
         // Corridor mouth: one cell past the last in-grid cell, so the straight leg the bullet
         // flies in from the shooter ends outside the pile rather than inside it - and so the
         // fly-out leg starts from a point that is already clear of every remaining cube. The
-        // tiles sit on a 1-unit lattice, so one cell is exactly the direction vector.
+        // tiles sit on a 1-unit lattice, so one cell is exactly the face normal.
+        const exitDir = GridTile3D.getFaceNormal(bestFace);
         const lastCell = path[path.length - 1];
-        path.push(new Vec3(lastCell.x + bestEntry.dir.x, lastCell.y + bestEntry.dir.y, lastCell.z + bestEntry.dir.z));
+        path.push(new Vec3(lastCell.x + exitDir.x, lastCell.y + exitDir.y, lastCell.z + exitDir.z));
 
         return path;
     }

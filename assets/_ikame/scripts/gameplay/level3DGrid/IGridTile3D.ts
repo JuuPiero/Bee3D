@@ -55,12 +55,14 @@ export interface IGridTile3D {
     getVisibilityResult(): VisibilityResult;
 
     /**
-     * Recomputes and returns whether a bee has a clear way in and out of this tile: either a
-     * straight corridor out to the pile edge along a camera-facing face, or - if every straight
-     * corridor is blocked - a greedy L-shaped route that turns around blockers (up to `turnCap`
-     * turns) until it clears the pile. `extractionRadius` and `cellSize` are both world units;
-     * internally everything is converted to, and walked in, integer grid cells.
+     * Recomputes and returns whether a bee has a clear way in and out of this tile: some face that
+     * is unsealed, points at the camera by at least `minFacing` (cos of the angle), and whose
+     * corridor - every cell along that face's normal, all the way out of the grid - is empty.
+     *
+     * This is the same clearance test LevelGrid3D.buildBulletPath() uses to build the flight path,
+     * so a reachable tile is always flyable. The facing requirement is extra on this side only,
+     * which keeps reachable a strict subset of flyable.
      */
-    computeReachability(camera: Camera, extractionRadius: number, cellSize: number, turnCap: number): boolean;
+    computeReachability(camera: Camera, minFacing: number): boolean;
     isReachable(): boolean;
 }

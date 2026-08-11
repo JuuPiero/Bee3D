@@ -12,7 +12,6 @@ const _screenSampleScratch = new Vec3();
 const _rotatedVectorScratch = new Vec3();
 const _localCornerScratch = new Vec3();
 const _cornerScratch = new Vec3();
-const _reachCameraDirScratch = new Vec3();
 const _screenCorners: Vec3[] = Array.from({ length: 8 }, () => new Vec3());
 const _cornerInFront: boolean[] = new Array(8).fill(false);
 
@@ -60,16 +59,6 @@ export class GridTile3D implements IGridTile3D
         new Vec3(0, 1, 0), new Vec3(0, -1, 0),
         new Vec3(0, 0, -1), new Vec3(0, 0, 1),
         new Vec3(-1, 0, 0), new Vec3(1, 0, 0),
-    ];
-
-    // For each face, every face perpendicular to it - i.e. every face except itself and its
-    // opposite. Precomputed because it depends only on the (fixed) local axes; it used to be
-    // rebuilt with a FACE_NEIGHBORS.filter() on every L-route attempt, which allocated an array
-    // per face per tile per reachability rebuild.
-    private static readonly PERPENDICULAR_FACE_INDICES: readonly (readonly number[])[] = [
-        [2, 3, 4, 5], [2, 3, 4, 5], // +Y, -Y
-        [0, 1, 4, 5], [0, 1, 4, 5], // -Z, +Z
-        [0, 1, 2, 3], [0, 1, 2, 3], // -X, +X
     ];
 
     // FACE_NORMALS rotated into world space, cached against the rotation they were built from.
@@ -420,8 +409,13 @@ export class GridTile3D implements IGridTile3D
             const neighbor = GridTile3D.FACE_NEIGHBORS[f].getNeighbor(this);
             if (neighbor && neighbor.isContainBlock()) continue; // sealed face, no need to sample it
 
+            // Deliberately 0, not LevelGrid3D.facingThreshold: this pass also decides whether the
+            // cube's own renderer is on, and a face barely off edge-on still contributes to the
+            // silhouette the player sees. Applying the targeting threshold here would pop cubes out
+            // of the picture. The threshold belongs to the gates that choose a target, not to the
+            // question of what is on screen.
             const faceSamples = faceSamplesByIndex[f];
-            if (!faceSamples || !GridTile3D.isFacingCamera(normals[f], cameraPos, worldPosX, worldPosY, worldPosZ)) continue;
+            if (!faceSamples || !GridTile3D.isFacingCamera(normals[f], cameraPos, worldPosX, worldPosY, worldPosZ, 0)) continue;
 
             const samples = faceSamples.samples;
             for (let s = 0; s < samples.length; s++)
@@ -467,18 +461,27 @@ export class GridTile3D implements IGridTile3D
     }
 
     /**
-     * Recomputes whether a bee has a clear way in and out of this tile: a straight corridor
-     * out to the pile edge along a camera-facing face, or - if every straight corridor is
-     * blocked - a greedy L-shaped route that turns around blockers (up to `turnCap` turns)
-     * until it clears the pile. Both checks are pure occupancy scans over the linked-tile
-     * chain, so a chosen path never crosses another cube. `extractionRadius` and `cellSize`
-     * are world units; internally everything is converted to, and walked in, integer cells.
+     * Recomputes whether a bee has a clear way in and out of this tile: some camera-facing face
+     * whose corridor - every cell along that face's normal, out of the grid entirely - is empty.
+     *
+     * This is deliberately the SAME test LevelGrid3D.buildBulletPath() uses to build the path the
+     * bullet actually flies, via the shared isCorridorClearOfGrid() below. The two used to differ:
+     * this one walked a capped number of hops and fell back to a greedy L-route around blockers,
+     * while buildBulletPath() only ever accepts a straight run clear to the grid edge. A tile
+     * admitted by the L-route, or by the hop cap stopping short of a blocker, therefore passed
+     * findTargetTile() and then failed shootBulletAtTile() - which spends no ammo and takes no
+     * reservation, so the shooter re-picked the same tile every FIRE_INTERVAL forever. Corridor
+     * clearance is pure occupancy, so rotating the map could not break the cycle either.
+     *
+     * The facing requirement is only on THIS side (buildBulletPath scores faces by camera-ward but
+     * does not require it), which keeps the reachable set a subset of the flyable set: gate passes
+     * => a path exists. Never widen this past buildBulletPath without widening that too.
      */
-    computeReachability(camera: Camera, extractionRadius: number, cellSize: number, turnCap: number): boolean
+    computeReachability(camera: Camera, minFacing: number): boolean
     {
         this._isReachable = false;
 
-        if (!this.isContainBlock() || !GridTile3D._faceSamplesByIndex || cellSize <= 0) return this._isReachable;
+        if (!this.isContainBlock()) return this._isReachable;
 
         const rotation = this.getWorldRotation();
         const normals = GridTile3D.getRotatedFaceNormals(rotation);
@@ -486,23 +489,15 @@ export class GridTile3D implements IGridTile3D
         const worldPosX = worldPos.x, worldPosY = worldPos.y, worldPosZ = worldPos.z;
         const cameraPos = camera.node.worldPosition;
 
-        // ceil(R / cellSize) + 2 cells, per the straight-corridor spec.
-        const cellsForR = extractionRadius / cellSize;
-        const straightHops = Math.ceil(cellsForR) + 2;
-        // R + cellSize expressed in cells (cellSize / cellSize = 1).
-        const exitThresholdCells = cellsForR + 1;
-        // Generous backstop against any pathological greedy loop.
-        const hardStepCap = straightHops * 3;
-
         for (let f = 0; f < GridTile3D.FACE_NEIGHBORS.length; f++)
         {
+            // Sealed face: not a candidate exit. Cheapest test, so it goes first.
             const neighbor = GridTile3D.FACE_NEIGHBORS[f].getNeighbor(this);
-            if (neighbor && neighbor.isContainBlock()) continue; // sealed face, not a candidate exit
+            if (neighbor && neighbor.isContainBlock()) continue;
 
-            if (!GridTile3D.isFacingCamera(normals[f], cameraPos, worldPosX, worldPosY, worldPosZ)) continue;
+            if (!GridTile3D.isFacingCamera(normals[f], cameraPos, worldPosX, worldPosY, worldPosZ, minFacing)) continue;
 
-            if (this.isStraightPathClear(f, straightHops) ||
-                this.isLRoutePathClear(cameraPos, normals, f, exitThresholdCells, turnCap, hardStepCap))
+            if (GridTile3D.isCorridorClearOfGrid(this, f))
             {
                 this._isReachable = true;
                 break;
@@ -512,113 +507,76 @@ export class GridTile3D implements IGridTile3D
         return this._isReachable;
     }
 
-    /** Walks the linked-tile chain in face `faceIndex`'s direction; true if every cell out to `hops` is empty. */
-    private isStraightPathClear(faceIndex: number, hops: number): boolean
+    /**
+     * Whether the straight run from `tile` along face `faceIndex`'s normal is empty for every cell
+     * up to and including the last one inside the grid - i.e. a cube pulled out that way never
+     * passes through another cube, and a bullet flown in that way never enters an occupied cell.
+     *
+     * Walking the linked-tile chain rather than integer coords means "ran out of chain" IS "left
+     * the grid": tiles exist for every cell of the grid box (spawnLevel creates them all, occupied
+     * or not), so a null neighbour can only mean the edge.
+     *
+     * Deliberately uncapped. A capped walk answers "is the first N cells clear", which is not the
+     * same question and is not what a bullet needs - see computeReachability() above.
+     */
+    public static isCorridorClearOfGrid(tile: IGridTile3D, faceIndex: number): boolean
     {
         const getNeighbor = GridTile3D.FACE_NEIGHBORS[faceIndex].getNeighbor;
-        let current: IGridTile3D = this;
-        for (let i = 0; i < hops; i++)
+        let current: IGridTile3D = tile;
+
+        while (true)
         {
             const next = getNeighbor(current);
-            if (!next) return true; // exited the pile/grid
+            if (!next) return true;                  // walked out of the grid: clear
             if (next.isContainBlock()) return false; // blocked
             current = next;
         }
-        return true;
     }
 
-    /**
-     * Greedy L-route: walk out through empty cells starting in face `primaryFace`'s direction;
-     * when blocked, 90°-turn toward whichever perpendicular side scores highest on
-     * "clearest outward" + "camera-ward", up to `turnCap` turns, until the path exits the
-     * pile (radial distance from this tile >= `exitThresholdCells`).
-     */
-    private isLRoutePathClear(cameraPos: Readonly<Vec3>, worldNormals: readonly Vec3[], primaryFace: number, exitThresholdCells: number, turnCap: number, hardStepCap: number): boolean
+    /** The local-space outward normal of face `faceIndex`, index-aligned with the face table. */
+    public static getFaceNormal(faceIndex: number): Readonly<Vec3>
     {
-        const perpendicularFaces = GridTile3D.PERPENDICULAR_FACE_INDICES[primaryFace];
+        return GridTile3D.FACE_NORMALS[faceIndex];
+    }
 
-        const originX = this._coordX, originY = this._coordY, originZ = this._coordZ;
+    /** `tile`'s neighbour across face `faceIndex`, or null when that cell is outside the grid. */
+    public static getFaceNeighbor(tile: IGridTile3D, faceIndex: number): IGridTile3D
+    {
+        return GridTile3D.FACE_NEIGHBORS[faceIndex].getNeighbor(tile);
+    }
 
-        // Camera-ward direction, from this tile toward the camera (world space) - reused for
-        // every turn decision below.
-        const originWorldPos = this.getWorldPos();
-        _reachCameraDirScratch.set(
-            cameraPos.x - originWorldPos.x,
-            cameraPos.y - originWorldPos.y,
-            cameraPos.z - originWorldPos.z,
-        );
-        _reachCameraDirScratch.normalize();
-
-        // Squared, so the per-step exit test needs no sqrt.
-        const exitThresholdSqr = exitThresholdCells * exitThresholdCells;
-
-        let currentFace = primaryFace;
-        let current: IGridTile3D = this;
-        let turnsUsed = 0;
-
-        for (let step = 0; step < hardStepCap; step++)
-        {
-            const next = GridTile3D.FACE_NEIGHBORS[currentFace].getNeighbor(current);
-
-            if (!next) return true; // exited the pile/grid
-
-            if (!next.isContainBlock())
-            {
-                current = next;
-                const dx = current.getCoordX() - originX;
-                const dy = current.getCoordY() - originY;
-                const dz = current.getCoordZ() - originZ;
-                if (dx * dx + dy * dy + dz * dz >= exitThresholdSqr) return true;
-                continue;
-            }
-
-            // Blocked: turn toward the clearest-outward + camera-ward perpendicular side.
-            if (turnsUsed >= turnCap) return false;
-
-            let bestFace = -1;
-            let bestScore = -Infinity;
-            for (let i = 0; i < perpendicularFaces.length; i++)
-            {
-                const candidateFace = perpendicularFaces[i];
-                const candidateNext = GridTile3D.FACE_NEIGHBORS[candidateFace].getNeighbor(current);
-                if (candidateNext && candidateNext.isContainBlock()) continue; // immediately blocked too
-
-                const localNormal = GridTile3D.FACE_NORMALS[candidateFace];
-                const worldNormal = worldNormals[candidateFace];
-
-                const outwardDot = localNormal.x * (current.getCoordX() - originX)
-                    + localNormal.y * (current.getCoordY() - originY)
-                    + localNormal.z * (current.getCoordZ() - originZ);
-                const cameraDot = Vec3.dot(worldNormal, _reachCameraDirScratch);
-                const score = outwardDot + cameraDot;
-
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    bestFace = candidateFace;
-                }
-            }
-
-            if (bestFace < 0) return false; // dead end, no viable turn
-
-            currentFace = bestFace;
-            turnsUsed++;
-        }
-
-        return false; // exceeded the hard step cap without exiting
+    /** How many faces the face-indexed statics above accept. */
+    public static get faceCount(): number
+    {
+        return GridTile3D.FACE_NEIGHBORS.length;
     }
 
     /**
      * Whether a face with the (already world-space) normal `worldNormal` on a cube centered at
-     * (centerX, centerY, centerZ) points towards the camera. Using the tile center rather than the
-     * exact face center is a safe approximation since cubes are unscaled and cameras sit well
-     * outside a single cube's half-extent.
+     * (centerX, centerY, centerZ) points towards the camera by at least `minFacing`, measured as
+     * cos(angle): 1 = head-on, 0 = edge-on.
+     *
+     * The to-camera vector has to be normalized for that to hold, which a plain sign test does not
+     * need - an unnormalized dot scales with distance to the camera, so comparing it against a
+     * tuned threshold would mean a different angle at every distance. Compared in squared form,
+     * guarded by the sign, so the common case costs no sqrt.
+     *
+     * Using the tile center rather than the exact face center is a safe approximation since cubes
+     * are unscaled and cameras sit well outside a single cube's half-extent. The direction is
+     * per-tile rather than one constant view vector, which is what keeps this correct under a
+     * perspective camera - the shipped original uses a single viewDir and is orthographic-only.
      */
-    private static isFacingCamera(worldNormal: Readonly<Vec3>, cameraPos: Readonly<Vec3>, centerX: number, centerY: number, centerZ: number): boolean
+    private static isFacingCamera(worldNormal: Readonly<Vec3>, cameraPos: Readonly<Vec3>, centerX: number, centerY: number, centerZ: number, minFacing: number): boolean
     {
-        const dot = worldNormal.x * (cameraPos.x - centerX)
-            + worldNormal.y * (cameraPos.y - centerY)
-            + worldNormal.z * (cameraPos.z - centerZ);
-        return dot > FACING_EPSILON;
+        const toCameraX = cameraPos.x - centerX;
+        const toCameraY = cameraPos.y - centerY;
+        const toCameraZ = cameraPos.z - centerZ;
+
+        const dot = worldNormal.x * toCameraX + worldNormal.y * toCameraY + worldNormal.z * toCameraZ;
+        if (dot <= FACING_EPSILON) return false;
+        if (minFacing <= 0) return true;
+
+        const distanceSqr = toCameraX * toCameraX + toCameraY * toCameraY + toCameraZ * toCameraZ;
+        return dot * dot > minFacing * minFacing * distanceSqr;
     }
 }

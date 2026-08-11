@@ -130,6 +130,27 @@ export function quadraticBezier(out: Vec3, a: Vec3, b: Vec3, c: Vec3, t: number)
     );
 }
 
+/**
+ * Cubic Bezier A -> D, with one control point per END: B holds the direction the curve LEAVES A in,
+ * C the direction it ARRIVES at D from. That is the difference from quadraticBezier, which has one
+ * control for both ends and so cannot leave and arrive on different lines - put both controls
+ * straight above their own endpoint and the curve goes up out of A and comes back down onto D.
+ */
+export function cubicBezier(out: Vec3, a: Vec3, b: Vec3, c: Vec3, d: Vec3, t: number): Vec3
+{
+    const inverse = 1 - t;
+    const wa = inverse * inverse * inverse;
+    const wb = 3 * inverse * inverse * t;
+    const wc = 3 * inverse * t * t;
+    const wd = t * t * t;
+
+    return out.set(
+        a.x * wa + b.x * wb + c.x * wc + d.x * wd,
+        a.y * wa + b.y * wb + c.y * wc + d.y * wd,
+        a.z * wa + b.z * wb + c.z * wc + d.z * wd,
+    );
+}
+
 export function pathLength(path: Vec3[])
 {
     let length = 0;
