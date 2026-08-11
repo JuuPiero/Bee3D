@@ -202,8 +202,15 @@ export class GridMeshChunk
     public cubeCount = 0;
     /** Number of cubes currently occupying a slot at the front of `indices`. */
     public liveCount = 0;
+    /** Set when `indices`/`liveCount` changed since the last upload; cleared by the owner. */
+    public dirty = false;
 
-    constructor (public readonly capacity: number, verticesPerCube: number, indicesPerCube: number)
+    constructor (
+        public readonly index: number,
+        public readonly capacity: number,
+        verticesPerCube: number,
+        indicesPerCube: number
+    )
     {
         const vertexCount = capacity * verticesPerCube;
 
@@ -223,10 +230,15 @@ export class GridMeshChunk
 /**
  * Splits cubes into chunks and fills each chunk's vertex streams.
  *
- * Chunks are packed in fill order rather than by grid region on purpose: createDynamicMesh
- * preallocates `maxSubMeshes * maxSubMeshVertices` bytes per stream, so sparsely filled
- * spatial chunks would waste memory proportional to the chunk count. Callers that want
- * spatial locality should sort `cubes` before calling.
+ * Chunks are packed in fill order rather than by grid region on purpose: a spatial partition
+ * would leave partly filled chunks all over the grid, and every chunk costs a preallocated
+ * vertex buffer sized to its capacity. Callers that want spatial locality should sort `cubes`
+ * before calling, which keeps fill order and grid neighbourhoods close to each other.
+ *
+ * `cubesPerChunkHint` is what trades draw calls against re-upload cost. One huge chunk is the
+ * fewest draw calls but re-uploads the whole grid whenever a single cube changes; smaller
+ * chunks mean more draw calls but a rebuild that touches only the chunks that actually changed.
+ * The hint is clamped to what a uint16 index buffer can address.
  */
 export class GridMeshBuilder
 {
@@ -235,11 +247,15 @@ export class GridMeshBuilder
     public readonly verticesPerCube: number;
     public readonly indicesPerCube: number;
 
-    constructor (private readonly _source: IBakedCubeSource, cubeCount: number)
+    constructor (private readonly _source: IBakedCubeSource, cubeCount: number, cubesPerChunkHint: number = 0)
     {
         this.verticesPerCube = _source.vertexCount;
         this.indicesPerCube = _source.indexCount;
-        this.cubesPerChunk = Math.max(1, Math.floor(MAX_VERTICES_PER_CHUNK / this.verticesPerCube));
+
+        const vertexLimit = Math.max(1, Math.floor(MAX_VERTICES_PER_CHUNK / this.verticesPerCube));
+        this.cubesPerChunk = cubesPerChunkHint > 0
+            ? Math.max(1, Math.min(Math.floor(cubesPerChunkHint), vertexLimit))
+            : vertexLimit;
 
         const chunkCount = Math.max(1, Math.ceil(cubeCount / this.cubesPerChunk));
 
@@ -247,7 +263,7 @@ export class GridMeshBuilder
         {
             const remaining = cubeCount - i * this.cubesPerChunk;
             const capacity = Math.max(1, Math.min(this.cubesPerChunk, remaining));
-            this.chunks.push(new GridMeshChunk(capacity, this.verticesPerCube, this.indicesPerCube));
+            this.chunks.push(new GridMeshChunk(i, capacity, this.verticesPerCube, this.indicesPerCube));
         }
     }
 
@@ -259,6 +275,21 @@ export class GridMeshBuilder
     public get maxSubMeshIndices (): number
     {
         return this.cubesPerChunk * this.indicesPerCube;
+    }
+
+    /**
+     * Buffer sizes for a mesh that holds this chunk alone. The last chunk is usually short, and
+     * a chunk never grows past the capacity it was built with, so sizing per chunk instead of
+     * with maxSubMeshVertices avoids preallocating vertex buffers for cubes that don't exist.
+     */
+    public chunkMaxVertices (chunk: GridMeshChunk): number
+    {
+        return chunk.capacity * this.verticesPerCube;
+    }
+
+    public chunkMaxIndices (chunk: GridMeshChunk): number
+    {
+        return chunk.capacity * this.indicesPerCube;
     }
 
     public getLiveIndexCount (chunk: GridMeshChunk): number
@@ -371,5 +402,28 @@ export class GridMeshBuilder
             maxPos: chunk.maxPos,
         };
     }
+}
+
+/** Shared empty stream: Mesh.updateSubMesh skips any vertex buffer of length 0. */
+const NO_VERTEX_DATA = new Float32Array(0);
+
+/**
+ * Geometry that carries a chunk's index range and nothing else.
+ *
+ * Mesh.updateSubMesh only pushes a vertex stream when its array is non-empty, and it leaves
+ * the corresponding vertex buffer, its view count and drawInfo.vertexCount untouched
+ * otherwise - so passing this re-uploads the index buffer alone and keeps the vertex data
+ * that buildGeometry() already put on the GPU. Use it for visibility-only changes; anything
+ * that rewrites vertices has to go through buildGeometry().
+ *
+ * minPos/maxPos are deliberately omitted: the chunk's bounds cover every cube written into
+ * it, visible or not, so hiding cubes never shrinks them and there is nothing to re-send.
+ */
+export function buildIndexOnlyGeometry (chunk: GridMeshChunk, indicesPerCube: number): primitives.IDynamicGeometry
+{
+    return {
+        positions: NO_VERTEX_DATA,
+        indices16: chunk.indices.subarray(0, chunk.liveCount * indicesPerCube),
+    };
 }
 

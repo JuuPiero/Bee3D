@@ -1,9 +1,10 @@
-import { _decorator, CCInteger, Color, Component, Material, Mesh, MeshRenderer, Vec3, utils } from 'cc';
+import { _decorator, CCInteger, Color, Component, Material, Mesh, MeshRenderer, Node, Vec3, utils } from 'cc';
 import { ColorConfig } from '../../configData/ColorConfig';
 import { EColor } from '../../enums/EColor';
 import { LevelData3D } from '../../configData/LevelData3D';
 import {
     GridMeshBuilder,
+    GridMeshChunk,
     IBakedCubeSource,
     IMergedCube,
     bakeCubeSource,
@@ -29,7 +30,19 @@ const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [number, number, number]> = [
 ];
 
 /**
- * Renders a whole 3D cube grid as a single dynamic mesh under one MeshRenderer.
+ * Renders a whole 3D cube grid as a set of dynamic meshes, one per chunk of cubes.
+ *
+ * Each chunk owns its own child Node + MeshRenderer + Mesh, so a removal only rebuilds the
+ * chunks it actually touched (the removed cube's, plus the chunk of any neighbour it exposed)
+ * instead of re-uploading the entire grid. Placements are sorted into spatial blocks first, so
+ * a cube and its 6 neighbours almost always land in the same chunk and a removal usually costs
+ * exactly one chunk upload. The cost of the split is one draw call per chunk - see the
+ * cubesPerChunk property for the trade-off.
+ *
+ * A chunk's mesh is recreated rather than patched in place, because updating only the index
+ * range of a live submesh is not reliably picked up by the renderer on every engine/platform
+ * combination. That makes cleanup mandatory: _uploadChunk() destroys the Mesh it replaces, and
+ * clear() destroys every chunk mesh and node, so nothing leaks across levels.
  *
  * A cube whose 6 axis-aligned neighbours all exist and are all still present is fully enclosed
  * and never contributes a visible fragment, so it is skipped: its vertices are written but it
@@ -66,10 +79,16 @@ export class GridMeshGrid3D extends Component
     @property({ type: Vec3, group: 'Cube Transform', tooltip: 'Extra offset applied to every cube.' })
     public cubePivotOffset: Vec3 = new Vec3(0, 0, 0);
 
-    private _renderer: MeshRenderer = null;
+    @property({ type: CCInteger, min: 1, group: 'Chunking', tooltip: 'Cubes per mesh chunk. Each chunk is one child MeshRenderer with its own mesh, and removing a cube only re-uploads the chunk(s) it touched - so smaller chunks mean cheaper removals but more draw calls. Clamped to whatever a uint16 index buffer can address for this source mesh. 512 suits the usual few-thousand-cube level.' })
+    public cubesPerChunk: number = 512;
+
     private _source: IBakedCubeSource = null;
     private _builder: GridMeshBuilder = null;
-    private _mesh: Mesh = null;
+
+    /** One child node / renderer / mesh per chunk, all index-aligned with _builder.chunks. */
+    private _chunkNodes: Node[] = [];
+    private _chunkRenderers: MeshRenderer[] = [];
+    private _chunkMeshes: Mesh[] = [];
 
     /** LevelData3D.gridKey(x, y, z) -> cube ordinal. */
     private _ordinalByKey: Map<string, number> = new Map<string, number>();
@@ -84,11 +103,12 @@ export class GridMeshGrid3D extends Component
     private _cubeCount = 0;
 
     /**
-     * Combines every cube in `cubes` into one dynamic mesh, one MeshRenderer, N chunks. Cubes
-     * enclosed by all 6 neighbours are written but not drawn; every other cube is drawn until
-     * removeBlock() removes it.
+     * Combines every cube in `cubes` into one dynamic mesh per chunk of cubesPerChunk cubes,
+     * each under its own child MeshRenderer. Cubes enclosed by all 6 neighbours are written but
+     * not drawn; every other cube is drawn until removeBlock() removes it.
      * Callers must not pass duplicate (x, y, z) entries; the last one wins the coordinate but
      * the earlier one's vertex data stays permanently drawn in a dead slot.
+     * `cubes` is not mutated - build() sorts a copy of it for chunk locality.
      */
     public build (cubes: ICubePlacement[]): boolean
     {
@@ -120,28 +140,28 @@ export class GridMeshGrid3D extends Component
             return false;
         }
 
-        this._builder = new GridMeshBuilder(this._source, this._cubeCount);
+        this._builder = new GridMeshBuilder(this._source, this._cubeCount, this.cubesPerChunk);
 
         this._removed = new Uint8Array(this._cubeCount);
         this._slotOfCube = new Int32Array(this._cubeCount).fill(-1);
         this._cubeOfSlot = new Int32Array(this._builder.chunks.length * this._builder.cubesPerChunk).fill(-1);
         this._coords = new Int32Array(this._cubeCount * 3);
 
-        this._writeVertices(cubes);
+        this._writeVertices(GridMeshGrid3D.sortForChunkLocality(cubes, this._builder.cubesPerChunk));
         this._assignSlots();
 
-        return this._createMesh();
+        return this._createChunkMeshes();
     }
 
     /**
      * Removes the cube at (x, y, z) immediately: drops it from the draw set (a no-op if it was
      * enclosed and therefore never drawn), draws any of its 6 neighbours the removal exposed,
-     * and re-uploads. Returns false if the coordinate was never built, or was already removed
-     * (double-removal is a no-op, not an error).
+     * and re-uploads only the chunks those cubes live in. Returns false if the coordinate was
+     * never built, or was already removed (double-removal is a no-op, not an error).
      */
     public removeBlock (x: number, y: number, z: number): boolean
     {
-        if (!this._builder || !this._mesh || !this._removed || !this._slotOfCube || !this._cubeOfSlot)
+        if (!this._builder || this._chunkMeshes.length === 0 || !this._removed || !this._slotOfCube || !this._cubeOfSlot)
         {
             console.warn('[GridMeshGrid3D] removeBlock() called before build().');
             return false;
@@ -165,9 +185,9 @@ export class GridMeshGrid3D extends Component
         this._hideCube(ordinal);
         this._revealNeighboursOf(ordinal);
 
-        // One recreate covering the removal and every neighbour it exposed, so Cocos sees the
-        // new draw ranges immediately - deliberately more conservative than index-only updates.
-        this._rebuildMesh();
+        // _hideCube/_revealNeighboursOf flagged the chunks whose index ranges changed; every
+        // other chunk keeps the mesh it already has on the GPU.
+        this._uploadDirtyChunks();
 
         return true;
     }
@@ -186,7 +206,7 @@ export class GridMeshGrid3D extends Component
         return ordinal !== undefined && this._removed[ordinal] === 0;
     }
 
-    /** Cubes in the grid, cubes actually being drawn, chunk count and triangle count. */
+    /** Cubes in the grid, cubes actually being drawn, chunk (= draw call) count and triangles. */
     public getStats (): { cubes: number; drawn: number; chunks: number; triangles: number }
     {
         let drawn = 0;
@@ -203,18 +223,40 @@ export class GridMeshGrid3D extends Component
         };
     }
 
+    /**
+     * Switches the whole cube map's rendering on or off without touching the chunk meshes, so it
+     * can be turned back on for the next level. Every chunk lives on its own child node, so a
+     * caller cannot just reach for a MeshRenderer on this component's node any more.
+     */
+    public setRenderersEnabled (enabled: boolean): void
+    {
+        for (const renderer of this._chunkRenderers)
+        {
+            if (renderer && renderer.isValid) renderer.enabled = enabled;
+        }
+    }
+
     public clear (): void
     {
-        if (this._renderer)
+        // Drop the mesh reference before destroying the mesh: a renderer left pointing at a
+        // destroyed Mesh would keep submitting its (now released) buffers.
+        for (const renderer of this._chunkRenderers)
         {
-            this._renderer.mesh = null;
+            if (renderer && renderer.isValid) renderer.mesh = null;
         }
+        this._chunkRenderers.length = 0;
 
-        if (this._mesh)
+        for (const mesh of this._chunkMeshes)
         {
-            this._mesh.destroy();
-            this._mesh = null;
+            mesh?.destroy();
         }
+        this._chunkMeshes.length = 0;
+
+        for (const node of this._chunkNodes)
+        {
+            if (node && node.isValid) node.destroy();
+        }
+        this._chunkNodes.length = 0;
 
         this._ordinalByKey.clear();
         this._source = null;
@@ -333,11 +375,13 @@ export class GridMeshGrid3D extends Component
         this._cubeOfSlot[chunkIndex * cubesPerChunk + slot] = ordinal;
         this._slotOfCube[ordinal] = slot;
         chunk.liveCount = slot + 1;
+        chunk.dirty = true;
     }
 
     /**
      * Frees a slot by moving the last live cube into it, keeping the draw range contiguous.
-     * A no-op for a cube that was never drawn (an enclosed one). The caller re-uploads.
+     * A no-op for a cube that was never drawn (an enclosed one). The swapped-in cube always
+     * comes from the same chunk, so only that one chunk is dirtied. The caller re-uploads.
      */
     private _hideCube (ordinal: number): void
     {
@@ -379,67 +423,148 @@ export class GridMeshGrid3D extends Component
         this._cubeOfSlot[slotBase + lastSlot] = -1;
         this._slotOfCube[ordinal] = -1;
         chunk.liveCount = lastSlot;
-    }
-
-    private _createMesh (): boolean
-    {
-        return this._rebuildMesh();
+        chunk.dirty = true;
     }
 
     /**
-     * Recreates the Cocos dynamic mesh from the builder's current chunk data.
+     * Spawns one child node + MeshRenderer per chunk and uploads each chunk's geometry.
      *
-     * Vertex arrays remain cached in GridMeshBuilder; only the Mesh GPU object is recreated.
-     * This makes removals deterministic even on engine/platform combinations where changing
-     * only the index range of an existing submesh is not reflected by the renderer immediately.
+     * The children sit at the component node's origin with no local transform, so every cube's
+     * baked local position still means the same thing it did as a single merged mesh.
      */
-    private _rebuildMesh (): boolean
+    private _createChunkMeshes (): boolean
     {
-        if (!this._builder || this._builder.chunks.length === 0)
+        const chunks = this._builder ? this._builder.chunks : [];
+        if (chunks.length === 0) return false;
+
+        // A single MeshRenderer on this node is what earlier builds of this component drew
+        // through. The chunk children own the drawing now, so leave it holding nothing.
+        const legacyRenderer = this.getComponent(MeshRenderer);
+        if (legacyRenderer)
         {
-            return false;
+            legacyRenderer.mesh = null;
+            legacyRenderer.enabled = false;
         }
 
-        const chunks = this._builder.chunks;
-        const oldMesh = this._mesh;
+        for (const chunk of chunks)
+        {
+            const node = new Node(`CubeChunk_${chunk.index}`);
+            node.layer = this.node.layer;
+            node.setParent(this.node);
+            node.setPosition(0, 0, 0);
+
+            const renderer = node.addComponent(MeshRenderer);
+            renderer.setMaterial(this.material, 0);
+
+            this._chunkNodes.push(node);
+            this._chunkRenderers.push(renderer);
+            this._chunkMeshes.push(null);
+
+            chunk.dirty = true;
+        }
+
+        return this._uploadDirtyChunks();
+    }
+
+    /** Re-uploads every chunk flagged dirty, and clears the flag. Untouched chunks are skipped. */
+    private _uploadDirtyChunks (): boolean
+    {
+        const chunks = this._builder ? this._builder.chunks : [];
+        let ok = true;
+
+        for (const chunk of chunks)
+        {
+            if (!chunk.dirty) continue;
+
+            chunk.dirty = false;
+            if (!this._uploadChunk(chunk)) ok = false;
+        }
+
+        return ok;
+    }
+
+    /**
+     * Rebuilds one chunk's Cocos dynamic mesh from the builder's cached vertex/index arrays and
+     * hands it to that chunk's renderer.
+     *
+     * The mesh is recreated rather than patched through Mesh.updateSubMesh(): changing only the
+     * index range of a live submesh is not reflected by the renderer on every engine/platform
+     * combination, and a wrong draw range shows up as stray or missing cubes. Recreating costs
+     * one Mesh allocation per changed chunk - which is exactly why the grid is chunked, so a
+     * removal pays that for one chunk instead of the whole level - and it makes destroying the
+     * mesh it replaces mandatory, since nothing else releases those GPU buffers.
+     */
+    private _uploadChunk (chunk: GridMeshChunk): boolean
+    {
+        const index = chunk.index;
+        const renderer = this._chunkRenderers[index];
+        if (!renderer || !renderer.isValid) return false;
+
+        // Every cube in the chunk is gone or enclosed: there is nothing to draw, so drop the mesh
+        // instead of building one with an empty index range.
+        if (chunk.liveCount === 0)
+        {
+            renderer.mesh = null;
+            this._chunkMeshes[index]?.destroy();
+            this._chunkMeshes[index] = null;
+            return true;
+        }
 
         const newMesh = utils.MeshUtils.createDynamicMesh(
             0,
-            this._builder.buildGeometry(chunks[0]),
+            this._builder.buildGeometry(chunk),
             undefined,
             {
-                maxSubMeshes: chunks.length,
-                maxSubMeshVertices: this._builder.maxSubMeshVertices,
-                maxSubMeshIndices: this._builder.maxSubMeshIndices,
+                maxSubMeshes: 1,
+                maxSubMeshVertices: this._builder.chunkMaxVertices(chunk),
+                maxSubMeshIndices: this._builder.chunkMaxIndices(chunk),
             }
         );
 
         if (!newMesh)
         {
-            console.error('[GridMeshGrid3D] Failed to rebuild dynamic mesh.');
+            console.error(`[GridMeshGrid3D] Failed to build the mesh for chunk ${index}.`);
             return false;
         }
 
-        for (let i = 1; i < chunks.length; i++)
-        {
-            newMesh.updateSubMesh(i, this._builder.buildGeometry(chunks[i]));
-        }
+        const oldMesh = this._chunkMeshes[index];
 
-        this._renderer = this.getComponent(MeshRenderer) || this.addComponent(MeshRenderer);
-        this._renderer.mesh = newMesh;
+        renderer.mesh = newMesh;
+        renderer.setMaterial(this.material, 0);
+        this._chunkMeshes[index] = newMesh;
 
-        for (let i = 0; i < chunks.length; i++)
-        {
-            this._renderer.setMaterial(this.material, i);
-        }
-
-        this._mesh = newMesh;
-
+        // Only after the renderer has let go of it: destroying a Mesh releases its GPU buffers,
+        // and a renderer still pointing at those would draw from freed memory.
         if (oldMesh && oldMesh !== newMesh)
         {
             oldMesh.destroy();
         }
 
         return true;
+    }
+
+    /**
+     * Orders cubes so that grid neighbours end up in the same chunk.
+     *
+     * Chunks are cut from fill order, so the input order decides what shares a chunk. Sorting by
+     * cube-sized blocks first (rather than plain y/z/x, which would put the cube one row up in a
+     * far-away chunk) keeps a cube and its 6 neighbours together, which is what makes a removal
+     * usually dirty one chunk instead of up to seven. Returns a new array; the caller's is
+     * untouched.
+     */
+    private static sortForChunkLocality (cubes: ICubePlacement[], cubesPerChunk: number): ICubePlacement[]
+    {
+        // Cube-root of the chunk size, so one full block is roughly one chunk's worth of cubes.
+        const blockSize = Math.max(1, Math.floor(Math.cbrt(cubesPerChunk)));
+        const blockOf = (v: number): number => Math.floor(v / blockSize);
+
+        return cubes.slice().sort((a, b) =>
+            (blockOf(a.y) - blockOf(b.y))
+            || (blockOf(a.z) - blockOf(b.z))
+            || (blockOf(a.x) - blockOf(b.x))
+            || (a.y - b.y)
+            || (a.z - b.z)
+            || (a.x - b.x)
+        );
     }
 }

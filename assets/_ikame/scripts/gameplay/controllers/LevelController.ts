@@ -53,7 +53,6 @@ const ARC_HEIGHT_RATIO = 0.35;
 // speed, which over a linear-timed leg would be a lurch at the corridor mouth. So the leg is given
 // that same factor more time to run. It then enters at exactly the cruise speed the arc handed over,
 // and from there only ever slows - the whole leg is deceleration and nothing else.
-const BRAKE_EASING = easing.sineOut;
 const BRAKE_ENTRY_RATE = Math.PI / 2;
 
 @ccclass('LevelController')
@@ -510,11 +509,12 @@ export class LevelController extends Component implements ILevelController
     public doUpdate(dt: number): void
     {
         this.colorQueueControllers.doUpdate(dt);
+        this.levelGrid3D.updateVisibilities(dt);
     }
 
     public dolateUpdate(dt: number): void
     {
-        this.levelGrid3D.dolateUpdate(dt);
+        this.levelGrid3D.doLateUpdate(dt);
     }
 
     public trackLevelProgress(): void
@@ -730,7 +730,7 @@ export class LevelController extends Component implements ILevelController
         const pathObj = { t: 0 };
         tween(pathObj)
             .to(LevelController.pathTravelTime(path, cellWorldSize) * BRAKE_ENTRY_RATE, { t: 1 }, {
-                easing: easing.sineOut,
+                easing: easing.linear,
                 onUpdate: () =>
                 {
                     if (!bullet.isValid) return;
@@ -807,7 +807,7 @@ export class LevelController extends Component implements ILevelController
         const popObj = { t: 0 };
         tween(popObj)
             .to(POP_DURATION, { t: 1 }, {
-                easing: easing.backOut,
+                easing: easing.linear,
                 onUpdate: () =>
                 {
                     if (!bullet.isValid) return;

@@ -502,8 +502,9 @@ export class LevelGrid3D extends Component
     /** Toggles the cube map's own renderers - the merged mesh, and any renderer on the holder. */
     private setMeshRenderersEnabled(enabled: boolean): void
     {
-        const meshRenderer = this.gridMeshGrid ? this.gridMeshGrid.getComponent(MeshRenderer) : null;
-        if (meshRenderer) meshRenderer.enabled = enabled;
+        // One renderer per mesh chunk, so this goes through GridMeshGrid3D rather than a
+        // MeshRenderer lookup on its node.
+        this.gridMeshGrid?.setRenderersEnabled(enabled);
 
         const holderRenderer = this.cubeBlockHolder ? this.cubeBlockHolder.getComponent(MeshRenderer) : null;
         if (holderRenderer) holderRenderer.enabled = enabled;
@@ -531,7 +532,11 @@ export class LevelGrid3D extends Component
         return tile.getVisibilityResult().visibleSamples > this.visibilitySampleCountHideThreshold;
     }
 
-    dolateUpdate(dt: number): void
+    doLateUpdate(dt: number): void
+    {
+    }
+
+    updateVisibilities(dt: number): void
     {
         if (!this.camera || this._solidTiles.length === 0) return;
 

@@ -21,7 +21,7 @@ export class GameplayState extends GameStateBase
         this._levelController.doUpdate(dt);
     }
 
-    onLateUpdate(dt: number): void
+    public onLateUpdate(dt: number): void
     {
         this._levelController.dolateUpdate(dt);
     }
