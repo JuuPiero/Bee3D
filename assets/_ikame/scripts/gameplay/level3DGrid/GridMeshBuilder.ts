@@ -202,6 +202,12 @@ export class GridMeshChunk
     public cubeCount = 0;
     /** Number of cubes currently occupying a slot at the front of `indices`. */
     public liveCount = 0;
+    /**
+     * Slots whose indices are currently on the GPU, live or degenerate. Tracks how far past
+     * liveCount the index buffer still holds data, so a shrinking draw range knows exactly which
+     * slots it has to overwrite - see GridMeshGrid3D._uploadChunk().
+     */
+    public uploadedSlots = 0;
     /** Set when `indices`/`liveCount` changed since the last upload; cleared by the owner. */
     public dirty = false;
 
@@ -372,8 +378,31 @@ export class GridMeshBuilder
         }
     }
 
-    /** Full geometry for a chunk, used on creation and whenever vertex data changes. */
-    public buildGeometry (chunk: GridMeshChunk): primitives.IDynamicGeometry
+    /**
+     * Turns the index slots in [fromSlot, toSlot) into degenerate triangles.
+     *
+     * Every index becomes 0, so each triangle collapses onto the chunk's first vertex and covers
+     * no pixels. That makes the tail of the index buffer safe to draw: shrinking the draw range
+     * depends on the renderer picking up a new index count, whereas a degenerate slot renders
+     * nothing whether that count was picked up or not.
+     */
+    public clearIndexSlots (chunk: GridMeshChunk, fromSlot: number, toSlot: number): void
+    {
+        const from = Math.max(0, fromSlot) * this.indicesPerCube;
+        const to = Math.min(toSlot * this.indicesPerCube, chunk.indices.length);
+
+        if (to > from) chunk.indices.fill(0, from, to);
+    }
+
+    /**
+     * Full geometry for a chunk, used on creation and whenever vertex data changes.
+     *
+     * `indexCount` defaults to the live draw range. Pass chunkMaxIndices() when creating the
+     * mesh: createDynamicMesh() only allocates an index view when the geometry it is handed has
+     * a non-empty index array, so a chunk that happens to start with nothing visible would
+     * otherwise get a mesh that can never be given indices again.
+     */
+    public buildGeometry (chunk: GridMeshChunk, indexCount: number = this.getLiveIndexCount(chunk)): primitives.IDynamicGeometry
     {
         const vertexCount = chunk.cubeCount * this.verticesPerCube;
 
@@ -397,7 +426,7 @@ export class GridMeshBuilder
                     values: chunk.capLocals.subarray(0, vertexCount * 3),
                 },
             ],
-            indices16: chunk.indices.subarray(0, this.getLiveIndexCount(chunk)),
+            indices16: chunk.indices.subarray(0, indexCount),
             minPos: chunk.minPos,
             maxPos: chunk.maxPos,
         };
@@ -418,12 +447,20 @@ const NO_VERTEX_DATA = new Float32Array(0);
  *
  * minPos/maxPos are deliberately omitted: the chunk's bounds cover every cube written into
  * it, visible or not, so hiding cubes never shrinks them and there is nothing to re-send.
+ *
+ * `slotCount` defaults to the live draw range. Pass a larger count to also push slots that have
+ * been vacated - updateSubMesh() always uploads from the start of the buffer, so covering a
+ * vacated slot means including every slot in front of it too.
  */
-export function buildIndexOnlyGeometry (chunk: GridMeshChunk, indicesPerCube: number): primitives.IDynamicGeometry
+export function buildIndexOnlyGeometry (
+    chunk: GridMeshChunk,
+    indicesPerCube: number,
+    slotCount: number = chunk.liveCount
+): primitives.IDynamicGeometry
 {
     return {
         positions: NO_VERTEX_DATA,
-        indices16: chunk.indices.subarray(0, chunk.liveCount * indicesPerCube),
+        indices16: chunk.indices.subarray(0, slotCount * indicesPerCube),
     };
 }
 

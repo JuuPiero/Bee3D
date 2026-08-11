@@ -33,6 +33,10 @@
     {
       "name": "VFX",
       "value": 131072
+    },
+    {
+      "name": "Shooter",
+      "value": 65536
     }
   ]
 }

@@ -1,14 +1,14 @@
 {
-  "ver": "2.3.14",
+  "ver": "2.3.13",
   "importer": "fbx",
   "imported": true,
   "uuid": "09efeddb-627d-4421-a5af-346c912264c2",
   "files": [
-    "__original-animation-0.bin",
-    "__original-animation-1.bin",
-    "__original-animation-2.bin",
-    "__original-animation-3.bin",
-    "__original-animation-4.bin"
+    "__original-animation-0.cconb",
+    "__original-animation-1.cconb",
+    "__original-animation-2.cconb",
+    "__original-animation-3.cconb",
+    "__original-animation-4.cconb"
   ],
   "subMetas": {
     "a62fe": {
@@ -46,10 +46,10 @@
         "events": [],
         "speed": 2
       },
-      "ver": "1.0.18",
+      "ver": "1.0.17",
       "imported": true,
       "files": [
-        ".bin"
+        ".cconb"
       ],
       "subMetas": {}
     },
@@ -69,10 +69,10 @@
         },
         "events": []
       },
-      "ver": "1.0.18",
+      "ver": "1.0.17",
       "imported": true,
       "files": [
-        ".bin"
+        ".cconb"
       ],
       "subMetas": {}
     },
@@ -92,10 +92,10 @@
         },
         "events": []
       },
-      "ver": "1.0.18",
+      "ver": "1.0.17",
       "imported": true,
       "files": [
-        ".bin"
+        ".cconb"
       ],
       "subMetas": {}
     },
@@ -115,10 +115,10 @@
         },
         "events": []
       },
-      "ver": "1.0.18",
+      "ver": "1.0.17",
       "imported": true,
       "files": [
-        ".bin"
+        ".cconb"
       ],
       "subMetas": {}
     },
@@ -144,10 +144,10 @@
         },
         "auxiliaryCurves": {}
       },
-      "ver": "1.0.18",
+      "ver": "1.0.17",
       "imported": true,
       "files": [
-        ".bin"
+        ".cconb"
       ],
       "subMetas": {}
     },

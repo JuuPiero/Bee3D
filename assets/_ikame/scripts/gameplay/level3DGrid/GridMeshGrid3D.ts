@@ -8,6 +8,7 @@ import {
     IBakedCubeSource,
     IMergedCube,
     bakeCubeSource,
+    buildIndexOnlyGeometry,
 } from './GridMeshBuilder';
 
 const { ccclass, property } = _decorator;
@@ -39,10 +40,10 @@ const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [number, number, number]> = [
  * exactly one chunk upload. The cost of the split is one draw call per chunk - see the
  * cubesPerChunk property for the trade-off.
  *
- * A chunk's mesh is recreated rather than patched in place, because updating only the index
- * range of a live submesh is not reliably picked up by the renderer on every engine/platform
- * combination. That makes cleanup mandatory: _uploadChunk() destroys the Mesh it replaces, and
- * clear() destroys every chunk mesh and node, so nothing leaks across levels.
+ * A chunk's Mesh is allocated once in build() and then patched in place: _uploadChunk() pushes
+ * the new index range through Mesh.updateSubMesh() and tells the chunk's MeshRenderer about it,
+ * so a removal costs one index-buffer upload and no allocation at all. clear() still destroys
+ * every chunk mesh and node, since nothing else releases those GPU buffers.
  *
  * A cube whose 6 axis-aligned neighbours all exist and are all still present is fully enclosed
  * and never contributes a visible fragment, so it is skipped: its vertices are written but it
@@ -185,8 +186,10 @@ export class GridMeshGrid3D extends Component
         this._hideCube(ordinal);
         this._revealNeighboursOf(ordinal);
 
-        // _hideCube/_revealNeighboursOf flagged the chunks whose index ranges changed; every
-        // other chunk keeps the mesh it already has on the GPU.
+        // _hideCube/_revealNeighboursOf flagged the chunks whose index ranges changed; every other
+        // chunk keeps what it already has on the GPU. Chunks left dirty by an upload that could
+        // not reach the GPU earlier are retried here too - their index buffers still hold a
+        // pre-removal draw range.
         this._uploadDirtyChunks();
 
         return true;
@@ -234,6 +237,11 @@ export class GridMeshGrid3D extends Component
         {
             if (renderer && renderer.isValid) renderer.enabled = enabled;
         }
+
+        // A renderer only builds its Model once it is enabled in the hierarchy, and _uploadChunk()
+        // cannot narrow a draw range before that Model exists - so any chunk still flagged dirty
+        // from a removal made while this was switched off gets its upload retried here.
+        if (enabled) this._uploadDirtyChunks();
     }
 
     public clear (): void
@@ -456,17 +464,55 @@ export class GridMeshGrid3D extends Component
             const renderer = node.addComponent(MeshRenderer);
             renderer.setMaterial(this.material, 0);
 
+            // Registered before the mesh exists so that clear() still tears the node down if
+            // mesh creation fails below.
             this._chunkNodes.push(node);
             this._chunkRenderers.push(renderer);
             this._chunkMeshes.push(null);
 
+            // Created with the chunk's full index capacity rather than its live range, so the
+            // mesh always ends up with an index view large enough for every cube in the chunk to
+            // be revealed later. _uploadDirtyChunks() below immediately narrows the draw range
+            // to the cubes that are actually visible.
+            const mesh = utils.MeshUtils.createDynamicMesh(
+                0,
+                this._builder.buildGeometry(chunk, this._builder.chunkMaxIndices(chunk)),
+                undefined,
+                {
+                    maxSubMeshes: 1,
+                    maxSubMeshVertices: this._builder.chunkMaxVertices(chunk),
+                    maxSubMeshIndices: this._builder.chunkMaxIndices(chunk),
+                }
+            );
+
+            if (!mesh)
+            {
+                console.error(`[GridMeshGrid3D] Failed to build the mesh for chunk ${chunk.index}.`);
+                return false;
+            }
+
+            renderer.mesh = mesh;
+            this._chunkMeshes[chunk.index] = mesh;
+
+            // The whole capacity just went to the GPU, but only the live slots hold real indices -
+            // everything past them is still the zero-fill the arrays were created with, i.e.
+            // already degenerate. So the slots _uploadChunk() may have to erase later start at
+            // the live count, not at the capacity.
+            chunk.uploadedSlots = chunk.liveCount;
             chunk.dirty = true;
         }
 
         return this._uploadDirtyChunks();
     }
 
-    /** Re-uploads every chunk flagged dirty, and clears the flag. Untouched chunks are skipped. */
+    /**
+     * Re-uploads every chunk flagged dirty. Untouched chunks are skipped.
+     *
+     * The flag is only cleared once the upload actually went through. A chunk that failed and
+     * lost its flag anyway would keep whatever draw range it had on the GPU, and since the index
+     * buffer holds the previous, longer range past the live count, that shows up as removed cubes
+     * staying on screen permanently - nothing would ever come back to correct it.
+     */
     private _uploadDirtyChunks (): boolean
     {
         const chunks = this._builder ? this._builder.chunks : [];
@@ -476,69 +522,62 @@ export class GridMeshGrid3D extends Component
         {
             if (!chunk.dirty) continue;
 
-            chunk.dirty = false;
-            if (!this._uploadChunk(chunk)) ok = false;
+            if (this._uploadChunk(chunk)) chunk.dirty = false;
+            else ok = false;
         }
 
         return ok;
     }
 
     /**
-     * Rebuilds one chunk's Cocos dynamic mesh from the builder's cached vertex/index arrays and
-     * hands it to that chunk's renderer.
+     * Pushes one chunk's current draw range into the mesh it already owns, without allocating
+     * anything.
      *
-     * The mesh is recreated rather than patched through Mesh.updateSubMesh(): changing only the
-     * index range of a live submesh is not reflected by the renderer on every engine/platform
-     * combination, and a wrong draw range shows up as stray or missing cubes. Recreating costs
-     * one Mesh allocation per changed chunk - which is exactly why the grid is chunked, so a
-     * removal pays that for one chunk instead of the whole level - and it makes destroying the
-     * mesh it replaces mandatory, since nothing else releases those GPU buffers.
+     * Only the index buffer moves. Mesh.updateSubMesh() skips any vertex stream whose array is
+     * empty, and buildIndexOnlyGeometry() hands it exactly that, so the position/normal/colour/
+     * a_capLocal buffers written once in build() stay on the GPU untouched.
+     *
+     * Removed cubes are erased from the buffer, not just left outside the draw range. Narrowing
+     * the range alone is not enough to make a cube disappear: a dynamic mesh's index buffer is
+     * allocated at full capacity and InputAssembler.initialize() starts its draw range covering
+     * all of it, so the count updateSubMesh() computes only takes effect once it has travelled
+     * from the RenderingSubMesh's DrawInfo to the InputAssembler's via onGeometryChanged(). Any
+     * frame where that has not happened draws the stale tail - which is the cube that was just
+     * removed, still fully intact, because vertex data is never rewritten. So the slots between
+     * the new live count and whatever was last uploaded are first collapsed into degenerate
+     * triangles and pushed to the GPU; the tight range that follows is then an optimisation
+     * rather than the thing correctness rests on.
+     *
+     * A chunk whose every cube is gone or enclosed ends up with a zero-length draw range over a
+     * fully degenerate buffer, and keeps its mesh ready for a neighbour removal to reveal a cube.
      */
     private _uploadChunk (chunk: GridMeshChunk): boolean
     {
         const index = chunk.index;
+        const mesh = this._chunkMeshes[index];
         const renderer = this._chunkRenderers[index];
-        if (!renderer || !renderer.isValid) return false;
 
-        // Every cube in the chunk is gone or enclosed: there is nothing to draw, so drop the mesh
-        // instead of building one with an empty index range.
-        if (chunk.liveCount === 0)
+        if (!mesh || !mesh.isValid || !renderer || !renderer.isValid) return false;
+
+        const indicesPerCube = this._builder.indicesPerCube;
+        const live = chunk.liveCount;
+
+        if (live < chunk.uploadedSlots)
         {
-            renderer.mesh = null;
-            this._chunkMeshes[index]?.destroy();
-            this._chunkMeshes[index] = null;
-            return true;
+            this._builder.clearIndexSlots(chunk, live, chunk.uploadedSlots);
+            mesh.updateSubMesh(0, buildIndexOnlyGeometry(chunk, indicesPerCube, chunk.uploadedSlots));
         }
 
-        const newMesh = utils.MeshUtils.createDynamicMesh(
-            0,
-            this._builder.buildGeometry(chunk),
-            undefined,
-            {
-                maxSubMeshes: 1,
-                maxSubMeshVertices: this._builder.chunkMaxVertices(chunk),
-                maxSubMeshIndices: this._builder.chunkMaxIndices(chunk),
-            }
-        );
+        mesh.updateSubMesh(0, buildIndexOnlyGeometry(chunk, indicesPerCube, live));
+        chunk.uploadedSlots = live;
 
-        if (!newMesh)
-        {
-            console.error(`[GridMeshGrid3D] Failed to build the mesh for chunk ${index}.`);
-            return false;
-        }
+        // No Model yet means the renderer has never been enabled in the hierarchy, and
+        // onGeometryChanged() would silently do nothing. Report failure so the chunk stays dirty
+        // and setRenderersEnabled()/removeBlock() retries it once the Model exists - the buffer
+        // contents are already correct either way, this only costs a too-wide draw range.
+        if (!renderer.model) return false;
 
-        const oldMesh = this._chunkMeshes[index];
-
-        renderer.mesh = newMesh;
-        renderer.setMaterial(this.material, 0);
-        this._chunkMeshes[index] = newMesh;
-
-        // Only after the renderer has let go of it: destroying a Mesh releases its GPU buffers,
-        // and a renderer still pointing at those would draw from freed memory.
-        if (oldMesh && oldMesh !== newMesh)
-        {
-            oldMesh.destroy();
-        }
+        renderer.onGeometryChanged();
 
         return true;
     }
