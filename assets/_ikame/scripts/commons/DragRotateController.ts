@@ -1,5 +1,14 @@
-import { _decorator, Camera, CCBoolean, Component, EventTouch, Input, input, math, Node, Quat, Vec2, Vec3 } from 'cc';
+import { _decorator, Camera, CCBoolean, Component, EventTouch, Input, input, math, Node, Quat, Vec2, Vec3, view } from 'cc';
 const { ccclass, property } = _decorator;
+
+/** An owning touch with no movement for this long is treated as dead, so a
+ *  dropped TOUCH_END can never permanently block further drags. */
+const STALE_TOUCH_MS = 1000;
+
+/** Sentinels for `_activeTouchId`. Kept distinct so a platform that reports a
+ *  null touch id can never be mistaken for "no drag in progress". */
+const NO_TOUCH = -1;
+const UNIDENTIFIED_TOUCH = -2;
 
 @ccclass('DragRotateController')
 export class DragRotateController extends Component {
@@ -30,6 +39,13 @@ export class DragRotateController extends Component {
     @property
     allowVerticalRotation: boolean = false;
 
+    @property({
+        range: [ 0, 1, 0.01 ],
+        slide: true,
+        tooltip: 'Fraction of the screen height, measured from the top, in which a drag may start. 0.5 = upper half only, 1 = whole screen.'
+    })
+    touchAreaHeightPercent: number = 0.5;
+
     @property({ type: Camera })
     camera: Camera = null;
 
@@ -47,6 +63,7 @@ export class DragRotateController extends Component {
     private _hasDragged: boolean = false;   // true if finger moved significantly this touch
     private _lastAutoRotateDirection: number = 1;
     private _lastMoveTime: number = 0;
+    private _activeTouchId: number = NO_TOUCH; // touch that owns the current drag
 
     start() 
     {
@@ -131,8 +148,48 @@ export class DragRotateController extends Component {
         this.applyRotation(final);
     }
 
+    /** True if the touch point falls inside the top `touchAreaHeightPercent` of the screen.
+     *  UI location has its origin at the bottom-left, so the allowed band is the top slice. */
+    private isInTouchArea(event: EventTouch): boolean {
+        if (this.touchAreaHeightPercent >= 1) return true;
+        const height = view.getVisibleSize().height;
+        if (height <= 0) return true;
+        return event.getUILocation().y >= height * (1 - this.touchAreaHeightPercent);
+    }
+
+    private touchIdOf(event: EventTouch): number {
+        const id = event.getID();
+        return id === null ? UNIDENTIFIED_TOUCH : id;
+    }
+
+    /** Give up ownership of the drag and stop treating a finger as down. */
+    private releaseTouch(): void {
+        this._activeTouchId = NO_TOUCH;
+        this._touchActive = false;
+    }
+
     // ── touch callbacks (attach via node.on / input.on externally) ───────
     onTouchStart(event: EventTouch): void {
+        const id = this.touchIdOf(event);
+
+        // Watchdog: a TOUCH_END/CANCEL that never arrived would otherwise strand
+        // ownership and ignore every later drag. An owner idle this long is dead.
+        if (this._activeTouchId !== NO_TOUCH && performance.now() - this._lastMoveTime > STALE_TOUCH_MS) {
+            this.releaseTouch();
+        }
+
+        // A drag already in progress keeps ownership — extra fingers landing
+        // anywhere (including outside the area) must not cancel it. The same id
+        // starting again means its end was missed, so let it take over.
+        if (this._activeTouchId !== NO_TOUCH && this._activeTouchId !== id) return;
+
+        // Area is evaluated once, here, and never re-checked for this drag.
+        if (!this.isInTouchArea(event)) {
+            this.releaseTouch();
+            return;
+        }
+
+        this._activeTouchId = id;
         this._touchActive = true;
         this._hasDragged = false;
         this._currentVelocity.set(0, 0);
@@ -141,6 +198,8 @@ export class DragRotateController extends Component {
     }
 
     onTouchMove(event: EventTouch): void {
+        if (this.touchIdOf(event) !== this._activeTouchId) return;
+
         const delta = event.getDelta();
         const deltaVec = new Vec2(delta.x, delta.y);
         if (deltaVec.length() < this.threshold) {
@@ -177,7 +236,9 @@ export class DragRotateController extends Component {
     }
 
     onTouchEnd(event: EventTouch): void {
-        this._touchActive = false;
+        if (this.touchIdOf(event) !== this._activeTouchId) return;
+
+        this.releaseTouch();
         // If the finger was held still before release (no movement for > 100ms),
         // clear velocity so the node does not continue spinning.
         if (performance.now() - this._lastMoveTime > 100) {

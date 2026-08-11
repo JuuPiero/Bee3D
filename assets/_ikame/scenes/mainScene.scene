@@ -1074,7 +1074,7 @@
     "autoRotateSpeed": 3,
     "allowHorizontalRotation": true,
     "allowVerticalRotation": true,
-    "touchAreaHeightPercent": 1,
+    "touchAreaHeightPercent": 0.7,
     "camera": {
       "__id__": 21
     },
