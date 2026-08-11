@@ -858,7 +858,7 @@
     "debugDrawMapBorder": false,
     "levelJsonAssets": [
       {
-        "__uuid__": "14828ae0-58d4-4e4e-bcfb-313703c69ece",
+        "__uuid__": "dcfa128c-931b-48b3-aed2-3a502dd457c5",
         "__expectedType__": "cc.JsonAsset"
       }
     ],
@@ -974,9 +974,9 @@
     "_lrot": {
       "__type__": "cc.Quat",
       "x": 0,
-      "y": 0,
+      "y": 1,
       "z": 0,
-      "w": 1
+      "w": 6.123233995736766e-17
     },
     "_lscale": {
       "__type__": "cc.Vec3",
@@ -989,7 +989,7 @@
     "_euler": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": 0,
+      "y": 180,
       "z": 0
     },
     "_id": "bbWY7im7xM6rgH5kgby5Pc"
@@ -1074,6 +1074,7 @@
     "autoRotateSpeed": 3,
     "allowHorizontalRotation": true,
     "allowVerticalRotation": true,
+    "touchAreaHeightPercent": 1,
     "camera": {
       "__id__": 21
     },
