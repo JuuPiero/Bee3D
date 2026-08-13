@@ -71,6 +71,14 @@ const EXIT_CLIMB_HEIGHT_RATIO = 2;
 // one move rather than two curves that happen to touch.
 const EXIT_HOOK_RATIO = 0.135;
 
+// Return beats copied from Unity's collector state machine: pause to turn, a small backwards
+// wind-up, then a curved but always forward-moving run into the Cocos hive/exit target.
+const RETURN_TURN_DURATION = 0.18;
+const RETURN_WINDUP_DURATION = 0.12;
+const RETURN_WINDUP_DISTANCE = 0.7;
+const RETURN_SPEED = 5.5;
+const RETURN_LANE_JITTER = 0.35;
+
 // The beat the bee spends settled on the cube's face, gripping, before it heaves. The cube is
 // still part of the wall for this - without the pause the grab reads as the bee passing through.
 const LAND_HOVER_DURATION = 0.2;
@@ -105,7 +113,6 @@ const UNITY_SPREAD_ANGLE_MAX_DEGREES = 85;
 // being circled, whatever the map does meanwhile.
 const GATE_HOVER_DURATION = 0.23;
 const GATE_HOVER_RADIUS_CELLS = 0.5;
-const TARGET_VISIBILITY_RECHECK_INTERVAL = 0.08;
 // Well under one turn - a sweep across the mouth and back onto the line, not an orbit.
 //
 // KEEP TURNS/DURATION UNDER ABOUT 2 REV/S. This was 1.35 turns over 0.22s = 6.1 rev/s, which is 37
@@ -813,49 +820,20 @@ export class LevelController extends Component implements ILevelController
 
             this.hoverBulletAtGate(bullet, corridor, () =>
             {
-                // Same promise as Unity's Approaching state: a tile may have been visible when
-                // chosen, then rotate behind the pile while this bee is in open air. It must become
-                // visible again before the bee is allowed to commit and collect it.
-                this.waitAtGateUntilTileCollectible(bullet, tile, () => this.descendBulletToGate(bullet, mouth, gate, cellWorldSize, () =>
+                // Cocos locks a target once it is reserved. Visibility is required when choosing
+                // it, but rotating the grid afterwards must not make this bee wait at the gate:
+                // that pause reads as a confused/stuck bee and differs from the Cocos gameplay.
+                this.descendBulletToGate(bullet, mouth, gate, cellWorldSize, () =>
                 {
                     this.diveBulletOntoFace(bullet, gate, attachPoint, cellWorldSize, () =>
                     {
                         this.gripAndHeave(bullet, tile, corridor, cellWorldSize);
                     });
-                }));
+                });
             });
         });
 
         return true;
-    }
-
-    /** Holds a bee at the safe corridor mouth while its reserved tile is off camera. */
-    private waitAtGateUntilTileCollectible(bullet: Node, tile: IGridTile3D, onCollectible: () => void): void
-    {
-        if (!bullet.isValid) return;
-
-        if (!tile.isContainBlock())
-        {
-            // The tile vanished through a level reset or another system. Do not leave its reserve
-            // or pooled bee alive; a normal shot cannot hit this branch because reservation excludes
-            // all other bees from the target.
-            this.levelGrid3D.releaseTile(tile);
-            bullet.getComponent(BulletItem)?.releaseCube();
-            bullet.setParent(this.bulletPool.node, true);
-            this.bulletPool.returnBullet(bullet);
-            return;
-        }
-
-        if (this.levelGrid3D.isTileCollectibleNow(tile))
-        {
-            onCollectible();
-            return;
-        }
-
-        tween(bullet)
-            .delay(TARGET_VISIBILITY_RECHECK_INTERVAL)
-            .call(() => this.waitAtGateUntilTileCollectible(bullet, tile, onCollectible))
-            .start();
     }
 
     /**
@@ -1366,7 +1344,12 @@ export class LevelController extends Component implements ILevelController
             .start();
     }
 
-    /** Rides the rest of the corridor out of the pile, then hands over to the world-space leg. */
+    /**
+     * Carries the cube down the clear corridor, but keeps the bee itself in world space. The local
+     * corridor points are transformed every frame, so rotating the grid cannot make it clip a cube;
+     * unlike parenting to cubeBlockHolder, dragging the grid also cannot make the bee inherit an
+     * abrupt rotation/translation and look as if it stopped to work out where it is.
+     */
     private flyBulletAlongCorridor(bullet: Node, corridor: Vec3[], cellWorldSize: number): void
     {
         if (!bullet.isValid) return;
@@ -1390,7 +1373,12 @@ export class LevelController extends Component implements ILevelController
         // against. This call is the guard that keeps it that way, not a straightening.
         bullet.getComponent(BulletItem)?.holdSwayStraight();
 
+        // Detach once the block is free. The carried cube remains a child of the bee, so it follows
+        // naturally; only the grid transform is deliberately left behind.
+        bullet.setParent(this.bulletPool.node, true);
+
         const localPos = new Vec3();
+        const worldPos = new Vec3();
 
         const corridorObj = { t: 0 };
         tween(corridorObj)
@@ -1400,126 +1388,93 @@ export class LevelController extends Component implements ILevelController
                 {
                     if (!bullet.isValid) return;
                     lerpMultiplePoints(localPos, corridor, corridorObj.t);
-                    bullet.setPosition(localPos);
+                    Vec3.transformMat4(worldPos, localPos, this.levelGrid3D.cubeBlockHolder.worldMatrix);
+                    bullet.setWorldPosition(worldPos);
                 },
                 onComplete: () =>
                 {
                     if (!bullet.isValid) return;
 
-                    // Off the map's back now: hand the bullet back to the pool's node, keeping
-                    // where it is, so it stops spinning with the level. The carried cube is a
-                    // child of the bullet, so it comes along and stops spinning with it.
-                    bullet.setParent(this.bulletPool.node, true);
                     this.flyBulletToExitTarget(bullet);
                 }
             })
             .start();
     }
 
-    /**
-     * Last leg, in world space and starting from wherever the bullet already is (which is always
-     * outside the grid by now): the bee flies ACROSS to `bulletExitTarget` and then straight UP and
-     * out of frame, where it is recycled.
-     *
-     * The turn between those two is a curve, not a corner. It is flown as two cubic segments that
-     * meet AT the exit point and leave it along the same line they arrived on - the handle either
-     * side of it is the same length and the same horizontal direction (see EXIT_HOOK_RATIO), which
-     * is what makes the join tangent-continuous. Two legs run back to back would give the bee a
-     * frame where its heading flips from horizontal to vertical, and a bee does not fly across,
-     * stop dead, and set off upwards; it hooks round.
-     *
-     * That shape is also why the exit point is passed THROUGH rather than leant towards: it is a
-     * segment endpoint, so the bee is at it exactly, once, before the climb takes over. A single
-     * curve with the exit as a control point would miss it by whatever the handles worked out to.
-     *
-     * The way across still arches over the map's bounding SPHERE - not the box: the map keeps
-     * turning, and only a sphere is the same size from every angle, so a route outside it can never
-     * be reached by a rotated-in cube. How far above it, and how far the climb then goes, are
-     * EXIT_ARCH_HEIGHT_RATIO and EXIT_CLIMB_HEIGHT_RATIO. With no target node assigned there is
-     * nothing to cross to and the bullet just climbs clear from where it is.
-     */
+    /** Unity-style return: turn, wind up, then bend continuously toward the Cocos hive target. */
     private flyBulletToExitTarget(bullet: Node): void
     {
-        const center = this.BoundsCenter;
         const span = this.BoundsSize;
         const radius = Math.hypot(span.x, span.y, span.z) * 0.5 + EXIT_CLEARANCE;
-        const cruiseY = center.y + radius * EXIT_ARCH_HEIGHT_RATIO;
-
         const target = this.bulletExitTarget;
-
         const from = bullet.worldPosition.clone();
-        // The exit point as of now. It is re-read every frame on the way across (the node can move),
-        // but the SHAPE is worked out once - handles that chased a moving target would keep redrawing
-        // the curve under a bee already flying it.
-        const exitAt = target ? target.worldPosition.clone() : from.clone();
+        const hive = target ? target.worldPosition.clone() : new Vec3(from.x, from.y + radius * EXIT_CLIMB_HEIGHT_RATIO, from.z);
+        const toHive = new Vec3(hive.x - from.x, hive.y - from.y, hive.z - from.z);
+        const hiveDistance = toHive.length();
+        const towardHive = hiveDistance > 1e-6 ? toHive.normalize() : new Vec3(0, 0, 1);
+        const back = new Vec3(-towardHive.x, -towardHive.y, -towardHive.z);
+        const wobble = new Vec3(
+            (Math.random() * 2 - 1) * RETURN_LANE_JITTER,
+            (Math.random() * 2 - 1) * RETURN_LANE_JITTER * 0.5,
+            (Math.random() * 2 - 1) * RETURN_LANE_JITTER,
+        );
 
-        // Which way the bee is travelling as it goes through the exit point: the horizontal line it
-        // came in on. Both handles sit on it, so the hook keeps the heading it arrives with.
-        const hook = new Vec3(exitAt.x - from.x, 0, exitAt.z - from.z);
-        const crossDistance = hook.length();
-        if (crossDistance > 1e-4) hook.multiplyScalar(EXIT_HOOK_RATIO);
-        // Nothing horizontal to arrive along - the exit is straight overhead, or there is no target
-        // at all. Then there is no hook to draw and the whole leg is the climb.
-        else hook.set(0, 0, 0);
+        // Both handles are placed along the direction TO the hive. This preserves the gradual
+        // bee-like turn while guaranteeing the route never climbs to a point that is behind the
+        // destination and then visibly comes back down to it.
+        const handleDistance = hiveDistance * 0.32;
+        const controlA = new Vec3(
+            from.x + towardHive.x * handleDistance + wobble.x,
+            from.y + towardHive.y * handleDistance + wobble.y,
+            from.z + towardHive.z * handleDistance + wobble.z,
+        );
+        const controlB = new Vec3(
+            hive.x - towardHive.x * handleDistance + wobble.x,
+            hive.y - towardHive.y * handleDistance + wobble.y,
+            hive.z - towardHive.z * handleDistance + wobble.z,
+        );
+        const curveLength = Vec3.distance(from, controlA) + Vec3.distance(controlA, controlB) + Vec3.distance(controlB, hive);
+        const bulletItem = bullet.getComponent(BulletItem);
 
-        // Where the climb ends. Measured off the exit point alone, NOT off the map's cruise height:
-        // the climb happens over the exit, which is away from the pile, so there is nothing up there
-        // to clear and stacking the two heights only made a low exit point launch the bee twice as
-        // far as a high one.
-        const topAt = new Vec3(exitAt.x, exitAt.y + radius * EXIT_CLIMB_HEIGHT_RATIO, exitAt.z);
-
-        // The way across arches, so a target on the far side of the map is reached over the top of it
-        // rather than through it. Solved rather than guessed: with the first handle raised by h and
-        // the second one level with the exit, the curve's own middle sits at (4*from + 3h + 4*exit)/8,
-        // so h is what that solves to for the height that has to be cleared.
-        const peakY = Math.max(cruiseY, from.y, exitAt.y);
-        const arcHandleY = Math.max(0, (8 * peakY - 4 * from.y - 4 * exitAt.y) / 3);
-
-        const crossA = new Vec3(from.x, from.y + arcHandleY, from.z);
-        const crossB = new Vec3(exitAt.x - hook.x, exitAt.y, exitAt.z - hook.z);
-
-        // No exit node wired up: there is nothing to cross to, and running the segment anyway would
-        // arch the bee up and back down onto the spot it started from. Straight to the climb.
-        if (!target)
-        {
-            this.flyBulletUpFromExit(bullet, exitAt, hook, topAt);
-            return;
-        }
-
-        // Straighten the weave out onto the exit the same way it straightens onto a face - it is a
-        // point the bee has to be at exactly. Handed over as the node itself, so the bee measures
-        // against where it is now rather than where it was when the leg started.
-        bullet.getComponent(BulletItem)?.setSwayTarget(target, Vec3.ZERO);
-
-        const flyPos = new Vec3();
-        const crossObj = { t: 0 };
-
-        // Timed off the shape's own stretches rather than a straight line to the end: the arch up,
-        // the run across, and the drop back onto the exit are each flown at BULLET_SPEED.
-        const crossDuration = Math.max(
-            ((peakY - from.y) + crossDistance + (peakY - exitAt.y)) / BULLET_SPEED, 0.01);
-
-        tween(crossObj)
-            .to(crossDuration, { t: 1 }, {
-                easing: easing.linear,
+        // Unity locks facing for this little turn/wind-up beat. Once the curve starts, BulletItem
+        // follows the actual curved movement at its weighted carry turn speed.
+        bulletItem?.holdFacing();
+        const windUp = { t: 0 };
+        tween(windUp)
+            .delay(RETURN_TURN_DURATION)
+            .to(RETURN_WINDUP_DURATION, { t: 1 }, {
+                easing: easing.sineInOut,
                 onUpdate: () =>
                 {
                     if (!bullet.isValid) return;
-                    // Re-read the node every frame: it may be moving. The handle beside it is dragged
-                    // along, so the hook stays lined up on the point rather than leaning off it - its
-                    // HEIGHT is left alone, since that is what holds the arch's peak.
-                    const end = target.worldPosition;
-                    crossB.x = end.x - hook.x;
-                    crossB.z = end.z - hook.z;
-
-                    cubicBezier(flyPos, from, crossA, crossB, end, crossObj.t);
-                    bullet.setWorldPosition(flyPos);
+                    const pull = Math.sin(windUp.t * Math.PI) * RETURN_WINDUP_DISTANCE;
+                    bullet.setWorldPosition(from.x + back.x * pull, from.y + back.y * pull, from.z + back.z * pull);
                 },
-                onComplete: () =>
-                {
-                    if (!bullet.isValid) return;
-                    this.flyBulletUpFromExit(bullet, target.worldPosition.clone(), hook, topAt);
-                }
+            })
+            .call(() =>
+            {
+                if (!bullet.isValid) return;
+                bulletItem?.setSwayTarget(target, target ? Vec3.ZERO : hive);
+                const flyPos = new Vec3();
+                const returnObj = { t: 0 };
+                tween(returnObj)
+                    .to(Math.max(curveLength / RETURN_SPEED, 0.01), { t: 1 }, {
+                        easing: easing.linear,
+                        onUpdate: () =>
+                        {
+                            if (!bullet.isValid) return;
+                            const end = target ? target.worldPosition : hive;
+                            cubicBezier(flyPos, from, controlA, controlB, end, returnObj.t);
+                            bullet.setWorldPosition(flyPos);
+                        },
+                        onComplete: () =>
+                        {
+                            if (!bullet.isValid) return;
+                            bulletItem?.releaseCube();
+                            this.bulletPool.returnBullet(bullet);
+                        }
+                    })
+                    .start();
             })
             .start();
     }
