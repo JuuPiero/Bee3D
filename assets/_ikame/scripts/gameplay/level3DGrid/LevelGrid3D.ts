@@ -520,9 +520,28 @@ export class LevelGrid3D extends Component
      * Single source of truth for "is this cube currently visible", shared by the debug draw and
      * findTargetTile()'s eligibility filter.
      */
-    private isTileVisible(tile: GridTile3D): boolean
+    private isTileVisible(tile: IGridTile3D): boolean
     {
         return tile.getVisibilityResult().visibleSamples > this.visibilitySampleCountHideThreshold;
+    }
+
+    /**
+     * Gameplay gate used immediately before a bee commits to a cube. Target selection already uses
+     * this same visible + reachable rule, but a rotating board can hide the cube while the bee is
+     * still flying. Refresh both caches here so an off-camera cube is never collected by accident.
+     */
+    public isTileCollectibleNow(tile: IGridTile3D): boolean
+    {
+        if (!this.camera || !tile || !tile.isContainBlock()) return false;
+
+        if (this._reachabilityView.hasChanged(this.camera.node, this.cubeBlockHolder))
+        {
+            this._reachabilityTimer = 0;
+            this.computeReachabilityForSolidTiles();
+        }
+        this.ensureVisibilityFresh();
+
+        return tile.isReachable() && this.isTileVisible(tile);
     }
 
     doLateUpdate(dt: number): void

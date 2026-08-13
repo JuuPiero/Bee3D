@@ -129,6 +129,9 @@ export class BulletItem extends Component
     public swaySettleSpeed: number = 3;
 
     private _phase: BulletPhase = BulletPhase.Idle;
+    // LevelController owns the Unity-style launch/spread curve for the incoming open-air leg.
+    // Suppress this component's sine weave during that one leg so the two trajectories never stack.
+    private _approachWeaveSuppressed = false;
 
     private readonly _facing = new Quat();
 
@@ -368,6 +371,13 @@ export class BulletItem extends Component
         }
     }
 
+    /** Temporarily disables only the procedural weave while a controller supplies its own path. */
+    public setApproachWeaveSuppressed(suppressed: boolean): void
+    {
+        this._approachWeaveSuppressed = suppressed;
+        if (suppressed) this.clearSway();
+    }
+
     /**
      * Works out the size the bee has to end up at to sit right against the cube it is fetching.
      *
@@ -481,6 +491,7 @@ export class BulletItem extends Component
      */
     public beginCarry(): void
     {
+        this._approachWeaveSuppressed = false;
         this._phase = BulletPhase.Carry;
 
         // The pop that just ran was a shove along the extract normal, not travel. This is the first
@@ -503,6 +514,7 @@ export class BulletItem extends Component
     /** Empty-handed again - called as a bullet is fired, and once it is done with its cube. */
     public releaseCube(): void
     {
+        this._approachWeaveSuppressed = false;
         this._phase = BulletPhase.Idle;
 
         if (this.cubeNode)
@@ -672,7 +684,7 @@ export class BulletItem extends Component
 
         // Straighten out and hold the path: told to (holdSwayStraight, and the corridor legs do),
         // switched off, no amplitude asked for, or too near the end of a leg that was cut short.
-        if (this._swayClosed || !this.beeWeave || Math.abs(amplitude) < 1e-5)
+        if (this._swayClosed || this._approachWeaveSuppressed || !this.beeWeave || Math.abs(amplitude) < 1e-5)
         {
             this.settleSwayToCentre(dt);
             return;

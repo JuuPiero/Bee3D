@@ -1,4 +1,4 @@
-import { _decorator, AudioClip, BoxCollider, Camera, CCBoolean, CCInteger, Color, Component, easing, EventKeyboard, EventTouch, geometry, Input, input, JsonAsset, KeyCode, Node, PhysicsSystem, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, AudioClip, BoxCollider, Camera, CCBoolean, CCInteger, Color, Component, easing, EventKeyboard, EventTouch, geometry, Input, input, JsonAsset, KeyCode, Node, PhysicsSystem, Quat, tween, Vec2, Vec3 } from 'cc';
 import { LevelData3D, ShooterSpawnData3D } from '../../configData/LevelData3D';
 import { EDITOR, PREVIEW } from 'cc/env';
 import { EColor } from '../../enums/EColor';
@@ -21,7 +21,7 @@ import { IPixelBlock } from '../flows/Block/IPixelBlock';
 import { PixelBlock } from '../flows/Block/PixelBlock';
 import { LevelGrid3D } from '../level3DGrid/LevelGrid3D';
 import { IGridTile3D } from '../level3DGrid/IGridTile3D';
-import { cubicBezier, lerpMultiplePoints, quadraticBezier } from '../../utils/MathUtils';
+import { cubicBezier, lerpMultiplePoints } from '../../utils/MathUtils';
 import { BulletItem } from '../flows/Bullet/BulletItem';
 const { ccclass, property } = _decorator;
 
@@ -36,7 +36,14 @@ const BULLET_SPEED = 12;
 // Nothing downstream is timed off this. The weave, the resize and the grip reach are all paced by
 // distance still to fly, so changing the speed stretches them with it instead of leaving them to
 // finish early and wait.
-const APPROACH_SPEED = 10;
+// Cocos' board is much more compact on screen than the Unity board. At 10 world units/s it reads
+// as a projectile even though the nominal unit value is lower, so this is the visual-speed match:
+// enough time to see the shared launch, the sideways search, and the final commitment.
+const APPROACH_SPEED = 4.5;
+
+// Unity turns from the filtered display velocity. Its 720-degree cap is rarely reached; Cocos
+// reads raw tween displacement, so use this equivalent cap or every lane-change snaps instantly.
+const UNITY_APPROACH_TURN_SPEED = 300;
 
 // How far outside the map's own bounds a bullet's fly-out route is kept, so it never grazes a
 // cube that is still standing.
@@ -76,9 +83,18 @@ const LAND_HOVER_DURATION = 0.2;
 const POP_DISTANCE_CELLS = 0.9;
 const POP_DURATION = 0.26;
 
-// Bee flight over open air: how far the path bows off the straight line, as a fraction of the
-// leg's own length. The sideways weave over that bow belongs to BulletItem.
-const ARC_HEIGHT_RATIO = 0.35;
+// Unity's collector departure profile. The bee first leaves in a shared direction, then fans out
+// into discrete lanes, and finally converges exactly onto the corridor mouth. These are copied from
+// GameConfig's current collector values so the Cocos swarm reads the same as the Unity one.
+const UNITY_LAUNCH_PHASE_RATIO = 0.15;
+const UNITY_SPREAD_PHASE_RATIO = 0.65;
+const UNITY_LAUNCH_CONE_ANGLE_DEGREES = 18;
+const UNITY_LAUNCH_DISTANCE_RATIO = 0.12;
+const UNITY_SPREAD_DISTANCE_RATIO = 0.35;
+const UNITY_SPREAD_JITTER = 0.35;
+const UNITY_SPREAD_GROUP_COUNT = 3;
+const UNITY_SPREAD_ANGLE_MIN_DEGREES = 15;
+const UNITY_SPREAD_ANGLE_MAX_DEGREES = 85;
 
 // The beat at the corridor mouth, before the bee commits inward: it holds off the pile and circles
 // once rather than turning straight down the corridor the frame it arrives. This is what reads as
@@ -89,6 +105,7 @@ const ARC_HEIGHT_RATIO = 0.35;
 // being circled, whatever the map does meanwhile.
 const GATE_HOVER_DURATION = 0.23;
 const GATE_HOVER_RADIUS_CELLS = 0.5;
+const TARGET_VISIBILITY_RECHECK_INTERVAL = 0.08;
 // Well under one turn - a sweep across the mouth and back onto the line, not an orbit.
 //
 // KEEP TURNS/DURATION UNDER ABOUT 2 REV/S. This was 1.35 turns over 0.22s = 6.1 rev/s, which is 37
@@ -738,14 +755,19 @@ export class LevelController extends Component implements ILevelController
         const bullet = this.bulletPool.getBullet();
         const bulletItem = bullet.getComponent(BulletItem);
         bulletItem?.setColor(colorBytes, shadowBytes);
+        // BulletItem normally faces raw tween displacement at 720 deg/s. Unity filters that visual
+        // displacement before facing, which produces a visibly more deliberate bee-like turn.
+        if (bulletItem) bulletItem.travelTurnSpeed = UNITY_APPROACH_TURN_SPEED;
         // Handed the map's cube size up front, not just at the landing: the bee grows onto it across
         // the flight in, which is the one stretch long enough to hide the change.
         this.levelGrid3D.getCubeWorldScale(this._cubeGrabScale);
         bulletItem?.beginApproach(this._cubeGrabScale);
         bullet.setWorldPosition(startPos);
-        // keepWorldTransform, so parenting neither teleports the bullet nor shrinks it into the
-        // holder's fit scale.
-        bullet.setParent(this.levelGrid3D.cubeBlockHolder, true);
+        // Keep the broad swarm leg outside cubeBlockHolder. Unity collectors are positioned in
+        // world space, so rotating the board changes the target but does not spin the bee's whole
+        // in-flight curve with it. We re-parent at the corridor mouth, where local space is needed
+        // for the guaranteed-clear approach route.
+        bullet.setParent(this.bulletPool.node, true);
 
         // Holder-local units scale into world units by the holder's fit scale, so travel time is
         // measured in world units and the bullet keeps one speed across every leg.
@@ -756,8 +778,7 @@ export class LevelController extends Component implements ILevelController
         // lets the landing pose yank it back out in one frame, at the moment it is biggest on screen.
         const attachPoint = this.attachPointFor(corridor, bulletItem, cellWorldSize);
 
-        // The end of the whole way in, in the holder's own space so it stays right as the map turns:
-        // the bee arcs across the open air and its weave is back on the line by the time it gets here.
+        // The end of the whole way in, in the holder's own space so it stays right as the map turns.
         bulletItem?.setSwayTarget(this.levelGrid3D.cubeBlockHolder, attachPoint);
 
         // Four legs in, because each has a different job: the open air out to the corridor mouth,
@@ -772,8 +793,15 @@ export class LevelController extends Component implements ILevelController
         const mouth = corridor[corridor.length - 1];
         const gate = this.commitPointFor(corridor, attachPoint);
 
-        this.flyBulletAlongArc(bullet, bullet.position.clone(), mouth, cellWorldSize, () =>
+        // Unity's launch/spread offset is the complete incoming trajectory, so do not stack the
+        // older per-frame sine weave on top of it. The weave comes back for the carrying flight.
+        bulletItem?.setApproachWeaveSuppressed(true);
+        this.flyBulletAlongUnityDeparture(bullet, bullet.worldPosition.clone(), mouth, () =>
         {
+            // All legs after the mouth are defined in holder-local cells. Keeping world transform
+            // makes this hand-off invisible while pinning the corridor path to the rotating map.
+            bullet.setParent(this.levelGrid3D.cubeBlockHolder, true);
+
             // Straighten up over the hover, and be done BY THE END OF IT: the corridor's clearance is
             // one cube wide, so the weave has to be gone before the bee is inside it, and the dive
             // that follows has no room to finish the job.
@@ -785,17 +813,49 @@ export class LevelController extends Component implements ILevelController
 
             this.hoverBulletAtGate(bullet, corridor, () =>
             {
-                this.descendBulletToGate(bullet, mouth, gate, cellWorldSize, () =>
+                // Same promise as Unity's Approaching state: a tile may have been visible when
+                // chosen, then rotate behind the pile while this bee is in open air. It must become
+                // visible again before the bee is allowed to commit and collect it.
+                this.waitAtGateUntilTileCollectible(bullet, tile, () => this.descendBulletToGate(bullet, mouth, gate, cellWorldSize, () =>
                 {
                     this.diveBulletOntoFace(bullet, gate, attachPoint, cellWorldSize, () =>
                     {
                         this.gripAndHeave(bullet, tile, corridor, cellWorldSize);
                     });
-                });
+                }));
             });
         });
 
         return true;
+    }
+
+    /** Holds a bee at the safe corridor mouth while its reserved tile is off camera. */
+    private waitAtGateUntilTileCollectible(bullet: Node, tile: IGridTile3D, onCollectible: () => void): void
+    {
+        if (!bullet.isValid) return;
+
+        if (!tile.isContainBlock())
+        {
+            // The tile vanished through a level reset or another system. Do not leave its reserve
+            // or pooled bee alive; a normal shot cannot hit this branch because reservation excludes
+            // all other bees from the target.
+            this.levelGrid3D.releaseTile(tile);
+            bullet.getComponent(BulletItem)?.releaseCube();
+            bullet.setParent(this.bulletPool.node, true);
+            this.bulletPool.returnBullet(bullet);
+            return;
+        }
+
+        if (this.levelGrid3D.isTileCollectibleNow(tile))
+        {
+            onCollectible();
+            return;
+        }
+
+        tween(bullet)
+            .delay(TARGET_VISIBILITY_RECHECK_INTERVAL)
+            .call(() => this.waitAtGateUntilTileCollectible(bullet, tile, onCollectible))
+            .start();
     }
 
     /**
@@ -843,44 +903,130 @@ export class LevelController extends Component implements ILevelController
     }
 
     /**
-     * Flies the bullet between two holder-local points the way a bee actually crosses open air: an
-     * arc that lifts off the straight line. Only ever used outside the pile - inside it the corridor
-     * is the one line that is guaranteed clear of cubes, and that leg is flown straight by
-     * diveBulletAlongCorridor().
-     *
-     * The wander across that arc is not here: BulletItem lays it over whatever path this writes, so
-     * it is one weave with one set of knobs, and it is drawn across the whole way in - this leg, the
-     * gate hover and the dive - rather than across this one leg alone.
+     * Unity's three-phase collector path in world space. It deliberately stays outside the rotating
+     * grid holder until the corridor mouth: its broad spread looks busy in open air without spinning
+     * with the board, while the corridor itself still uses its guaranteed-clear local-space line.
      */
-    private flyBulletAlongArc(bullet: Node, fromLocal: Vec3, toLocal: Vec3, cellWorldSize: number, onArrived: () => void): void
+    private flyBulletAlongUnityDeparture(bullet: Node, fromWorld: Vec3, targetLocal: Vec3, onArrived: () => void): void
     {
-        // Bend the line upwards, in world terms - the map is turning, so its own up is not up.
-        const up = this.levelGrid3D.worldDirectionToLocal(new Vec3(), Vec3.UP);
-        const span = Vec3.distance(fromLocal, toLocal);
-        const control = new Vec3(
-            (fromLocal.x + toLocal.x) * 0.5 + up.x * span * ARC_HEIGHT_RATIO,
-            (fromLocal.y + toLocal.y) * 0.5 + up.y * span * ARC_HEIGHT_RATIO,
-            (fromLocal.z + toLocal.z) * 0.5 + up.z * span * ARC_HEIGHT_RATIO,
+        const targetWorld = new Vec3();
+        Vec3.transformMat4(targetWorld, targetLocal, this.levelGrid3D.cubeBlockHolder.worldMatrix);
+        const span = Vec3.distance(fromWorld, targetWorld);
+        if (span <= 1e-5)
+        {
+            bullet.setWorldPosition(targetWorld);
+            onArrived();
+            return;
+        }
+
+        const forward = new Vec3();
+        Vec3.subtract(forward, targetWorld, fromWorld);
+        forward.normalize();
+
+        // Unity rotates its lanes around world Y, not around the board's local up axis.
+        const launchDirection = this.rotateAroundAxis(
+            forward,
+            Vec3.UP,
+            (Math.random() * 2 - 1) * UNITY_LAUNCH_CONE_ANGLE_DEGREES * Math.PI / 180,
         );
+        const departureDirection = this.unityDepartureDirection(forward, Vec3.UP);
+        const spreadScale = Math.max(0.2, 1 + (Math.random() * 2 - 1) * UNITY_SPREAD_JITTER);
+        const launchPeak = span * UNITY_LAUNCH_DISTANCE_RATIO * spreadScale;
+        const spreadPeak = span * UNITY_SPREAD_DISTANCE_RATIO * spreadScale;
+
+        const launchOffset = new Vec3();
+        const spreadOffset = new Vec3();
+        Vec3.multiplyScalar(launchOffset, launchDirection, launchPeak);
+        Vec3.multiplyScalar(spreadOffset, departureDirection, spreadPeak);
 
         const pos = new Vec3();
-        const arcObj = { t: 0 };
-        tween(arcObj)
-            .to(Math.max((span * cellWorldSize) / APPROACH_SPEED, 0.01), { t: 1 }, {
+        const offset = new Vec3();
+        const flight = { t: 0 };
+        tween(flight)
+            .to(Math.max(span / APPROACH_SPEED, 0.01), { t: 1 }, {
                 easing: easing.linear,
                 onUpdate: () =>
                 {
                     if (!bullet.isValid) return;
-                    quadraticBezier(pos, fromLocal, control, toLocal, arcObj.t);
-                    bullet.setPosition(pos);
+
+                    // Re-read the mouth in world space while the board is rotating, matching
+                    // Unity's continually updated target position instead of rotating the bee.
+                    Vec3.transformMat4(targetWorld, targetLocal, this.levelGrid3D.cubeBlockHolder.worldMatrix);
+                    Vec3.lerp(pos, fromWorld, targetWorld, flight.t);
+                    this.unityDepartureOffset(offset, launchOffset, spreadOffset, flight.t);
+                    Vec3.add(pos, pos, offset);
+                    bullet.setWorldPosition(pos);
                 },
                 onComplete: () =>
                 {
                     if (!bullet.isValid) return;
+                    // A tween normally delivered t = 1 in its final update; set it explicitly as
+                    // well so the parent hand-off below always starts exactly at the live mouth.
+                    Vec3.transformMat4(targetWorld, targetLocal, this.levelGrid3D.cubeBlockHolder.worldMatrix);
+                    bullet.setWorldPosition(targetWorld);
                     onArrived();
                 }
             })
             .start();
+    }
+
+    /** Matches ContainerBoardLogic.ComputeDepartureDirection from the Unity project. */
+    private unityDepartureDirection(forward: Readonly<Vec3>, axis: Readonly<Vec3>): Vec3
+    {
+        const minAngle = Math.min(UNITY_SPREAD_ANGLE_MIN_DEGREES, UNITY_SPREAD_ANGLE_MAX_DEGREES);
+        const maxAngle = Math.max(UNITY_SPREAD_ANGLE_MIN_DEGREES, UNITY_SPREAD_ANGLE_MAX_DEGREES);
+        let baseSide = Math.sign(forward.x);
+        if (Math.abs(forward.x) < 0.01) baseSide = Math.random() < 0.5 ? -1 : 1;
+
+        let angle: number;
+        let side: number;
+        if (UNITY_SPREAD_GROUP_COUNT > 1 && Math.random() >= 0.25)
+        {
+            const group = Math.floor(Math.random() * UNITY_SPREAD_GROUP_COUNT);
+            const band = (maxAngle - minAngle) / UNITY_SPREAD_GROUP_COUNT;
+            angle = minAngle + band * (group + 0.5) + (Math.random() * 0.9 - 0.45) * band;
+            side = group % 2 === 0 ? baseSide : -baseSide;
+        }
+        else
+        {
+            angle = minAngle + Math.random() * (maxAngle - minAngle);
+            side = Math.random() < 0.5 ? -baseSide : baseSide;
+        }
+
+        return this.rotateAroundAxis(forward, axis, side * angle * Math.PI / 180);
+    }
+
+    /** Same easing and phase boundaries as ContainerBoardController.GetDepartureOffset in Unity. */
+    private unityDepartureOffset(out: Vec3, launchOffset: Readonly<Vec3>, spreadOffset: Readonly<Vec3>, progress: number): Vec3
+    {
+        if (progress < UNITY_LAUNCH_PHASE_RATIO)
+        {
+            const t = UNITY_LAUNCH_PHASE_RATIO > 0 ? progress / UNITY_LAUNCH_PHASE_RATIO : 1;
+            const easeOutCubic = 1 - Math.pow(1 - t, 3);
+            return Vec3.multiplyScalar(out, launchOffset, easeOutCubic);
+        }
+
+        if (progress < UNITY_SPREAD_PHASE_RATIO)
+        {
+            const span = UNITY_SPREAD_PHASE_RATIO - UNITY_LAUNCH_PHASE_RATIO;
+            const t = span > 1e-4 ? (progress - UNITY_LAUNCH_PHASE_RATIO) / span : 1;
+            const smoothStep = t * t * (3 - 2 * t);
+            return Vec3.lerp(out, launchOffset, spreadOffset, smoothStep);
+        }
+
+        const remainingSpan = 1 - UNITY_SPREAD_PHASE_RATIO;
+        const t = remainingSpan > 1e-4 ? Math.min(1, Math.max(0, (progress - UNITY_SPREAD_PHASE_RATIO) / remainingSpan)) : 1;
+        const fade = 1 - t * t * (3 - 2 * t);
+        return Vec3.multiplyScalar(out, spreadOffset, fade);
+    }
+
+    private rotateAroundAxis(vector: Readonly<Vec3>, axis: Readonly<Vec3>, radians: number): Vec3
+    {
+        const rotation = new Quat();
+        const result = new Vec3();
+        Quat.fromAxisAngle(rotation, axis, radians);
+        Vec3.transformQuat(result, vector, rotation);
+        return result.normalize();
     }
 
     /**
@@ -1212,7 +1358,9 @@ export class LevelController extends Component implements ILevelController
             {
                 if (!bullet.isValid) return;
                 // Cube is free of the wall: gravity takes over the layout from here.
-                bullet.getComponent(BulletItem)?.beginCarry();
+                const bulletItem = bullet.getComponent(BulletItem);
+                bulletItem?.setApproachWeaveSuppressed(false);
+                bulletItem?.beginCarry();
                 this.flyBulletAlongCorridor(bullet, corridorAfterPop, cellWorldSize);
             })
             .start();
