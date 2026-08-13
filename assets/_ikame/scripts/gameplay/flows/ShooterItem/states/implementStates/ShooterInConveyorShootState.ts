@@ -5,7 +5,7 @@ import { ShooterStateBase } from "../ShooterStateBase";
 
 // Unity's current GameConfig releases one collector every 0.06s. Keeping the same cadence is what makes the lanes read
 // as one swarm rather than a sequence of unrelated shots.
-const FIRE_INTERVAL = 0.06;
+const FIRE_INTERVAL = 0.1;
 
 export class ShooterInConveyorShootState extends ShooterStateBase {
 

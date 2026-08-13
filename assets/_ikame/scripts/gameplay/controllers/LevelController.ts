@@ -78,6 +78,7 @@ const RETURN_WINDUP_DURATION = 0.12;
 const RETURN_WINDUP_DISTANCE = 0.7;
 const RETURN_SPEED = 5.5;
 const RETURN_LANE_JITTER = 0.35;
+const RETURN_ENTRY_BELOW_EXIT = 0.55;
 
 // The beat the bee spends settled on the cube's face, gripping, before it heaves. The cube is
 // still part of the wall for this - without the pause the grab reads as the bee passing through.
@@ -113,6 +114,11 @@ const UNITY_SPREAD_ANGLE_MAX_DEGREES = 85;
 // being circled, whatever the map does meanwhile.
 const GATE_HOVER_DURATION = 0.23;
 const GATE_HOVER_RADIUS_CELLS = 0.5;
+// The final world-space hand-off to a rotating corridor. Never snap across this boundary: during a
+// drag the corridor mouth can move several units between rendered frames.
+const MOUTH_CATCHUP_STEP_SECONDS = 1 / 60;
+const MOUTH_CATCHUP_EPSILON = 0.02;
+const MOUTH_TARGET_SMOOTH_RATE = 14;
 // Well under one turn - a sweep across the mouth and back onto the line, not an orbit.
 //
 // KEEP TURNS/DURATION UNDER ABOUT 2 REV/S. This was 1.35 turns over 0.22s = 6.1 rev/s, which is 37
@@ -938,13 +944,51 @@ export class LevelController extends Component implements ILevelController
                 onComplete: () =>
                 {
                     if (!bullet.isValid) return;
-                    // A tween normally delivered t = 1 in its final update; set it explicitly as
-                    // well so the parent hand-off below always starts exactly at the live mouth.
-                    Vec3.transformMat4(targetWorld, targetLocal, this.levelGrid3D.cubeBlockHolder.worldMatrix);
-                    bullet.setWorldPosition(targetWorld);
-                    onArrived();
+                    // Do NOT snap to a mouth that may have moved while the player was dragging the
+                    // board. Walking the last gap at flight speed prevents the visible teleport (and
+                    // the apparent pass-through of nearby cubes) before the local corridor takes over.
+                    this.catchUpToMovingMouth(bullet, targetLocal, onArrived);
                 }
             })
+            .start();
+    }
+
+    /** Smoothly closes the small, moving world-space gap before switching to corridor-local motion. */
+    private catchUpToMovingMouth(bullet: Node, mouthLocal: Readonly<Vec3>, onArrived: () => void, smoothedMouth?: Vec3): void
+    {
+        if (!bullet.isValid) return;
+
+        const liveMouth = new Vec3();
+        Vec3.transformMat4(liveMouth, mouthLocal, this.levelGrid3D.cubeBlockHolder.worldMatrix);
+        const target = smoothedMouth ?? liveMouth.clone();
+
+        // Drag input moves the live mouth in sharp frame-sized steps. A critically damped-like
+        // exponential filter gives the bee one continuous heading to turn towards instead of making
+        // it correct left/right every mouse event. It still checks liveMouth for the final hand-off.
+        const smoothing = 1 - Math.exp(-MOUTH_TARGET_SMOOTH_RATE * MOUTH_CATCHUP_STEP_SECONDS);
+        Vec3.lerp(target, target, liveMouth, smoothing);
+
+        const current = bullet.worldPosition;
+        const delta = new Vec3(target.x - current.x, target.y - current.y, target.z - current.z);
+        const distance = delta.length();
+        const liveDistance = Vec3.distance(current, liveMouth);
+
+        if (distance <= MOUTH_CATCHUP_EPSILON && liveDistance <= MOUTH_CATCHUP_EPSILON)
+        {
+            // This last correction is imperceptibly small and makes the ensuing local hover start
+            // exactly on its corridor point.
+            bullet.setWorldPosition(liveMouth);
+            onArrived();
+            return;
+        }
+
+        const step = Math.min(distance, APPROACH_SPEED * MOUTH_CATCHUP_STEP_SECONDS);
+        delta.multiplyScalar(step / distance);
+        bullet.setWorldPosition(current.x + delta.x, current.y + delta.y, current.z + delta.z);
+
+        tween(bullet)
+            .delay(MOUTH_CATCHUP_STEP_SECONDS)
+            .call(() => this.catchUpToMovingMouth(bullet, mouthLocal, onArrived, target))
             .start();
     }
 
@@ -1401,7 +1445,7 @@ export class LevelController extends Component implements ILevelController
             .start();
     }
 
-    /** Unity-style return: turn, wind up, then bend continuously toward the Cocos hive target. */
+    /** Curves to just below the exit, then makes one clean straight entry into it. */
     private flyBulletToExitTarget(bullet: Node): void
     {
         const span = this.BoundsSize;
@@ -1409,31 +1453,38 @@ export class LevelController extends Component implements ILevelController
         const target = this.bulletExitTarget;
         const from = bullet.worldPosition.clone();
         const hive = target ? target.worldPosition.clone() : new Vec3(from.x, from.y + radius * EXIT_CLIMB_HEIGHT_RATIO, from.z);
-        const toHive = new Vec3(hive.x - from.x, hive.y - from.y, hive.z - from.z);
-        const hiveDistance = toHive.length();
-        const towardHive = hiveDistance > 1e-6 ? toHive.normalize() : new Vec3(0, 0, 1);
-        const back = new Vec3(-towardHive.x, -towardHive.y, -towardHive.z);
+        const screenUp = new Vec3();
+        if (this.levelGrid3D.camera) Vec3.transformQuat(screenUp, Vec3.UP, this.levelGrid3D.camera.node.worldRotation);
+        if (screenUp.lengthSqr() <= 1e-6) screenUp.set(0, 1, 0);
+        else screenUp.normalize();
+
+        // This is the end of the curve. It stays a little below the exit in screen space, so the
+        // second leg is an obvious straight flight up into the target rather than a drop from above.
+        const entry = new Vec3(
+            hive.x - screenUp.x * RETURN_ENTRY_BELOW_EXIT,
+            hive.y - screenUp.y * RETURN_ENTRY_BELOW_EXIT,
+            hive.z - screenUp.z * RETURN_ENTRY_BELOW_EXIT,
+        );
+        const toEntry = new Vec3(entry.x - from.x, entry.y - from.y, entry.z - from.z);
+        const entryDistance = toEntry.length();
+        const towardEntry = entryDistance > 1e-6 ? toEntry.normalize() : screenUp.clone();
+        const back = new Vec3(-towardEntry.x, -towardEntry.y, -towardEntry.z);
         const wobble = new Vec3(
             (Math.random() * 2 - 1) * RETURN_LANE_JITTER,
             (Math.random() * 2 - 1) * RETURN_LANE_JITTER * 0.5,
             (Math.random() * 2 - 1) * RETURN_LANE_JITTER,
         );
-
-        // Both handles are placed along the direction TO the hive. This preserves the gradual
-        // bee-like turn while guaranteeing the route never climbs to a point that is behind the
-        // destination and then visibly comes back down to it.
-        const handleDistance = hiveDistance * 0.32;
         const controlA = new Vec3(
-            from.x + towardHive.x * handleDistance + wobble.x,
-            from.y + towardHive.y * handleDistance + wobble.y,
-            from.z + towardHive.z * handleDistance + wobble.z,
+            from.x + towardEntry.x * entryDistance * 0.28 + wobble.x,
+            from.y + towardEntry.y * entryDistance * 0.28 + wobble.y,
+            from.z + towardEntry.z * entryDistance * 0.28 + wobble.z,
         );
         const controlB = new Vec3(
-            hive.x - towardHive.x * handleDistance + wobble.x,
-            hive.y - towardHive.y * handleDistance + wobble.y,
-            hive.z - towardHive.z * handleDistance + wobble.z,
+            entry.x - towardEntry.x * entryDistance * 0.18 + wobble.x * 0.35,
+            entry.y - towardEntry.y * entryDistance * 0.18 + wobble.y * 0.35,
+            entry.z - towardEntry.z * entryDistance * 0.18 + wobble.z * 0.35,
         );
-        const curveLength = Vec3.distance(from, controlA) + Vec3.distance(controlA, controlB) + Vec3.distance(controlB, hive);
+        const curveLength = Vec3.distance(from, controlA) + Vec3.distance(controlA, controlB) + Vec3.distance(controlB, entry);
         const bulletItem = bullet.getComponent(BulletItem);
 
         // Unity locks facing for this little turn/wind-up beat. Once the curve starts, BulletItem
@@ -1454,7 +1505,7 @@ export class LevelController extends Component implements ILevelController
             .call(() =>
             {
                 if (!bullet.isValid) return;
-                bulletItem?.setSwayTarget(target, target ? Vec3.ZERO : hive);
+                bulletItem?.setSwayTarget(null, entry);
                 const flyPos = new Vec3();
                 const returnObj = { t: 0 };
                 tween(returnObj)
@@ -1463,18 +1514,45 @@ export class LevelController extends Component implements ILevelController
                         onUpdate: () =>
                         {
                             if (!bullet.isValid) return;
-                            const end = target ? target.worldPosition : hive;
-                            cubicBezier(flyPos, from, controlA, controlB, end, returnObj.t);
+                            cubicBezier(flyPos, from, controlA, controlB, entry, returnObj.t);
                             bullet.setWorldPosition(flyPos);
                         },
                         onComplete: () =>
                         {
                             if (!bullet.isValid) return;
-                            bulletItem?.releaseCube();
-                            this.bulletPool.returnBullet(bullet);
+                            this.flyStraightIntoExit(bullet, entry, target, hive);
                         }
                     })
                     .start();
+            })
+            .start();
+    }
+
+    /** Final straight leg from the below-exit entry point to the live exit target. */
+    private flyStraightIntoExit(bullet: Node, from: Vec3, target: Node | null, fallbackExit: Vec3): void
+    {
+        const initialEnd = target ? target.worldPosition : fallbackExit;
+        const duration = Math.max(Vec3.distance(from, initialEnd) / RETURN_SPEED, 0.01);
+        bullet.getComponent(BulletItem)?.setSwayTarget(target, target ? Vec3.ZERO : fallbackExit);
+
+        const pos = new Vec3();
+        const progress = { t: 0 };
+        tween(progress)
+            .to(duration, { t: 1 }, {
+                easing: easing.linear,
+                onUpdate: () =>
+                {
+                    if (!bullet.isValid) return;
+                    const end = target ? target.worldPosition : fallbackExit;
+                    Vec3.lerp(pos, from, end, progress.t);
+                    bullet.setWorldPosition(pos);
+                },
+                onComplete: () =>
+                {
+                    if (!bullet.isValid) return;
+                    bullet.getComponent(BulletItem)?.releaseCube();
+                    this.bulletPool.returnBullet(bullet);
+                }
             })
             .start();
     }
